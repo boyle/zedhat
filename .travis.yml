@@ -10,7 +10,7 @@ compiler:
 
 before_install:
    - if [[ "x$TRAVIS_OS_NAME" == "xlinux" ]]; then sudo apt-get -qq update; fi
-   - if [[ "x$TRAVIS_OS_NAME" == "xosx" ]]; then brew update && brew install homebrew/science/openblas; fi
+   - if [[ "x$TRAVIS_OS_NAME" == "xosx" ]]; then brew update && brew install homebrew/science/openblas; pushd /usr/include; sudo ln -s $(find . -name cblas.h); popd; fi
 
 matrix:
    allow_failures:
