@@ -1,0 +1,11 @@
+-y
+--style=linux
+--indent=spaces=4
+--pad-oper
+--delete-empty-lines
+--align-pointer=middle
+--align-reference=middle
+--add-brackets
+--keep-one-line-statements
+--convert-tabs
+--lineend=linux

@@ -1,0 +1,23 @@
+language: c
+
+os:
+   - linux
+   - osx
+
+compiler:
+   - gcc
+   - clang
+
+before_install:
+   - [ "x$TRAVIS_OS_NAME" == "xlinux" ] && sudo apt-get -qq update
+   - [ "x$TRAVIS_OS_NAME" == "xosx" ] && brew update
+
+matrix:
+   allow_failures:
+      - os: osx
+
+script:
+   - ./autogen
+   - ./configure
+   - make
+   - make check

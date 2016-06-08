@@ -1,0 +1,34 @@
+#!/bin/sh
+DIST_ARCHIVES="$1"
+
+which lcov 1>/dev/null 2>&1
+if [ $? != 0 ]; then
+    echo "$(basename $0) error: lcov: missing tool" 1>&2
+    exit 1
+fi
+
+if [ ! $DIST_ARCHIVES ]; then
+    echo "$(basename $0) error: $DIST_ARCHIVES: missing archive" 1>&2
+    exit 1
+fi
+
+tar zxf $DIST_ARCHIVES
+srcdir=${DIST_ARCHIVES/.tar.gz}
+cd $srcdir
+
+# Reconfigure with gcov support
+CFLAGS="-g -O0 --coverage" ./configure --disable-shared
+
+# Generate gcov output
+make
+lcov --base-directory . --directory . --zerocounters -q
+make check
+
+# Generate html report
+lcov --base-directory . --directory . -c -o zedhat_test.info
+lcov --remove zedhat_test.info "/usr*" -o zedhat_test.info # remove output for external libraries
+rm -rf ../test_coverage
+genhtml -o ../test_coverage -t "zedhat test coverage" --num-spaces 4 zedhat_test.info
+
+# Clean work space
+#cd .. && rm -rf $srcdir
