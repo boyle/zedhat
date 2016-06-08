@@ -23,6 +23,9 @@ addons:
          - libblas-dev
          - libopenblas-dev
          - libopenblas-base
+         - libsuitesparse-dev
+         - liblapacke
+         - liblapacke-dev
 
 script:
    - ./autogen

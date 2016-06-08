@@ -10,6 +10,11 @@ AT_KEYWORDS([cblas libs])
 AT_CHECK([libcblas_dgemm],0,ignore)
 AT_CLEANUP
 
+AT_SETUP([lapacke])
+AT_KEYWORDS([lapacke libs])
+AT_CHECK([liblapacke_dgels],0,ignore)
+AT_CLEANUP
+
 AT_BANNER([args])
 AT_SETUP([badargs])
 AT_KEYWORDS([badargs args])

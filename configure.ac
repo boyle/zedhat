@@ -59,6 +59,8 @@ AM_PROG_CC_C_O
 # Checks for libraries.
 #MC_WITH_LIB([UMFPACK], [umfpack_di_symbolic], [umfpack])
 AX_BLAS
+AX_LAPACK
+AX_LAPACKE
 
 # Checks for header files.
 AC_CHECK_HEADERS([float.h stdlib.h string.h sys/time.h cblas.h])
@@ -97,5 +99,11 @@ AC_MSG_RESULT([Solvers  -----------------------------])
 AS_IF([test "x$ax_blas_ok" = xyes -a "x$BLAS_LIBS" != ""],
       AC_MSG_RESULT([       BLAS: $BLAS_LIBS]),
       AC_MSG_RESULT([       BLAS: $ax_blas_ok]))
+AS_IF([test "x$ax_lapack_ok" = xyes -a "x$LAPACK_LIBS" != "x"],
+      AC_MSG_RESULT([     LAPACK: $LAPACK_LIBS]),
+      AC_MSG_RESULT([     LAPACK: $ax_lapack_ok]))
+AS_IF([test "x$ax_lapacke_ok" = xyes -a "x$LAPACKE_LIBS" != "x"],
+      AC_MSG_RESULT([   LAPACKE: $LAPACKE_LIBS]),
+      AC_MSG_RESULT([    LAPACKE: $ax_lapacke_ok]))
 
 AC_MSG_RESULT([])
