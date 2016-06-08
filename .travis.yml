@@ -10,11 +10,19 @@ compiler:
 
 before_install:
    - [ "x$TRAVIS_OS_NAME" == "xlinux" ] && sudo apt-get -qq update
-   - [ "x$TRAVIS_OS_NAME" == "xosx" ] && brew update
+   - [ "x$TRAVIS_OS_NAME" == "xosx" ] && brew update && brew install homebrew/science/openblas
 
 matrix:
    allow_failures:
       - os: osx
+
+addons:
+   apt:
+      packages:
+         - gfortran
+         - libblas-dev
+         - libopenblas-dev
+         - libopenblas-base
 
 script:
    - ./autogen

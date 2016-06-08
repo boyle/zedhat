@@ -4,6 +4,12 @@ AT_COLOR_TESTS
 
 AT_TESTED(AT_PACKAGE_NAME)
 
+AT_BANNER([libs])
+AT_SETUP([cblas])
+AT_KEYWORDS([cblas libs])
+AT_CHECK([libcblas_dgemm],0,ignore)
+AT_CLEANUP
+
 AT_BANNER([args])
 AT_SETUP([badargs])
 AT_KEYWORDS([badargs args])

@@ -58,10 +58,10 @@ AM_PROG_CC_C_O
 
 # Checks for libraries.
 #MC_WITH_LIB([UMFPACK], [umfpack_di_symbolic], [umfpack])
-#AX_BLAS
+AX_BLAS
 
 # Checks for header files.
-AC_CHECK_HEADERS([float.h stdlib.h string.h sys/time.h])
+AC_CHECK_HEADERS([float.h stdlib.h string.h sys/time.h cblas.h])
 AC_HEADER_ASSERT
 
 # Checks for typedefs, structures, and compiler characteristics.
@@ -93,4 +93,9 @@ AC_MSG_RESULT([ C Compiler: $CC])
 AC_MSG_RESULT([     CFLAGS: $CFLAGS])
 dnl AC_MSG_RESULT([     Shared Libraries: $enable_shared])
 dnl AC_MSG_RESULT([     Static Libraries: $enable_static])
+AC_MSG_RESULT([Solvers  -----------------------------])
+AS_IF([test "x$ax_blas_ok" = xyes -a "x$BLAS_LIBS" != ""],
+      AC_MSG_RESULT([       BLAS: $BLAS_LIBS]),
+      AC_MSG_RESULT([       BLAS: $ax_blas_ok]))
+
 AC_MSG_RESULT([])
