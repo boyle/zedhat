@@ -1,5 +1,6 @@
 /* Copyright 2016, Alistair Boyle, 3-clause BSD License */
 #include <stdio.h>
+#include <stdlib.h> /* for exit */
 #include <math.h>  /* for fabs */
 #include <cblas.h> /* for cblas_dgemm */
 
@@ -35,5 +36,5 @@ main (void)
         }
     }
     printf("PASS\n");
-    return 0;
+    exit(EXIT_SUCCESS);
 }
