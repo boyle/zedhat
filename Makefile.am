@@ -45,6 +45,13 @@ cov: dist
 style:
 	astyle --suffix=none --options=./astylerc src/*.{c,h} tests/*.c
 
+commit:
+	make clean && CC=clang ./configure && make check
+	make clean && ./configure && make check
+	make style
+	git ls-files -m
+	[ "x$(shell git ls-files -m | wc -l)" == "x0" ] # no uncommitted files?
+
 ######
 ## vodoo incantations to get the test suite automation to build (autotest)
 
