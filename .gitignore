@@ -13,14 +13,14 @@ configure.scan
 package.m4
 */config.h
 #*/config.h.in
-src/stamp-h1
 *.o
 *.log
 *.in~
 */.dirstamp
 */.deps/
-tests/stamp-h2
+*/stamp-*
 tests/libcblas_dgemm
+tests/liblapacke_dgels
 testsuite
 testsuite.dir/
 zedhat

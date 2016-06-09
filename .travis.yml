@@ -1,8 +1,10 @@
 language: c
+sudo: required
+dist: trusty
 
 os:
    - linux
-   - osx
+#   - osx
 
 compiler:
    - gcc
@@ -10,11 +12,12 @@ compiler:
 
 before_install:
    - if [[ "x$TRAVIS_OS_NAME" == "xlinux" ]]; then sudo apt-get -qq update; fi
-   - if [[ "x$TRAVIS_OS_NAME" == "xosx" ]]; then brew update && brew install homebrew/science/openblas; pushd /usr/include; sudo ln -s $(find . -name cblas.h); popd; fi
+#   - if [[ "x$TRAVIS_OS_NAME" == "xosx" ]]; then brew update; brew install homebrew/science/openblas; brew install  homebrew/science/suite-sparse; pushd /usr/include; sudo ln -s $(find . -name cblas.h); popd; fi
+# missing lapacke... no homebrew to tap
 
-matrix:
-   allow_failures:
-      - os: osx
+#matrix:
+#   allow_failures:
+#      - os: osx
 
 addons:
    apt:
