@@ -55,19 +55,6 @@ AC_CONFIG_FILES([Makefile])
 # Checks for programs.
 AC_PROG_CC
 AM_PROG_CC_C_O
-
-# Checks for libraries.
-#MC_WITH_LIB([UMFPACK], [umfpack_di_symbolic], [umfpack])
-AX_BLAS
-AX_LAPACK
-AX_LAPACKE
-
-# Checks for header files.
-AC_CHECK_HEADERS([float.h stdlib.h string.h sys/time.h cblas.h])
-AC_HEADER_ASSERT
-
-# Checks for typedefs, structures, and compiler characteristics.
-# Checks for library functions.
 AC_C_INLINE
 AC_TYPE_SIZE_T
 AC_FUNC_MALLOC
@@ -75,8 +62,21 @@ AC_FUNC_REALLOC
 AC_TYPE_UINT32_T
 AC_FUNC_ERROR_AT_LINE
 AC_FUNC_STRNLEN
+AC_CHECK_HEADERS([float.h stdlib.h string.h sys/time.h malloc.h stddef.h],,[AC_MSG_ERROR([missing header])])
 AC_CHECK_FUNCS([gettimeofday strndup memset strcasecmp strchr strdup strerror])
-AC_CHECK_HEADERS([malloc.h stddef.h])
+AC_HEADER_ASSERT
+
+# Checks for libraries.
+AX_BLAS
+AC_CHECK_HEADERS([cblas.h],[cblas_h_ok=yes;break;])
+AS_IF([test "x$cblas_h_ok" == "xyes"],,[AC_MSG_ERROR([missing cblas.h])])
+
+AX_LAPACK
+AX_LAPACKE
+
+AC_CHECK_HEADERS([suitesparse/umfpack.h],[umfpack_h_ok=yes;break;])
+AS_IF([test "x$umfpack_h_ok" == "xyes"],,[AC_MSG_ERROR([missing umfpack.h])])
+AC_SEARCH_LIBS([umfpack_di_symbolic], [umfpack], , [AC_MSG_ERROR([missing umfpack library])])
 
 # Setup the test suite
 AC_CONFIG_TESTDIR([.],[.:tests])
@@ -93,6 +93,7 @@ AC_MSG_RESULT([   zedhat Configuration Summary       ])
 AC_MSG_RESULT([======================================])
 AC_MSG_RESULT([ C Compiler: $CC])
 AC_MSG_RESULT([     CFLAGS: $CFLAGS])
+AC_MSG_RESULT([       LIBS: $LIBS])
 dnl AC_MSG_RESULT([     Shared Libraries: $enable_shared])
 dnl AC_MSG_RESULT([     Static Libraries: $enable_static])
 AC_MSG_RESULT([Solvers  -----------------------------])
@@ -103,7 +104,7 @@ AS_IF([test "x$ax_lapack_ok" = xyes -a "x$LAPACK_LIBS" != "x"],
       AC_MSG_RESULT([     LAPACK: $LAPACK_LIBS]),
       AC_MSG_RESULT([     LAPACK: $ax_lapack_ok]))
 AS_IF([test "x$ax_lapacke_ok" = xyes -a "x$LAPACKE_LIBS" != "x"],
-      AC_MSG_RESULT([   LAPACKE: $LAPACKE_LIBS]),
+      AC_MSG_RESULT([    LAPACKE: $LAPACKE_LIBS]),
       AC_MSG_RESULT([    LAPACKE: $ax_lapacke_ok]))
 
 AC_MSG_RESULT([])

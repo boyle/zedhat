@@ -72,6 +72,9 @@
 /* Define to 1 if you have the `strndup' function. */
 #undef HAVE_STRNDUP
 
+/* Define to 1 if you have the <suitesparse/umfpack.h> header file. */
+#undef HAVE_SUITESPARSE_UMFPACK_H
+
 /* Define to 1 if you have the <sys/stat.h> header file. */
 #undef HAVE_SYS_STAT_H
 

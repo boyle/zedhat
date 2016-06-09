@@ -21,6 +21,7 @@ package.m4
 */stamp-*
 tests/libcblas_dgemm
 tests/liblapacke_dgels
+tests/libumfpack
 testsuite
 testsuite.dir/
 zedhat
