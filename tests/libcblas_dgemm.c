@@ -25,8 +25,9 @@ main (void)
     /* A is m x k, B is k x n, C is m x n */
     printf ("[ %g, %g\n", c[0], c[1]);
     printf ("  %g, %g ]\n", c[2], c[3]);
-    double const expect[] = { 367.76, 368.12,
-                              674.06, 674.72
+    /* matlab: expected = a*b */
+    double const expect[] = { 367.7600, 368.1200,
+                              674.0600, 674.7200
                             };
     int i;
     for(i = 0; i < 4; i++) {
