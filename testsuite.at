@@ -3,6 +3,40 @@ AT_COPYRIGHT([Copyright 2016, Alistair Boyle, 3-clause BSD License])
 AT_COLOR_TESTS
 
 AT_TESTED(AT_PACKAGE_NAME)
+m4_define(ZH_DATA_FILE_TESTA_MAT,
+  [AT_DATA([testa.mat-xxd],m4_esyscmd(xxd -p tests/testa.mat))]
+  xxd -r -p testa.mat-xxd > testa.mat
+  diff testa.mat ../../../tests/testa.mat
+)
+m4_define(ZH_DATA_FILE_TESTB_MAT,
+  [AT_DATA([testb.mat-xxd],m4_esyscmd(xxd -p tests/testb.mat))]
+  xxd -r -p testb.mat-xxd > testb.mat
+  diff testb.mat ../../../tests/testb.mat
+)
+m4_define(ZH_DATA_FILE_TESTAB_MAT,
+  [AT_DATA([testab.mat-xxd],m4_esyscmd(xxd -p tests/testab.mat))]
+  xxd -r -p testab.mat-xxd > testab.mat
+  diff testab.mat ../../../tests/testab.mat
+)
+m4_define(ZH_DATA_FILE_MATA,[      Name: a
+      Rank: 2
+Dimensions: 2 x 3
+Class Type: Double Precision Array
+ Data Type: IEEE 754 double-precision
+{
+1 2 3 
+4 5 6 
+}])
+m4_define(ZH_DATA_FILE_MATB,[      Name: b
+      Rank: 2
+Dimensions: 2 x 3
+Class Type: Sparse Array
+ Data Type: IEEE 754 double-precision
+{
+    (1,1)  1
+    (1,2)  2
+    (2,2)  5
+}])
 
 AT_BANNER([libs])
 AT_SETUP([cblas])
@@ -18,6 +52,26 @@ AT_CLEANUP
 AT_SETUP([umfpack])
 AT_KEYWORDS([umfpack libs])
 AT_CHECK([libumfpack],0,ignore)
+AT_CLEANUP
+
+AT_SETUP([matio])
+AT_KEYWORDS([matio libs])
+ZH_DATA_FILE_TESTA_MAT
+AT_CHECK([libmatio testa.mat | sed 's/ $//'],0,[hello]
+ZH_DATA_FILE_MATA
+goodbye
+)
+ZH_DATA_FILE_TESTB_MAT
+AT_CHECK([libmatio testb.mat | sed 's/ $//'],0,[hello]
+ZH_DATA_FILE_MATB
+goodbye
+)
+ZH_DATA_FILE_TESTAB_MAT
+AT_CHECK([libmatio testab.mat | sed 's/ $//'],0,[hello]
+ZH_DATA_FILE_MATA
+ZH_DATA_FILE_MATB
+goodbye
+)
 AT_CLEANUP
 
 AT_BANNER([args])

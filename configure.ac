@@ -78,6 +78,9 @@ AC_CHECK_HEADERS([suitesparse/umfpack.h],[umfpack_h_ok=yes;break;])
 AS_IF([test "x$umfpack_h_ok" == "xyes"],,[AC_MSG_ERROR([missing umfpack.h])])
 AC_SEARCH_LIBS([umfpack_di_symbolic], [umfpack], , [AC_MSG_ERROR([missing umfpack library])])
 
+AC_SEARCH_LIBS([Mat_Open],[matio],matio_ok=yes,matio_ok=no)
+AS_IF([test "x$matio_ok" == "xyes"],,[AC_MSG_ERROR([missing matio library])])
+
 # Setup the test suite
 AC_CONFIG_TESTDIR([.],[.:tests])
 AC_CONFIG_FILES([atlocal])

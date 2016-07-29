@@ -1,0 +1,11 @@
+Immediate Work
+2016-06-22 tests to confirm libmatio behaviour
+
+Long-term Acceptance Criteria
+ 1. Must compile on all systems (windows, linux, osx)
+ 2. Must have bindings to:
+    - matlab,
+    - python
+ 3. Must be long-term supportable (minimize dependencies)
+ 4. Must have a "simple interface" as well as giving access
+    to the core functionality (kernels).
