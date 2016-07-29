@@ -35,5 +35,4 @@ addons:
 script:
    - ./autogen
    - ./configure
-   - make
-   - make check
+   - make distcheck

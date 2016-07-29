@@ -18,7 +18,7 @@ noinst_HEADERS = src/argv.h
 
 # some random files we want to distribute with the package tar
 EXTRA_DIST = $(bin_SCRIPTS) \
-             ChangeLog README.md NEWS LICENSE
+				 ChangeLog README.md NEWS LICENSE
 
 BUILT_TESTS = tests/libcblas_dgemm tests/liblapacke_dgels tests/libumfpack tests/libmatio
 check_PROGRAMS = $(BUILT_TESTS)
@@ -34,7 +34,8 @@ maintainer-clean-local:
 
 # regenerate the ChangeLog from git's history via ./autogen (updates configure, etc too)
 # don't fail if autogen doesn't exist though: its not in the .tar-ed releases
-dist-hook: $(top_srcdir)/autogen
+dist-hook:
+#	$(top_srcdir)/autogen
 	[[ -x $(top_srcdir)/autogen ]] && $(top_srcdir)/autogen $(distdir) $(top_srcdir) || true
 
 .PHONY: cov
@@ -83,7 +84,7 @@ check-local: atconfig atlocal $(TESTSUITE)
 
 installcheck-local: atconfig atlocal $(TESTSUITE)
 	$(SHELL) '$(TESTSUITE)' AUTOTEST_PATH='$(bindir)' \
-	  $(TESTSUITEFLAGS) -k '!hello,!unit'
+	  $(TESTSUITEFLAGS) -k '!hello,!unit,!libs'
 # don't run dependancy and unit tests
 
 clean-local-check:
