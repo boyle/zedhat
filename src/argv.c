@@ -13,6 +13,7 @@ int parse_argv(int argc, char ** argv)
         static struct option long_options[] = {
             {"help",    no_argument, 0, 'h'},
             {"version", no_argument, 0, 'V'},
+            {"unhandled-arg", no_argument, 0, 'x'},
             {0,         0,           0,  0 }
         };
         c = getopt_long(argc, argv, "?hV", long_options, &option_index);

@@ -79,6 +79,7 @@ AT_SETUP([badargs])
 AT_KEYWORDS([badargs args])
 AT_CHECK(AT_PACKAGE_NAME,1,ignore,ignore)
 AT_CHECK(AT_PACKAGE_NAME asdf asdf,1,ignore,ignore)
+AT_CHECK(AT_PACKAGE_NAME --unhandled-arg,1,ignore,ignore)
 AT_CLEANUP
 
 AT_SETUP([--help])
