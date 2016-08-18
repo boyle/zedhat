@@ -30,3 +30,4 @@ zedhat-*/
 zedhat-*.tar.gz
 test_coverage/
 tags
+TAGS
