@@ -49,9 +49,10 @@ style:
 	astyle --suffix=none --options=./astylerc src/*.{c,h} tests/*.c
 
 commit:
-	make clean && CC=clang ./configure && make check
-	make clean && ./configure && make check
-	make style
+	make clean && CC=clang ./configure && make check distcheck
+	make clean && ./configure && make check distcheck
+	make prefix-installcheck
+	make ctags style cov
 	git ls-files -m
 	[ "x$(shell git ls-files -m | wc -l)" == "x0" ] # no uncommitted files?
 
@@ -83,6 +84,23 @@ test: check
 
 check-local: atconfig atlocal $(TESTSUITE)
 	$(SHELL) '$(TESTSUITE)' $(TESTSUITEFLAGS)
+
+LOCAL_INSTALL_PATH="$(PWD)/inst"
+prefix-installcheck:
+	-[ ! -f config.status.old ] && mv config.status config.status.old
+	./configure --prefix=$(LOCAL_INSTALL_PATH)
+	make install
+	make installcheck
+	@echo "---------------------"
+	@echo "   installed files"
+	@echo "---------------------"
+	@find $(LOCAL_INSTALL_PATH) -type f
+	@echo "---------------------"
+	make uninstall
+	@echo "all cleaned up?"
+	find $(LOCAL_INSTALL_PATH) -type f
+	[ "x$(shell find $(LOCAL_INSTALL_PATH) -type f | wc -l)" == "x0" ]
+	mv config.status.old config.status
 
 installcheck-local: atconfig atlocal $(TESTSUITE)
 	$(SHELL) '$(TESTSUITE)' AUTOTEST_PATH='$(bindir)' \
@@ -121,16 +139,18 @@ $(TESTSUITE): $(srcdir)/testsuite.at $(srcdir)/package.m4
 help:
 	@echo "Useful make targets: make [target]"
 	@echo "  <none> == all"
-	@echo "  all              - build software"
+	@echo "  all              - build software (default)"
 	@echo "  check            - run testsuite"
-	@echo "  install"
-	@echo "  uninstall"
+	@echo "  install          - install to --prefix=XXX"
+	@echo "  installcheck     - test installed software"
+	@echo "  uninstall        - uninstall from --prefix=XXX"
 	@echo "  clean            - remove built files"
 	@echo "For developers:"
 	@echo "  distclean        - clean to distributed state"
 	@echo "  maintainer-clean - delete all generated files, requires ./autogen to rebuild"
 	@echo "  dist             - create a .tar.gz for distribution"
 	@echo "  distcheck        - .tar, then untar in new dir and test"
+	@echo "  prefix-installcheck - check for clean install/uninstall and run installcheck"
 	@echo "  cov              - report test coverage"
-	@echo "  tags             - generate ctags for editing source files"
+	@echo "  ctags            - generate ctags for editing source files"
 	@echo "  style            - run astyle on source files to tidy formatting"
