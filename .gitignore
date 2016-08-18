@@ -12,7 +12,7 @@ configure
 configure.scan
 package.m4
 */config.h
-#*/config.h.in
+*/config.h.in
 *.o
 *.log
 *.in~
@@ -29,3 +29,4 @@ zedhat
 zedhat-*/
 zedhat-*.tar.gz
 test_coverage/
+tags

@@ -4,7 +4,7 @@
 
 #include <stdio.h>
 #include <math.h> /* for fabs */
-#include <suitesparse/umfpack.h>
+#include <umfpack.h>
 
 void check_errcode(int status)
 {

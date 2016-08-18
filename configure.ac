@@ -12,6 +12,7 @@ AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_SRCDIR([src/zedhat.c])
 AC_CONFIG_HEADERS([src/config.h])
 AC_USE_SYSTEM_EXTENSIONS
+PKG_PROG_PKG_CONFIG
 
 # debugging
 CFLAGS="$CFLAGS -Wall -Werror"
@@ -67,18 +68,31 @@ AC_CHECK_FUNCS([gettimeofday strndup memset strcasecmp strchr strdup strerror])
 AC_HEADER_ASSERT
 
 # Checks for libraries.
-AX_BLAS
+PKG_CHECK_MODULES([BLAS],[blas],,true)
+AX_BLAS(,[AC_MSG_ERROR([missing blas])])
 AC_CHECK_HEADERS([cblas.h],[cblas_h_ok=yes;break;])
-AS_IF([test "x$cblas_h_ok" == "xyes"],,[AC_MSG_ERROR([missing cblas.h])])
 
-AX_LAPACK
-AX_LAPACKE
+PKG_CHECK_MODULES([LAPACK],[lapack],,true)
+AX_LAPACK(,[AC_MSG_ERROR([missing lapack])])
+PKG_CHECK_MODULES([LAPACKE],[lapacke],,true)
+AX_LAPACKE(,[AC_MSG_ERROR([missing lapacke])])
 
-AC_CHECK_HEADERS([suitesparse/umfpack.h],[umfpack_h_ok=yes;break;])
+PKG_CHECK_MODULES([UMFPACK],[umfpack],,true) # no pkg-config for umfpack on Ubuntu?
+AC_CHECK_HEADERS([suitesparse/umfpack.h],[UMFPACK_CFLAGS="$UMFPACK_CFLAGS -I/usr/include/suitesparse";umfpack_h_ok=yes;break;])
+AC_CHECK_HEADERS([umfpack.h],[umfpack_h_ok=yes;break;])
 AS_IF([test "x$umfpack_h_ok" == "xyes"],,[AC_MSG_ERROR([missing umfpack.h])])
+save_LIBS="$LIBS"; LIBS="$UMFPACK_LIBS $LIBS"
 AC_SEARCH_LIBS([umfpack_di_symbolic], [umfpack], , [AC_MSG_ERROR([missing umfpack library])])
+UMFPACK_LIBS="$LIBS"
+LIBS="$save_LIBS"
 
+PKG_CHECK_MODULES([MATIO],[matio])
+AC_CHECK_HEADERS([matio.h],[matio_h_ok=yes;break;])
+AS_IF([test "x$matio_h_ok" == "xyes"],,[AC_MSG_ERROR([missing matio.h])])
+save_LIBS="$LIBS"; LIBS="$MATIO_LIBS $LIBS"
 AC_SEARCH_LIBS([Mat_Open],[matio],matio_ok=yes,matio_ok=no)
+MATIO_LIBS="$LIBS"
+LIBS="$save_LIBS"
 AS_IF([test "x$matio_ok" == "xyes"],,[AC_MSG_ERROR([missing matio library])])
 
 # Setup the test suite
@@ -109,5 +123,11 @@ AS_IF([test "x$ax_lapack_ok" = xyes -a "x$LAPACK_LIBS" != "x"],
 AS_IF([test "x$ax_lapacke_ok" = xyes -a "x$LAPACKE_LIBS" != "x"],
       AC_MSG_RESULT([    LAPACKE: $LAPACKE_LIBS]),
       AC_MSG_RESULT([    LAPACKE: $ax_lapacke_ok]))
+AS_IF([test "x$umfpack_h_ok" = xyes -a "x$UMFPACK_LIBS" != "x"],
+      AC_MSG_RESULT([    UMFPACK: $UMFPACK_LIBS ; $UMFPACK_CFLAGS]),
+      AC_MSG_RESULT([    UMFPACK: $umfpack_h_ok]))
+AS_IF([test "x$matio_ok" = xyes -a "x$MATIO_LIBS" != "x"],
+      AC_MSG_RESULT([      MATIO: $MATIO_LIBS]),
+      AC_MSG_RESULT([      MATIO: $matio_ok]))
 
 AC_MSG_RESULT([])

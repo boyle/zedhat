@@ -6,9 +6,10 @@ AUTOMAKE_OPTIONS = foreign
 bin_PROGRAMS = zedhat
 zedhat_SOURCES = src/zedhat.c src/argv.c
 
-#AM_CFLAGS = $(CFLAGS) -Werror -Wall #-Wextra
-AM_CFLAGS = $(CFLAGS) -Werror -Wall #-Wextra
-LIBS += $(LAPACKE_LIBS) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)
+AM_CFLAGS = $(CFLAGS)
+AM_CFLAGS += $(MATIO_CFLAGS) $(UMFPACK_CFLAGS) $(LAPACKE_CFLAGS) $(LAPACK_CFLAGS) $(BLAS_CFLAGS)
+LIBS += $(MATIO_LIBS) $(UMFPACK_LIBS) $(LAPACKE_LIBS) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)
+AM_CFLAGS += -Werror -Wall #-Wextra
 
 # header files that need to be distributed but not installed
 noinst_HEADERS = src/argv.h
