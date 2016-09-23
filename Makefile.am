@@ -38,6 +38,7 @@ maintainer-clean-local:
 dist-hook:
 #	$(top_srcdir)/autogen
 	[[ -x $(top_srcdir)/autogen ]] && $(top_srcdir)/autogen $(distdir) $(top_srcdir) || true
+	-rm -rf $(distdir)/autom4te.cache
 
 .PHONY: cov
 cov: dist
