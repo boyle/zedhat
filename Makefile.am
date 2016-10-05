@@ -15,7 +15,7 @@ AM_CFLAGS += -Werror -Wall #-Wextra
 noinst_HEADERS = src/argv.h
 
 # want these scripts installed in the end
-#bin_SCRIPTS = 
+#bin_SCRIPTS =
 
 # some random files we want to distribute with the package tar
 EXTRA_DIST = $(bin_SCRIPTS) \
@@ -44,13 +44,17 @@ dist-hook:
 cov: dist
 	$(srcdir)/cov $(distdir).tar.gz
 
-style: src/*.c src/*.h tests/*.c
-	astyle --suffix=none --options=./astylerc $^ | tee style.log
-check_style: style
+STYLE_FILES=src/*.c src/*.h tests/*.c
+style: style.log
+style.log: $(STYLE_FILES) astylerc
+	astyle --suffix=none --options=./astylerc $(STYLE_FILES) | tee style.log
+
+check_style: style.log
 	exit $(shell grep -m 1 Formatted style.log | wc -l)
 
-lint: src/*.c src/*.h
-	splint -weak $^
+LINT_OPTS :=
+lint: src/*.c
+	splint -weak $(LINT_OPTS) $^
 
 commit:
 	make clean && CC=clang ./configure && make check distcheck
