@@ -95,6 +95,44 @@ MATIO_LIBS="$LIBS"
 LIBS="$save_LIBS"
 AS_IF([test "x$matio_ok" == "xyes"],,[AC_MSG_ERROR([missing matio library])])
 
+dnl  dnl Definitions at top of <config.h>.
+dnl  AH_TOP([
+dnl  /* BEGIN_C_DECLS should be used at the beginning of your declarations,
+dnl     so that C++ compilers don't mangle their names.  Use END_C_DECLS at
+dnl     the end of C declarations. */
+dnl  #undef BEGIN_C_DECLS
+dnl  #undef END_C_DECLS
+dnl  #ifdef __cplusplus
+dnl  # define BEGIN_C_DECLS extern "C" {
+dnl  # define END_C_DECLS }
+dnl  #else
+dnl  # define BEGIN_C_DECLS /* empty */
+dnl  # define END_C_DECLS /* empty */
+dnl  #endif
+dnl
+dnl  /* PARAMS is a macro used to wrap function prototypes, so that
+dnl     compilers that don't understand ANSI C prototypes still work,
+dnl     and ANSI C compilers can issue warnings about type mismatches. */
+dnl  #undef PARAMS
+dnl  #if defined __STDC__ || defined _AIX \
+dnl          || (defined __mips && defined _SYSTYPE_SVR4) \
+dnl          || defined WIN32 || defined __cplusplus
+dnl  # define PARAMS(protos) protos
+dnl  #else
+dnl  # define PARAMS(protos) ()
+dnl  #endif
+dnl  ])
+dnl  dnl USAGE:
+dnl  dnl #ifndef FOO_H
+dnl  dnl #define FOO_H 1
+dnl  dnl /* The above macro definitions. */
+dnl  dnl #include "..."
+dnl  dnl BEGIN_C_DECLS
+dnl  dnl int foo PARAMS((void));
+dnl  dnl int hello PARAMS((void));
+dnl  dnl END_C_DECLS
+dnl  dnl #endif /* !FOO_H */
+
 # Setup the test suite
 AC_CONFIG_TESTDIR([.],[.:tests])
 AC_CONFIG_FILES([atlocal])
