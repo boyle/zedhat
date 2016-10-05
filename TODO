@@ -1,13 +1,20 @@
 Immediate Work
 2016-06-22 tests to confirm libmatio behaviour (load works, check save)
 2016-07-29 consume matrices from EIDORS, solve 1-step GN inv
-2016-09-19 setup splint
 
 Long-term Acceptance Criteria
- 1. Must compile on all systems (windows, linux, osx)
- 2. Must have bindings to:
+ 1. compiles on all systems (windows, linux, osx)
+ 2. long-term supportable (minimize dependencies)
+ 3. clean library bindings (dynamic & static):
     - matlab,
-    - python
- 3. Must be long-term supportable (minimize dependencies)
- 4. Must have a "simple interface" as well as giving access
-    to the core functionality (kernels).
+    - python,
+    - C (native)
+    - C++ (native)
+ 4. a "simple interface" as well as giving access
+    to the core functionality (kernels)
+      simple:  meas + model + config --> img
+      kernels: solve(meas, model, config, &img)
+ 5. cmdline: shell call simple interface
+ 6. gui: python(?) call simple interface, visualize
+ 7. export run data package (input/state/outputs) .mat(?)
+    for exactly repeatable results (version compatibility)

@@ -35,4 +35,5 @@ addons:
 script:
    - ./autogen
    - ./configure
+   - make lint check_style
    - make distcheck

@@ -44,15 +44,19 @@ dist-hook:
 cov: dist
 	$(srcdir)/cov $(distdir).tar.gz
 
-# apply astyle to source files
-style:
-	astyle --suffix=none --options=./astylerc src/*.{c,h} tests/*.c
+style: src/*.c src/*.h tests/*.c
+	astyle --suffix=none --options=./astylerc $^ | tee style.log
+check_style: style
+	exit $(shell grep -m 1 Formatted style.log | wc -l)
+
+lint: src/*.c src/*.h
+	splint -weak $^
 
 commit:
 	make clean && CC=clang ./configure && make check distcheck
 	make clean && ./configure && make check distcheck
 	make prefix-installcheck
-	make ctags style cov
+	make ctags check_style lint cov
 	git ls-files -m
 	[ "x$(shell git ls-files -m | wc -l)" == "x0" ] # no uncommitted files?
 
@@ -154,3 +158,4 @@ help:
 	@echo "  cov              - report test coverage"
 	@echo "  ctags            - generate ctags for editing source files"
 	@echo "  style            - run astyle on source files to tidy formatting"
+	@echo "  lint             - run splint on source files"
