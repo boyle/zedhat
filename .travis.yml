@@ -31,6 +31,8 @@ addons:
          - liblapacke-dev
          - libmatio-dev
          - libmatio2
+         - splint
+         - splint-data
 
 script:
    - ./autogen
