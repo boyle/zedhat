@@ -5,7 +5,12 @@
 
 int main(int argc, char ** argv)
 {
-    parse_argv(argc, argv);
-    printf("test %s %s\n", "hello", "world");
-    return 0;
+    int ret = parse_argv(argc, argv);
+//    if(ret != 0) {
+    ret = (ret == 1);
+    goto quit;
+//    }
+//    printf("test %s %s\n", "hello", "world");
+quit:
+    return ret;
 }

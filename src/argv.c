@@ -1,6 +1,5 @@
 /* Copyright 2016, Alistair Boyle, 3-clause BSD License */
 #include <stdio.h>     /* for printf */
-#include <stdlib.h>    /* for exit */
 #include <getopt.h>
 #include "config.h"
 #include "argv.h"
@@ -26,21 +25,21 @@ int parse_argv(int argc, char ** argv)
         switch (c) {
         case 'V':
             printf("%s\n", PACKAGE_STRING);
-            exit(EXIT_SUCCESS);
+            return 2;
         case '?':
         case 'h':
             printf("%s [options]\n", PACKAGE_NAME);
             printf(" --help -h     this help\n");
             printf(" --version -V  version info\n");
             if (argc == 1) {
-                exit(EXIT_FAILURE);
+                return 1;
             }
             else {
-                exit(EXIT_SUCCESS);
+                return 2;
             }
         default:
             fprintf(stderr, "%s error: ??? oops, unhandled arg\n", PACKAGE_NAME);
-            exit(EXIT_FAILURE);
+            return 1;
         }
     }
     if (optind  != argc - 1) {
@@ -50,9 +49,8 @@ int parse_argv(int argc, char ** argv)
         }
         while(++optind < argc);
         fprintf(stderr, ": extra options\n");
-        exit(EXIT_FAILURE);
+        return 1;
     }
     fprintf(stderr, "%s: TODO parse a config file\n", PACKAGE_NAME);
-    exit(EXIT_FAILURE);
-    return 0;
+    return 1;
 }

@@ -43,20 +43,21 @@ dist-hook:
 	-rm -rf $(distdir)/autom4te.cache
 
 .PHONY: cov
-cov: dist
-	$(srcdir)/cov $(distdir).tar.gz
+cov.log: dist
+	$(srcdir)/cov $(distdir).tar.gz | tee cov.log
+cov: cov.log
+	[ "x$(shell tail -4 $^ | grep '100.0%' | wc -l)" == "x3" ] || exit 1 # 100% test coverage please!
 
 STYLE_FILES=src/*.c src/*.h tests/*.c
 style: style.log
 style.log: $(STYLE_FILES) astylerc
-	astyle --suffix=none --options=./astylerc $(STYLE_FILES) | tee style.log
-
+	astyle --suffix=none --options=./astylerc $(STYLE_FILES) | tee $@
 check_style: style.log
-	[ "x$(shell grep -m 1 Formatted style.log | wc -l)" == "x0" ] || exit 1
+	[ "x$(shell grep -m 1 Formatted $^ | wc -l)" == "x0" ] || exit 1
 
-LINT_OPTS :=
+LINT_OPTS := -weak
 lint: src/*.c
-	splint -weak $(LINT_OPTS) $^
+	splint $(LINT_OPTS) $^
 
 shellcheck.log: autogen
 	shellcheck $^ | tee shellcheck.log
