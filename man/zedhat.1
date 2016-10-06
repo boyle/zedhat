@@ -1,0 +1,19 @@
+.TH ZEDHAT 1
+.SH NAME
+zedhat \- reconstruct an impedance image from electrical measurements
+.SH SYNOPSYS
+.B zedhat
+\#[\fB-n\fR \fIBITS\fR]
+.IR meas.dat
+.SH DESCRIPTION
+.B zedhat
+reconstructs an impedance image from electrical measurements.
+A tool for Electrical Impedance Tomography (EIT) and Electrical Resistivity Tomography (ERT).
+Current is applied to electrodes on the boundary and voltages are measured at other electrodes.
+From the measured voltages, we reconstruct an estimate of the conductivity ẑ over the interior.
+.SH OPTIONS
+.TP
+.BR <none>
+\# .BR \-n ", " \-\-bits =\fIBITS\fR
+\# Set the number of bits.
+\# Default is none.

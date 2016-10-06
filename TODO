@@ -1,7 +1,6 @@
 Immediate Work
 2016-06-22 tests to confirm libmatio behaviour (load works, check save)
 2016-07-29 consume matrices from EIDORS, solve 1-step GN inv
-2016-10-05 man pages
 
 Long-term Acceptance Criteria
  1. compiles on all systems (windows, linux, osx)

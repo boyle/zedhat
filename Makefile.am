@@ -14,6 +14,8 @@ AM_CFLAGS += -Werror -Wall #-Wextra
 # header files that need to be distributed but not installed
 noinst_HEADERS = src/argv.h
 
+dist_man_MANS = man/zedhat.1
+
 # want these scripts installed in the end
 #bin_SCRIPTS =
 
@@ -86,7 +88,9 @@ $(srcdir)/package.m4: $(top_srcdir)/configure.ac
 	} >'$(srcdir)/package.m4'
 
 
-EXTRA_DIST += testsuite.at $(srcdir)/package.m4 $(TESTSUITE) atlocal.in
+EXTRA_DIST += $(TESTSUITE_AT) $(srcdir)/package.m4 $(TESTSUITE) atlocal atconfig
+DISTCLEANFILES = atlocal atconfig
+TESTSUITE_AT = testsuite.at
 TESTSUITE = $(srcdir)/testsuite
 test: check
 
@@ -111,23 +115,20 @@ prefix-installcheck:
 	mv config.status.old config.status
 
 installcheck-local: atconfig atlocal $(TESTSUITE)
-	$(SHELL) '$(TESTSUITE)' AUTOTEST_PATH='$(bindir)' \
-	  $(TESTSUITEFLAGS) -k '!hello,!unit,!libs'
+	$(SHELL) '$(TESTSUITE)' AUTOTEST_PATH='$(bindir)' MANPATH='$(mandir)' $(TESTSUITEFLAGS) -k 'install'
 # don't run dependancy and unit tests
 
 clean-local-check:
-	test ! -f '$(TESTSUITE)' || \
-	  $(SHELL) '$(TESTSUITE)' --clean
+	test ! -f '$(TESTSUITE)' || $(SHELL) '$(TESTSUITE)' --clean
 	-rm -f $(TESTSUITE)
 	-rm -f $(srcdir)/package.m4
-	-rm -f atconfig
 
-#atconfig: $(srcdir)/config.status
-#	$(srcdir)/config.status
+atconfig: $(top_builddir)/config.status
+	$(top_builddir)/config.status $@
 
 AUTOM4TE = $(SHELL) $(abs_srcdir)/build-aux/missing --run autom4te
 AUTOTEST = $(AUTOM4TE) --language=autotest
-$(TESTSUITE): $(srcdir)/testsuite.at $(srcdir)/package.m4
+$(TESTSUITE): $(TESTSUITE_AT) $(srcdir)/package.m4
 	$(AUTOTEST) -I '$(abs_srcdir)' -o $@.tmp $@.at
 	mv $@.tmp $@
 
