@@ -52,17 +52,22 @@ style.log: $(STYLE_FILES) astylerc
 	astyle --suffix=none --options=./astylerc $(STYLE_FILES) | tee style.log
 
 check_style: style.log
-	exit $(shell grep -m 1 Formatted style.log | wc -l)
+	[ "x$(shell grep -m 1 Formatted style.log | wc -l)" == "x0" ] || exit 1
 
 LINT_OPTS :=
 lint: src/*.c
 	splint -weak $(LINT_OPTS) $^
 
+shellcheck.log: autogen
+	shellcheck $^ | tee shellcheck.log
+shellcheck: shellcheck.log
+	[ "x$(shell wc -l $^)" == "x0 $^" ] || exit 1
+
 commit:
 	make clean && CC=clang ./configure && make check distcheck
 	make clean && ./configure && make check distcheck
 	make prefix-installcheck
-	make ctags check_style lint cov
+	make shellcheck ctags check_style lint cov
 	git ls-files -m
 	[ "x$(shell git ls-files -m | wc -l)" == "x0" ] # no uncommitted files?
 
