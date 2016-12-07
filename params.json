@@ -1,0 +1,6 @@
+{
+  "name": "Zedhat",
+  "tagline": "Impedance Imaging (EIT and ERT)",
+  "body": "# zedhat ẑ  [![Build Status](https://travis-ci.com/boyle/zedhat.svg?token=ppJxXrcSY7ZkfdM9JuFM&branch=master)](https://travis-ci.com/boyle/zedhat)\r\nA tool for Electrical Impedance Tomography (EIT) and Electrical Resistivity Tomography (ERT).\r\nCurrent is applied to electrodes on the boundary and voltages are measured at other electrodes.\r\nFrom the measured voltages, we reconstruct an estimate of the conductivity ẑ over the interior.\r\n",
+  "note": "Don't delete this file! It's used internally to help with page regeneration."
+}
