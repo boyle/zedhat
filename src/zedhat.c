@@ -12,6 +12,7 @@ int main(int argc, char ** argv)
     }
     if(args.mode == FORWARD_SOLVER) {
         printf("fwd %s %s\n", args.file[0], args.file[1]);
+        // if(ret == 1) fprintf(stderr, "error: %s: failed to open\n", file);
     }
 quit:
     return ret;

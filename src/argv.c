@@ -6,7 +6,9 @@
 
 int parse_argv(int argc, char ** argv, args_t * args)
 {
+    int i;
     int files = 0;
+    int ret = 0;
     while (1) {
         static struct option long_options[] = {
             {"help",    no_argument, 0, 'h'},
@@ -23,7 +25,6 @@ int parse_argv(int argc, char ** argv, args_t * args)
         if (c == -1) {
             break;    /* getopt is done */
         }
-        int ret = 0;
         switch (c) {
         case 'V':
             printf("%s\n", PACKAGE_STRING);
@@ -59,7 +60,6 @@ int parse_argv(int argc, char ** argv, args_t * args)
         fprintf(stderr, ": extra options\n");
         return 1;
     }
-    int i;
     for(i = 0; i < (argc - optind) && i < files; i++) {
         args->file[i] = argv[optind + i];
     }

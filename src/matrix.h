@@ -16,7 +16,7 @@
 
 typedef enum matrix_type {IDENTITY, DENSE, CSR, CSC, COO} matrix_type_t;
 
-typdef struct matrix_sparse {
+typedef struct matrix_sparse {
     double * a;   /* data */
     uint32_t * ia; /* row index */
     uint32_t * ja; /* column index */
@@ -37,11 +37,11 @@ typedef struct matrix {
     union {
         double * dense;    /* dense array, vector or matrix */
         matrix_sparse_t sparse; /* sparse matrix (CSR, CSC, COO) */
-    }
+    };
 } matrix_t;
 
 int matrix_load(const char * file, matrix_t * matrix);
-int matrix_save(const char * file, const matrix_t matrix)
+int matrix_save(const char * file, const matrix_t matrix);
 void matrix_free(matrix_t * matrix);
 
 #endif

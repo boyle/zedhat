@@ -4,7 +4,7 @@ AUTOMAKE_OPTIONS = foreign
 
 # the actual program to be installed at the end
 bin_PROGRAMS = zedhat
-zedhat_SOURCES = src/zedhat.c src/argv.c
+zedhat_SOURCES = src/zedhat.c src/argv.c src/matrix.c
 
 AM_CFLAGS = $(CFLAGS)
 AM_CFLAGS += $(MATIO_CFLAGS) $(UMFPACK_CFLAGS) $(LAPACKE_CFLAGS) $(LAPACK_CFLAGS) $(BLAS_CFLAGS)
@@ -12,7 +12,7 @@ LIBS += $(MATIO_LIBS) $(UMFPACK_LIBS) $(LAPACKE_LIBS) $(LAPACK_LIBS) $(BLAS_LIBS
 AM_CFLAGS += -Werror -Wall #-Wextra
 
 # header files that need to be distributed but not installed
-noinst_HEADERS = src/argv.h
+noinst_HEADERS = src/argv.h src/matrix.h
 
 dist_man_MANS = man/zedhat.1
 
@@ -55,7 +55,7 @@ style.log: $(STYLE_FILES) astylerc
 check_style: style.log
 	[ "x$(shell grep -m 1 Formatted $^ | wc -l)" == "x0" ] || exit 1
 
-LINT_OPTS := -weak
+LINT_OPTS := -weak -fullinitblock
 lint: src/*.c
 	splint $(LINT_OPTS) $^
 

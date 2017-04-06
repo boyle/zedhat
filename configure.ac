@@ -63,6 +63,7 @@ AC_FUNC_REALLOC
 AC_TYPE_UINT32_T
 AC_FUNC_ERROR_AT_LINE
 AC_FUNC_STRNLEN
+AC_CHECK_HEADER_STDBOOL # matrix.h
 AC_CHECK_HEADERS([float.h stdlib.h string.h sys/time.h malloc.h stddef.h],,[AC_MSG_ERROR([missing header])])
 AC_CHECK_FUNCS([gettimeofday strndup memset strcasecmp strchr strdup strerror])
 AC_HEADER_ASSERT
