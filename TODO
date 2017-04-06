@@ -1,5 +1,6 @@
 Immediate Work
 2016-07-29 consume matrices from EIDORS, solve 1-step GN inv
+2017-04-05 out of tree build check fails: "mkdir tmp && cd tmp && ../configure && make check"
 
 Long-term Acceptance Criteria
  1. compiles on all systems (windows, linux, osx)
