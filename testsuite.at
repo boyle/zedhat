@@ -1,5 +1,5 @@
 AT_INIT()
-AT_COPYRIGHT([Copyright 2016, Alistair Boyle, 3-clause BSD License])
+AT_COPYRIGHT([Copyright 2016-2017, Alistair Boyle, 3-clause BSD License])
 AT_COLOR_TESTS
 
 AT_TESTED(AT_PACKAGE_NAME)
@@ -37,6 +37,14 @@ Class Type: Sparse Array
     (1,2)  2
     (2,2)  5
 }])
+
+m4_define(ZH_HELP_SHORT, [AT_PACKAGE_NAME @<:@options@:>@])
+m4_define(ZH_HELP_LONG,
+[ZH_HELP_SHORT
+ --help -h     this help
+ --version -V  version info
+ --forward-solver --fwd -f
+])
 
 AT_BANNER([libs])
 AT_SETUP([cblas])
@@ -104,9 +112,9 @@ AT_CLEANUP
 
 AT_SETUP([--help])
 AT_KEYWORDS([help args install])
-AT_CHECK(AT_PACKAGE_NAME --help,0,ignore)
-AT_CHECK(AT_PACKAGE_NAME -h,0,ignore)
-AT_CHECK(AT_PACKAGE_NAME -?,0,ignore)
+AT_CHECK(AT_PACKAGE_NAME --help,0,ZH_HELP_LONG)
+AT_CHECK(AT_PACKAGE_NAME -h,0,ZH_HELP_LONG)
+AT_CHECK(AT_PACKAGE_NAME -?,0,ZH_HELP_LONG)
 AT_CLEANUP
 
 AT_SETUP(--version)
@@ -117,7 +125,12 @@ AT_CHECK(AT_PACKAGE_NAME -V,,AT_PACKAGE_NAME[ ]AT_PACKAGE_VERSION[
 ])
 AT_CLEANUP
 
-AT_SETUP(config file)
-AT_KEYWORDS([config args])
+AT_SETUP(--forward-solver)
+AT_KEYWORDS([fwd args install])
+m4_define(ZH_FWD_PASS,[fwd testab.mat
+])
+ZH_DATA_FILE_TESTAB_MAT
+AT_CHECK(AT_PACKAGE_NAME --forward-solver testab.mat,0,[ZH_FWD_PASS])
+AT_CHECK(AT_PACKAGE_NAME --fwd testab.mat,0,[ZH_FWD_PASS])
+AT_CHECK(AT_PACKAGE_NAME -f testab.mat,0,[ZH_FWD_PASS])
 AT_CLEANUP
-

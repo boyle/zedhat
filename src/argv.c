@@ -18,7 +18,7 @@ int parse_argv(int argc, char ** argv, args_t * args)
             {"unhandled-arg", no_argument, 0, 'x'},
             {0,         0,           0,  0 }
         };
-        int c = getopt_long(argc, argv, "?hV", long_options, NULL);
+        int c = getopt_long(argc, argv, "?hVf", long_options, NULL);
         if (argc == 1 || argc - optind < files) {
             c = '!';    /* if no args, give help */
         }
@@ -36,6 +36,7 @@ int parse_argv(int argc, char ** argv, args_t * args)
             printf("%s [options]\n", PACKAGE_NAME);
             printf(" --help -h     this help\n");
             printf(" --version -V  version info\n");
+            printf(" --forward-solver --fwd -f\n");
             if (argc == 1) {
                 return 1;
             }
@@ -43,7 +44,7 @@ int parse_argv(int argc, char ** argv, args_t * args)
                 return ret;
             }
         case 'f':
-            files = 2;
+            files = 1;
             args->mode = FORWARD_SOLVER;
             break;
         default:

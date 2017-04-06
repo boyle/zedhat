@@ -53,7 +53,8 @@ style: style.log
 style.log: $(STYLE_FILES) astylerc
 	astyle --suffix=none --options=./astylerc $(STYLE_FILES) | tee $@
 check_style: style.log
-	[ "x$(shell grep -m 1 Formatted $^ | wc -l)" == "x0" ] || exit 1
+	-grep Formatted $^
+	[ "x$(shell grep -cm 1 Formatted $^)" == "x0" ] || exit 1
 
 LINT_OPTS := -weak -fullinitblock
 lint: src/*.c
@@ -65,10 +66,13 @@ shellcheck: shellcheck.log
 	[ "x$(shell wc -l $^)" == "x0 $^" ] || exit 1
 
 commit:
+	make shellcheck ctags check_style lint
+	git ls-files -m
+	[ "x$(shell git ls-files -m | wc -l)" == "x0" ] # no uncommitted files?
 	make clean && CC=clang ./configure && make check distcheck
 	make clean && ./configure && make check distcheck
 	make prefix-installcheck
-	make shellcheck ctags check_style lint cov
+	make cov
 	git ls-files -m
 	[ "x$(shell git ls-files -m | wc -l)" == "x0" ] # no uncommitted files?
 

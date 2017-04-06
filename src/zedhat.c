@@ -11,7 +11,7 @@ int main(int argc, char ** argv)
         goto quit;
     }
     if(args.mode == FORWARD_SOLVER) {
-        printf("fwd %s %s\n", args.file[0], args.file[1]);
+        printf("fwd %s\n", args.file[0]);
         // if(ret == 1) fprintf(stderr, "error: %s: failed to open\n", file);
     }
 quit:
