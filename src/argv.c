@@ -4,28 +4,32 @@
 #include "config.h"
 #include "argv.h"
 
-int parse_argv(int argc, char ** argv)
+int parse_argv(int argc, char ** argv, args_t * args)
 {
-    int c;
+    int files = 0;
     while (1) {
-        int option_index = 0;
         static struct option long_options[] = {
             {"help",    no_argument, 0, 'h'},
             {"version", no_argument, 0, 'V'},
+            {"fwd", no_argument, 0, 'f'},
+            {"forward-solver", no_argument, 0, 'f'},
             {"unhandled-arg", no_argument, 0, 'x'},
             {0,         0,           0,  0 }
         };
-        c = getopt_long(argc, argv, "?hV", long_options, &option_index);
-        if (argc == 1) {
-            c = 'h';    /* if no args, give help */
+        int c = getopt_long(argc, argv, "?hV", long_options, NULL);
+        if (argc == 1 || argc - optind < files) {
+            c = '!';    /* if no args, give help */
         }
         if (c == -1) {
-            break;
+            break;    /* getopt is done */
         }
+        int ret = 0;
         switch (c) {
         case 'V':
             printf("%s\n", PACKAGE_STRING);
-            return 2;
+            return 0;
+        case '!':
+            ret = 1;
         case '?':
         case 'h':
             printf("%s [options]\n", PACKAGE_NAME);
@@ -35,14 +39,18 @@ int parse_argv(int argc, char ** argv)
                 return 1;
             }
             else {
-                return 2;
+                return ret;
             }
+        case 'f':
+            files = 2;
+            args->mode = FORWARD_SOLVER;
+            break;
         default:
             fprintf(stderr, "%s error: ??? oops, unhandled arg\n", PACKAGE_NAME);
             return 1;
         }
     }
-    if (optind  != argc - 1) {
+    if (argc - optind  > files) { // too many args
         fprintf(stderr, "%s error:", PACKAGE_NAME);
         do {
             fprintf(stderr, " %s", argv[optind]);
@@ -51,6 +59,9 @@ int parse_argv(int argc, char ** argv)
         fprintf(stderr, ": extra options\n");
         return 1;
     }
-    fprintf(stderr, "%s: TODO parse a config file\n", PACKAGE_NAME);
-    return 1;
+    int i;
+    for(i = 0; i < (argc - optind) && i < files; i++) {
+        args->file[i] = argv[optind + i];
+    }
+    return 0;
 }

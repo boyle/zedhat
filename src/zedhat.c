@@ -5,12 +5,14 @@
 
 int main(int argc, char ** argv)
 {
-    int ret = parse_argv(argc, argv);
-//    if(ret != 0) {
-    ret = (ret == 1);
-    goto quit;
-//    }
-//    printf("test %s %s\n", "hello", "world");
+    args_t args = {0};
+    int ret = parse_argv(argc, argv, &args);
+    if(ret != 0) {
+        goto quit;
+    }
+    if(args.mode == FORWARD_SOLVER) {
+        printf("fwd %s %s\n", args.file[0], args.file[1]);
+    }
 quit:
     return ret;
 }
