@@ -38,12 +38,25 @@ Class Type: Sparse Array
     (2,2)  5
 }])
 
+m4_define(ZH_DATA_FILE_TESTAXB_MAT,
+  [AT_DATA([testAXB-v73.mat-xxd],m4_esyscmd(xxd -p tests/testAXB-v73.mat))]
+  [AT_DATA([testAXB-v7.mat-xxd],m4_esyscmd(xxd -p tests/testAXB-v7.mat))]
+  [AT_DATA([testAXB-v6.mat-xxd],m4_esyscmd(xxd -p tests/testAXB-v6.mat))]
+  [AT_DATA([testAXB-v4.mat-xxd],m4_esyscmd(xxd -p tests/testAXB-v4.mat))]
+  xxd -r -p testAXB-v73.mat-xxd >testAXB-v73.mat
+  xxd -r -p testAXB-v7.mat-xxd > testAXB-v7.mat
+  xxd -r -p testAXB-v6.mat-xxd > testAXB-v6.mat
+  xxd -r -p testAXB-v4.mat-xxd > testAXB-v4.mat
+)
+
 m4_define(ZH_HELP_SHORT, [AT_PACKAGE_NAME @<:@options@:>@])
 m4_define(ZH_HELP_LONG,
 [ZH_HELP_SHORT
  --help -h     this help
  --version -V  version info
- --forward-solver --fwd -f
+ --forward-solver --fwd -f <file.mat>
+               solves X=A\B
+               with A B from file.mat
 ])
 
 AT_BANNER([libs])
@@ -114,7 +127,7 @@ AT_SETUP([--help])
 AT_KEYWORDS([help args install])
 AT_CHECK(AT_PACKAGE_NAME --help,0,ZH_HELP_LONG)
 AT_CHECK(AT_PACKAGE_NAME -h,0,ZH_HELP_LONG)
-AT_CHECK(AT_PACKAGE_NAME -?,0,ZH_HELP_LONG)
+AT_CHECK(AT_PACKAGE_NAME -?,1,ZH_HELP_LONG)
 AT_CLEANUP
 
 AT_SETUP(--version)
@@ -127,10 +140,22 @@ AT_CLEANUP
 
 AT_SETUP(--forward-solver)
 AT_KEYWORDS([fwd args install])
-m4_define(ZH_FWD_PASS,[fwd testab.mat
+m4_define(ZH_FWD_ab_PASS,[fwd testab.mat
 ])
+m4_define(ZH_FWD_AXB_PASS,[fwd testAXB-[$1].mat
+])
+ZH_DATA_FILE_TESTA_MAT
 ZH_DATA_FILE_TESTAB_MAT
-AT_CHECK(AT_PACKAGE_NAME --forward-solver testab.mat,0,[ZH_FWD_PASS])
-AT_CHECK(AT_PACKAGE_NAME --fwd testab.mat,0,[ZH_FWD_PASS])
-AT_CHECK(AT_PACKAGE_NAME -f testab.mat,0,[ZH_FWD_PASS])
+ZH_DATA_FILE_TESTAXB_MAT
+AT_CHECK(AT_PACKAGE_NAME --forward-solver testab.mat,0,[ZH_FWD_ab_PASS])
+AT_CHECK(AT_PACKAGE_NAME --fwd testab.mat,0,[ZH_FWD_ab_PASS])
+AT_CHECK(AT_PACKAGE_NAME -f testab.mat,0,[ZH_FWD_ab_PASS])
+AT_CHECK(AT_PACKAGE_NAME -f, 1, ZH_HELP_LONG, AT_PACKAGE_NAME[: option requires an argument -- 'f'
+])
+AT_SKIP_IF([true])
+AT_CHECK(AT_PACKAGE_NAME -f testab.mat testa.mat,1)
+AT_CHECK(AT_PACKAGE_NAME --tol 1e-12 -f testAXB-v73.mat,0,[ZH_FWD_AXB_PASS([v73])])
+AT_CHECK(AT_PACKAGE_NAME -t 1e-12 -f testAXB-v7.mat,0,[ZH_FWD_AXB_PASS([v7])])
+AT_CHECK(AT_PACKAGE_NAME -t 1e-12 -f testAXB-v6.mat,0,[ZH_FWD_AXB_PASS([v6])])
+AT_CHECK(AT_PACKAGE_NAME -t 1e-12 -f testAXB-v4.mat,0,[ZH_FWD_AXB_PASS([v4])])
 AT_CLEANUP
