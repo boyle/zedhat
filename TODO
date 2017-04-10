@@ -2,11 +2,48 @@ Immediate Work
 2016-07-29 consume matrices from EIDORS, solve 1-step GN inv
 2017-04-05 out of tree build check fails: "mkdir tmp && cd tmp && ../configure && make check"
 
+2017-04-10 use -std=c11 C-2011 standard
+2017-04-10 use utf-8 for equations, so we can use nice symbols for pretty equations
+2017-04-10 pass an equation to the handler and a list of matrices
+           "x_{n+1} = (J^T W J + \lambda^2 R^T R)^{-1} (J^T W b + \lambda^2 R^T R ( x_* - x_n ))"
+           {{ "J", mat* },
+            { "W", mat* },
+            { "\lambda", mat* },
+            { "R", mat* },
+            { "b", mat* },
+            { "x_*", mat* },
+            { "x_n", mat* }}
+2017-04-10 provide equation handling versions that destroy a particular matrix (safe), or ones that create a copy to work from
+2017-04-10 cache certain sub-equation results, based on ptr + delta counter? delta counter updated at each modification, flushed from cache at roll-over somehow?
+2017-04-10 tokenize equation into a tree obeying brackets (look at infix -> RPN conversion: https://rosettacode.org/wiki/Parsing/Shunting-yard_algorithm
+2017-04-10 order equation operations by most efficient operations (dynamic & problem dependent), by
+           1. matrix dimensions, 2. sparse (nnz) vs. dense, 3. split block-wise for multicore
+2017-04-10 check units on equations; uses SI *only* internally, output will print scaling and standard units (μΩ --> 10⁻⁶ V/A --> 10⁻⁶ kg·m²·s⁻³·A⁻²)
+2017-04-10 matrix struct
+           type = IDENTITY, DIAGONAL, DENSE, SPARSE_IJK (COO), SPARSE_CSR, SPARSE_CSC, BLOCK
+           state = RAW, NORMALIZED, TRANSPOSED  (normalize before transpose)
+           mat*
+           scalar = 1.0
+           m = 6 // rows
+           n = 5 // cols
+           moff = 2 // column offset
+           noff = 0 // row offset
+2017-04-10 mesh handling convert (optimal data structures for large meshes and manipulations)
+           2d: tri <- hex oct rect square
+           3d: tet <- box
+           handling of second order boundary elements (curved sections in 2d and 3d)
+2017-04-10 mesh projection operations 2d and 3d (c2f, etc)
+2017-04-10 find element centers for element selection list
+2017-04-10 evaluate a level set function for element fractions
+2017-04-10 consume stim/meas structures (std data file of stim/meas pairs, time, meas, err est)
+2017-04-10 gmsh wrapper
+2017-04-10 netgen wrapper
+
 Long-term Acceptance Criteria
  1. compiles on all systems (windows, linux, osx)
  2. long-term supportable (minimize dependencies)
  3. clean library bindings (dynamic & static):
-    - matlab,
+    - matlab, octave
     - python,
     - C (native)
     - C++ (native)
