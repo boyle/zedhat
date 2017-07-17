@@ -13,4 +13,11 @@ For Ubuntu 16.04, the following packages need to be installed to compile zedhat:
  - libsuitesparse-dev
  - libmatio-dev
 
+and for developers
+
+ - lcov
+ - astyle
+
 ```sudo apt install pkg-config libopenblas-dev liblapacke-dev libsuitesparse-dev libmatio-dev```
+
+```sudo apt install lcov astyle```
