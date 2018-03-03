@@ -38,6 +38,9 @@ Immediate Work
 2017-04-10 consume stim/meas structures (std data file of stim/meas pairs, time, meas, err est)
 2017-04-10 gmsh wrapper
 2017-04-10 netgen wrapper
+2018-03-02 compare to R2, R3t (http://www.es.lancs.ac.uk/people/amb/Freeware/R2/R2.htm) Binley et al.
+2018-03-02 compare to E4D https://e4d.pnnl.gov/Pages/Home.aspx USDoE
+2018-03-02 compare to BERT https://gitlab.com/resistivity-net/bert Rucker et al
 
 Long-term Acceptance Criteria
  1. compiles on all systems (windows, linux, osx)
