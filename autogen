@@ -25,12 +25,14 @@ if ( [[ -d "${top_src_dir}/.git/refs/tags" ]] && \
   echo "rebuilding ChangeLog"
   [[ -f "${distdir}/ChangeLog" ]] && rm "${distdir}/ChangeLog"
   touch "${distdir}/ChangeLog"
-  T=( $(git tag -l) )
+  [ "$(git rev-list -n 1 master)" != "$(git rev-list -n 1 $(git tag -l | tail -1))" ] && MASTER=master
+  T=( $(git tag -l --sort=version:refname "v*") $MASTER )
   for i in $(seq 1 $((${#T[@]}-1)) | tac); do
     {
-      echo -ne "Release ${T[$i]}:                                          "
+      printf "%-60s" "Release ${T[$i]}:"
       date --date=- +'%b %d, %Y' --date="$(git show -s --format="%ci" "${T[$i]}" | tail -1)"
-      git shortlog -w79,6,9 "${T[$i-1]}".."${T[$i]}" | grep -v 'minor:' | grep -v 'WIP:' | grep -e '^ '
+      git tag -n ${T[$i]} | sed "s/^${T[$i]} */ -- /"
+      git shortlog -w79,3,6 "${T[$i-1]}".."${T[$i]}" | grep -v -e 'minor:' -e '(minor)' -e 'WIP: ' -e '^      '
       echo ""
     } >> "${distdir}/ChangeLog"
   done
