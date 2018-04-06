@@ -37,9 +37,13 @@ int parse_argv(int argc, char ** argv, args_t * args)
             err = 1;
         }
     }
-    if (optind != argc) { fprintf(stderr, "error: %s: extra option\n", argv[optind]); err = 1; }
-    if (!err) return 0;
-
+    if (optind != argc) {
+        fprintf(stderr, "error: %s: extra option\n", argv[optind]);
+        err = 1;
+    }
+    if (!err) {
+        return 0;
+    }
 _help:
     printf("%s [options]\n", PACKAGE_NAME);
     printf(" --help -h     this help\n");

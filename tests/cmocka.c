@@ -318,7 +318,7 @@ static const int exception_signals[] = {
 /* Default signal functions that should be restored after a test is complete. */
 typedef void (*SignalFunction)(int signal);
 static SignalFunction default_signal_functions[
-    ARRAY_SIZE(exception_signals)];
+     ARRAY_SIZE(exception_signals)];
 
 #else /* _WIN32 */
 
