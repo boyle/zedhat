@@ -17,7 +17,7 @@ int matrix_load(const char * file, matrix_t * matrix)
         return 1; /* bad input filename */
     }
     t = Mat_VarReadNextInfo(in);
-    if (t != NULL) {
+    if (t == NULL) {
         return 2;    /* end of list */
     }
     t = Mat_VarRead(in, t->name);
