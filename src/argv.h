@@ -7,6 +7,7 @@ typedef enum {IDLE, FORWARD_SOLVER, INVERSE_SOLVER} args_mode_t;
 typedef struct args {
     args_mode_t mode;
     const char * file[2];
+    double tol;
 } args_t;
 
 /* returns: 0 on success, 1 on failure, 2 on success-but-exit-now */

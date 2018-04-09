@@ -31,7 +31,7 @@ typedef struct matrix {
     uint32_t n; /* cols */
     bool transposed;
     bool symmetric;
-    char symbol[5]; // potentially a UTF-8 4-byte string, null-terminated
+    const char * symbol; // potentially a UTF-8 4-byte string, null-terminated
     const char * name;
     const char * units;
     union {
@@ -42,6 +42,8 @@ typedef struct matrix {
 
 int matrix_load(const char * file, matrix_t * matrix);
 int matrix_save(const char * file, const matrix_t matrix);
+
+matrix_t * matrix_malloc(const char * name);
 void matrix_free(matrix_t * matrix);
 
 #endif
