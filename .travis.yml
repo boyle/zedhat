@@ -45,7 +45,7 @@ addons:
 script:
    - ./autogen
    - ./configure
-   - make distcheck
+   - make distcheck || cat testsuite.log
    - make cov
 
 after_success:
