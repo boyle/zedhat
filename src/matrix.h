@@ -18,25 +18,26 @@ typedef enum matrix_type {IDENTITY, DENSE, CSR, CSC, COO} matrix_type_t;
 
 typedef struct matrix_sparse {
     double * a;   /* data */
-    uint32_t * ia; /* row index */
-    uint32_t * ja; /* column index */
-    uint32_t nnz; /* non-zero entries */
-    uint32_t n; /* allocated space */
+    unsigned int * ia; /* row index */
+    unsigned int * ja; /* column index */
+    size_t nia; /* length of ia */
+    size_t nja; /* length of ja */
+    size_t na; /* length of a */
 } matrix_sparse_t;
 
 typedef struct matrix {
     double scale;
     matrix_type_t type;
-    uint32_t m; /* rows */
-    uint32_t n; /* cols */
+    size_t m; /* rows */
+    size_t n; /* cols */
     bool transposed;
     bool symmetric;
-    const char * symbol; // potentially a UTF-8 4-byte string, null-terminated
-    const char * name;
-    const char * units;
+    char * symbol; // potentially a UTF-8 4-byte string, null-terminated
+    char * name;
+    char * units;
     union {
         double * dense;    /* dense array, vector or matrix */
-        matrix_sparse_t sparse; /* sparse matrix (CSR, CSC, COO) */
+        matrix_sparse_t * sparse; /* sparse matrix (CSR, CSC, COO) */
     };
 } matrix_t;
 

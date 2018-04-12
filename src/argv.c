@@ -37,8 +37,16 @@ int parse_argv(int argc, char ** argv, args_t * args)
             break;
         case 't':
             errno = 0;
-            args->tol = strtod(optarg, NULL);
-            /* TODO silent fail if -t arg does not convert */
+            char * endptr;
+            args->tol = strtod(optarg, &endptr);
+            if((errno != 0) || (optarg == endptr)) {
+                fprintf(stderr, "error: --tolerance %s: not a number\n", optarg);
+                err = 1;
+            }
+            if(args->tol < 0) {
+                fprintf(stderr, "error: --tolerance %s: must be non-negative\n", optarg);
+                err = 1;
+            }
             break;
         default:
             fprintf(stderr, "error: %s: unhandled argument\n", PACKAGE_NAME);
@@ -56,8 +64,10 @@ _help:
     printf("%s [options]\n", PACKAGE_NAME);
     printf(" --help -h     this help\n");
     printf(" --version -V  version info\n");
+    printf(" --tolerance --tol -t <#.##e#>\n");
+    printf("               for checking --fwd\n");
     printf(" --forward-solver --fwd -f <file.mat>\n");
-    printf("               solves X=A\\B\n");
-    printf("               with A B from file.mat\n");
+    printf("               solves X=A\\B and A X = B\n");
+    printf("               with A B and X from file.mat\n");
     return err;
 }

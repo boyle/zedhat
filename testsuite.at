@@ -54,9 +54,11 @@ m4_define(ZH_HELP_LONG,
 [ZH_HELP_SHORT
  --help -h     this help
  --version -V  version info
+ --tolerance --tol -t <#.##e#>
+               for checking --fwd
  --forward-solver --fwd -f <file.mat>
-               solves X=A\B
-               with A B from file.mat
+               solves X=A\B and A X = B
+               with A B and X from file.mat
 ])
 
 AT_BANNER([libs])
@@ -132,17 +134,36 @@ AT_CLEANUP
 
 AT_SETUP(--version)
 AT_KEYWORDS([version args install])
-AT_CHECK(AT_PACKAGE_NAME --version,,AT_PACKAGE_NAME[ ]AT_PACKAGE_VERSION[
+AT_CHECK(AT_PACKAGE_NAME --version,0,AT_PACKAGE_NAME[ ]AT_PACKAGE_VERSION[
 ])
-AT_CHECK(AT_PACKAGE_NAME -V,,AT_PACKAGE_NAME[ ]AT_PACKAGE_VERSION[
+AT_CHECK(AT_PACKAGE_NAME -V,0,AT_PACKAGE_NAME[ ]AT_PACKAGE_VERSION[
 ])
+AT_CLEANUP
+
+AT_SETUP(--tolerance)
+AT_KEYWORDS([tolerance args install])
+AT_CHECK(AT_PACKAGE_NAME --tolerance,1,ZH_HELP_LONG,AT_PACKAGE_NAME[: option '--tolerance' requires an argument
+])
+AT_CHECK(AT_PACKAGE_NAME -t,1,ZH_HELP_LONG,AT_PACKAGE_NAME[: option requires an argument -- 't'
+])
+AT_CHECK(AT_PACKAGE_NAME -t asdf,1,ZH_HELP_LONG,[error: --tolerance asdf: not a number
+])
+AT_CHECK(AT_PACKAGE_NAME -t -10,1,ZH_HELP_LONG,[error: --tolerance -10: must be non-negative
+])
+AT_CHECK(AT_PACKAGE_NAME -t 10,0,,)
+AT_CHECK(AT_PACKAGE_NAME -t +10,0,,)
+AT_CHECK(AT_PACKAGE_NAME -t 10e-100,0,,)
+AT_CHECK(AT_PACKAGE_NAME -t 10e+100,0,,)
+AT_CHECK(AT_PACKAGE_NAME -t 1.04e-100,0,,)
+AT_CHECK(AT_PACKAGE_NAME -t 1.04e+100,0,,)
 AT_CLEANUP
 
 AT_SETUP(--forward-solver)
 AT_KEYWORDS([fwd args install])
-m4_define(ZH_FWD_OUTPUT,[fwd A: ret = $2 ($1)
+m4_define(ZH_FWD_OUTPUT,[fwd: || A\B - X ||_2 == || A X - B ||_2
+m4_if($2,0,[pass],[fwd A: ret = $2 ($1)
 fwd B: ret = $2 ($1)
-fwd X: ret = $2 ($1)
+fwd X: ret = $2 ($1)])
 ])
 m4_define(ZH_FWD_AXB_PASS,ZH_FWD_OUTPUT(testAXB-[$1].mat,0))
 ZH_DATA_FILE_TESTA_MAT
@@ -155,9 +176,8 @@ AT_CHECK(AT_PACKAGE_NAME -f junk.mat,1,[ZH_FWD_OUTPUT(junk.mat,2)])
 AT_CHECK(AT_PACKAGE_NAME -f, 1, ZH_HELP_LONG, AT_PACKAGE_NAME[: option requires an argument -- 'f'
 ])
 AT_CHECK(AT_PACKAGE_NAME -f testab.mat,1,[ZH_FWD_OUTPUT(testab.mat,3)])
-AT_CHECK(AT_PACKAGE_NAME --tol 1e-12 -f testAXB-v73.mat,0,[ZH_FWD_AXB_PASS([v73])])
-AT_CHECK(AT_PACKAGE_NAME -t 1e-12 -f testAXB-v7.mat,0,[ZH_FWD_AXB_PASS([v7])])
-AT_CHECK(AT_PACKAGE_NAME -t 1e-12 -f testAXB-v6.mat,0,[ZH_FWD_AXB_PASS([v6])])
-AT_CHECK(AT_PACKAGE_NAME -t 1e-12 -f testAXB-v4.mat,0,[ZH_FWD_AXB_PASS([v4])])
-AT_SKIP_IF([true]) dnl TODO not actually checking that the fwd solve is correct yet
+AT_CHECK(AT_PACKAGE_NAME --tol 1e-11 -f testAXB-v73.mat,0,[ZH_FWD_AXB_PASS([v73])])
+AT_CHECK(AT_PACKAGE_NAME -t 1e-11 -f testAXB-v7.mat,0,[ZH_FWD_AXB_PASS([v7])])
+AT_CHECK(AT_PACKAGE_NAME -t 1e-11 -f testAXB-v6.mat,0,[ZH_FWD_AXB_PASS([v6])])
+AT_CHECK(AT_PACKAGE_NAME -t 1e-11 -f testAXB-v4.mat,0,[ZH_FWD_AXB_PASS([v4])])
 AT_CLEANUP
