@@ -111,6 +111,7 @@ fwd_quit:
         matrix_free(A);
         matrix_free(B);
         matrix_free(X);
+        free(AA);
         free(BB);
     }
     return ret;

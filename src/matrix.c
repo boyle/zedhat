@@ -11,7 +11,7 @@ int matrix_load(const char * file, matrix_t * matrix)
 {
     int ret = 0;
     mat_t * in = NULL;
-    matvar_t * t;
+    matvar_t * t = NULL;
     if (matrix == NULL) {
         return 1;    /* bad ptr */
     }
@@ -20,6 +20,7 @@ int matrix_load(const char * file, matrix_t * matrix)
         return 2;    /* bad input filename */
     }
     do {
+        Mat_VarFree(t);
         t = Mat_VarReadNextInfo(in);
     }
     while ( (t != NULL) &&
@@ -27,7 +28,8 @@ int matrix_load(const char * file, matrix_t * matrix)
     if (t == NULL) {
         return 3;    /* end of list, matrix->name not found */
     }
-    t = Mat_VarRead(in, t->name);
+    Mat_VarFree(t);
+    t = Mat_VarRead(in, matrix->name);
     /* Mat_VarPrint(t, 1); */
     /* now check that we like what we found */
     matrix->scale = 1.0;

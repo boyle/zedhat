@@ -144,15 +144,15 @@ $(TESTSUITE): $(TESTSUITE_AT) $(srcdir)/package.m4
 
 
 # valgrind configuration
-#VALGRIND_BIN=valgrind
+VALGRIND_BIN=valgrind
 #VALGRIND_ENV=MPIWRAP_DEBUG=${MPIWRAP_DEBUG_ARGS} LD_PRELOAD=${MPI_PREFIX}/lib/valgrind/libmpiwrap-${MPI_PLATFORM}.so
-#VALGRIND_ARGS=--trace-children=yes --track-origins=yes --leak-check=full
+VALGRIND_ARGS=--trace-children=yes --track-origins=yes --leak-check=full --show-leak-kinds=all
 #--db-attach=yes
 #MPI_BIN=mpirun
 #MPI_ARGS=-n 4
-#VALGRIND=${VALGRIND_ENV} ${VALGRIND_BIN} ${VALGRIND_ARGS} ${MPI_BIN} ${MPI_ARGS}
-#valgrind: tests/mumps-file
-#	cd tests && ${VALGRIND} mumps-file
+VALGRIND=${VALGRIND_ENV} ${VALGRIND_BIN} ${VALGRIND_ARGS} ${MPI_BIN} ${MPI_ARGS}
+valgrind:
+	${VALGRIND} ./zedhat -t 9e-12 -f tests/testAXB-v73.mat
 
 .PHONY: help
 help:
