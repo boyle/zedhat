@@ -70,6 +70,20 @@ int main(int argc, char ** argv)
             ret = 1;
             goto fwd_quit;
         }
+        /* Find: || A X - B ||_2 */
+        /* Compute  C = a A B + c C */
+        memcpy(BB, B->dense, Bmn * sizeof(double));
+        cblas_dgemm (CblasColMajor, CblasNoTrans, CblasNoTrans,
+                     A->m, X->n, A->n, /* m, n, k, */
+                     +1.0, A->dense, A->m, X->dense, X->m, /* a, A, m, B, n, */
+                     -1.0, BB, B->m); /* c, C, k */
+        /* Compute  || B ||_2 */
+        const double err_mul = cblas_dnrm2( Bmn, BB, 1); /* n, X, incX */
+        if (err_mul > args.tol) {
+            printf("fail: || A X - B ||_2 = %g\n", err_mul);
+            ret = 1;
+            goto fwd_quit;
+        }
         /* Find BB = A\B; || BB - X ||_2 */
         memcpy(AA, A->dense, Amn * sizeof(double));
         memcpy(BB, B->dense, Bmn * sizeof(double));
@@ -89,19 +103,6 @@ int main(int argc, char ** argv)
         const double err_div = cblas_dnrm2( Xmn, BB, 1); /* n, X, incX */
         if (err_div > args.tol) {
             printf("fail: || A\\B - X ||_2 = %g\n", err_div);
-            ret = 1;
-            goto fwd_quit;
-        }
-        /* Find: || A X - B ||_2 */
-        /* Compute  C = a A B + c C */
-        cblas_dgemm (CblasColMajor, CblasNoTrans, CblasNoTrans,
-                     A->m, X->n, A->n, /* m, n, k, */
-                     +1.0, A->dense, A->m, X->dense, X->m, /* a, A, m, B, n, */
-                     -1.0, B->dense, B->m); /* c, C, k */
-        /* Compute  || B ||_2 */
-        const double err_mul = cblas_dnrm2( (B->m * B->n), B->dense, 1); /* n, X, incX */
-        if (err_mul > args.tol) {
-            printf("fail: || A X - B ||_2 = %g\n", err_mul);
             ret = 1;
             goto fwd_quit;
         }
