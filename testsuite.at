@@ -140,24 +140,24 @@ AT_CLEANUP
 
 AT_SETUP(--forward-solver)
 AT_KEYWORDS([fwd args install])
-m4_define(ZH_FWD_ab_PASS,[fwd A: ret = 3 (testab.mat)
-fwd B: ret = 3 (testab.mat)
-fwd X: ret = 3 (testab.mat)
+m4_define(ZH_FWD_OUTPUT,[fwd A: ret = $2 ($1)
+fwd B: ret = $2 ($1)
+fwd X: ret = $2 ($1)
 ])
-m4_define(ZH_FWD_AXB_PASS,[fwd testAXB-[$1].mat
-])
+m4_define(ZH_FWD_AXB_PASS,ZH_FWD_OUTPUT(testAXB-[$1].mat,0))
 ZH_DATA_FILE_TESTA_MAT
 ZH_DATA_FILE_TESTAB_MAT
 ZH_DATA_FILE_TESTAXB_MAT
-AT_CHECK(AT_PACKAGE_NAME --forward-solver testab.mat,1,[ZH_FWD_ab_PASS])
-AT_CHECK(AT_PACKAGE_NAME --fwd testab.mat,1,[ZH_FWD_ab_PASS])
-AT_CHECK(AT_PACKAGE_NAME -f testab.mat,1,[ZH_FWD_ab_PASS])
+AT_CHECK(AT_PACKAGE_NAME --forward-solver testab.mat,1,[ZH_FWD_OUTPUT(testab.mat,3)])
+AT_CHECK(AT_PACKAGE_NAME --fwd testab.mat,1,[ZH_FWD_OUTPUT(testab.mat,3)])
+AT_CHECK(AT_PACKAGE_NAME -f testab.mat,1,[ZH_FWD_OUTPUT(testab.mat,3)])
+AT_CHECK(AT_PACKAGE_NAME -f junk.mat,1,[ZH_FWD_OUTPUT(junk.mat,2)])
 AT_CHECK(AT_PACKAGE_NAME -f, 1, ZH_HELP_LONG, AT_PACKAGE_NAME[: option requires an argument -- 'f'
 ])
-AT_CHECK(AT_PACKAGE_NAME -f testab.mat,1,[ZH_FWD_ab_PASS])
-AT_SKIP_IF([true])
+AT_CHECK(AT_PACKAGE_NAME -f testab.mat,1,[ZH_FWD_OUTPUT(testab.mat,3)])
 AT_CHECK(AT_PACKAGE_NAME --tol 1e-12 -f testAXB-v73.mat,0,[ZH_FWD_AXB_PASS([v73])])
 AT_CHECK(AT_PACKAGE_NAME -t 1e-12 -f testAXB-v7.mat,0,[ZH_FWD_AXB_PASS([v7])])
 AT_CHECK(AT_PACKAGE_NAME -t 1e-12 -f testAXB-v6.mat,0,[ZH_FWD_AXB_PASS([v6])])
 AT_CHECK(AT_PACKAGE_NAME -t 1e-12 -f testAXB-v4.mat,0,[ZH_FWD_AXB_PASS([v4])])
+AT_SKIP_IF([true]) dnl TODO not actually checking that the fwd solve is correct yet
 AT_CLEANUP

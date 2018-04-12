@@ -38,9 +38,7 @@ int parse_argv(int argc, char ** argv, args_t * args)
         case 't':
             errno = 0;
             args->tol = strtod(optarg, NULL);
-            if (errno != 0) {
-                args->tol = -1e10;
-            }
+            /* TODO silent fail if -t arg does not convert */
             break;
         default:
             fprintf(stderr, "error: %s: unhandled argument\n", PACKAGE_NAME);

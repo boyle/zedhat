@@ -27,24 +27,17 @@ int matrix_load(const char * file, matrix_t * matrix)
         return 3;    /* end of list, matrix->name not found */
     }
     t = Mat_VarRead(in, t->name);
-    Mat_VarPrint(t, 1);
+    /* Mat_VarPrint(t, 1); */
     Mat_VarFree(t);
     Mat_Close(in);
     return 0;
 }
 
+/*
 int matrix_save(const char * file, const matrix_t matrix)
 {
-    //mat_t * in = NULL;
-    mat_t * out = Mat_Create(file, "");
-    if(out == NULL) {
-        return 1;    /* bad output filename */
-    }
-    //matvar_t * t = Mat_VarReadNextInfo(in);
-    Mat_Close(out);
-    return 1;
-    return 0;
 }
+*/
 
 void matrix_sparse_free(matrix_sparse_t * sparse)
 {
@@ -62,7 +55,7 @@ matrix_t * matrix_malloc(const char * name)
 {
     matrix_t * matrix = malloc(sizeof(matrix_t));
     if ( matrix == NULL ) {
-        return matrix;
+        return NULL;
     }
     memset(matrix, 0, sizeof(matrix_t));
     matrix->name = name;
