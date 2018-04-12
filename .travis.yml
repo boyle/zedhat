@@ -11,6 +11,7 @@ compiler:
    - clang
 
 before_install:
+   - eval "${MATRIX_EVAL}"
    - echo -n | openssl s_client -connect https://scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
    - if [[ "x$TRAVIS_OS_NAME" == "xlinux" ]]; then sudo apt-get -qq update; fi
    - pip install --user cpp-coveralls
@@ -23,7 +24,10 @@ before_install:
 
 addons:
    apt:
+      sources:
+         - ubuntu-toolchain-r-test
       packages:
+         - g++-5
          - gfortran
          - libblas-dev
          - libopenblas-dev
@@ -53,6 +57,7 @@ after_success:
 
 env:
    global:
+      - MATRIX_EVAL="CC=gcc-5 && CXX=g++-5"
       # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
       #   via the "travis encrypt" command using the project repo's public key
       - secure: "Mm/jdsPpEItqiTbK0KX9KNE1JuL6HJmpbanPV25pYmJNwQVWwCqp1sexk8Fwge2DSpFM9UPSwuqRdrxOfhw7YCFZT+rQ3BaezivSCm4NC3eNswRxWWjCGeYSKqNwIElu7SHZgPXRWmVK9EvmaNmSuJ7HA2xgzmxT46cgT1lwrE7YTFAE1AL/+WKCyh6cCLvUDzm8z6G8ZpRS6X+DEEBfORH4V1zU8wax3G796mvJwYXaPimsNPDm/0tQWG+fduk27ZWkSMoilzyosYEsEBo/lTAqpB1vXK5+KB5y/zZ4STST5EcHBLIgLV/ojXL+rZcNedRrtetFlHq1qxSW1skFrYKBRly3ZuQ7guvznH2fJmucYaM54cJVravpqIfdWwYyLUOe+lWKyPgpyzNSnpAZvoT97bD6kHgT8S54qk8uYTGeGcIL3m38lyy/Xqnt8f+Pr1JHTI7A5tdnNL1GXqP5hzLik/lnoq/SgH2wBF1ljzwB9FxpjhZNzoyrxgIQ54nmo6Mq2WigxzdMaaRJH8GYsUN+B1Xv8ZuHq79kvEQyL/MSbRzLIChsEWQUhNkSmfnzSAElhjaAG3xQqpyv1tHyKuABflBUjuhw46bLnxOEjpxuyrWDXqXBvESu5RZpWV/P11CPhW9eptZ0/7d0eN/1t9dEe7v03GNFTFYcJk5CZxA="
