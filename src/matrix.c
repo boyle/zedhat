@@ -30,6 +30,7 @@ int matrix_load(const char * file, matrix_t * matrix)
         goto _matrix_load_quit;
     }
     Mat_VarFree(t);
+    Mat_Rewind(in);
     t = Mat_VarRead(in, matrix->name);
     if (t == NULL) {
         ret = 4;

@@ -180,7 +180,7 @@ AT_CHECK(AT_PACKAGE_NAME --tol 1e-11 -f testAXB-v73.mat,0,[ZH_FWD_AXB_PASS([v73]
 AT_CHECK(AT_PACKAGE_NAME -t 1e-11 -f testAXB-v7.mat,0,[ZH_FWD_AXB_PASS([v7])],)
 AT_CHECK(AT_PACKAGE_NAME -t 1e-11 -f testAXB-v6.mat,0,[ZH_FWD_AXB_PASS([v6])],)
 dnl BROKEN libmatio on ubuntu 16.04
-dnl AT_CHECK(AT_PACKAGE_NAME -t 1e-11 -f testAXB-v4.mat,0,[ZH_FWD_AXB_PASS([v4])],)
+AT_CHECK(AT_PACKAGE_NAME -t 1e-11 -f testAXB-v4.mat,0,[ZH_FWD_AXB_PASS([v4])],)
 AT_CHECK(AT_PACKAGE_NAME[[ --tol 5e-12 -f testAXB-v73.mat | sed 's/^\(fail.*=\).*/\1/'; test ${PIPESTATUS[0]} -eq 0]],1,[fwd: || A\B - X ||_2 == || A X - B ||_2
 fail: || A\B - X ||_2 =
 ],)
