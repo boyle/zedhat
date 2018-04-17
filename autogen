@@ -31,7 +31,7 @@ if ( [[ -d "${top_src_dir}/.git/refs/tags" ]] && \
     {
       printf "%-60s" "Release ${T[$i]}:"
       date --date=- +'%b %d, %Y' --date="$(git show -s --format="%ci" "${T[$i]}" | tail -1)"
-      git tag -n ${T[$i]} | sed "s/^${T[$i]} */ -- /"
+      git tag -ln1 ${T[$i]} | sed "s/^${T[$i]} */ -- /"
       git shortlog -w79,3,6 "${T[$i-1]}".."${T[$i]}" | grep -v -e 'minor:' -e '(minor)' -e 'WIP: ' -e '^      '
       echo ""
     } >> "${distdir}/ChangeLog"
