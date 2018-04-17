@@ -26,15 +26,20 @@ int matrix_load(const char * file, matrix_t * matrix)
     while ( (t != NULL) &&
             strncmp(t->name, matrix->name, strlen(matrix->name)) );
     if (t == NULL) {
-        return 3;    /* end of list, matrix->name not found */
+        ret = 3;    /* end of list, matrix->name not found */
+        goto _matrix_load_quit;
     }
     Mat_VarFree(t);
     t = Mat_VarRead(in, matrix->name);
+    if (t == NULL) {
+        ret = 4;
+        goto _matrix_load_quit;
+    }
     /* Mat_VarPrint(t, 1); */
     /* now check that we like what we found */
     matrix->scale = 1.0;
     if (t->isComplex) {
-        ret = 4; /* expect 'real' data */
+        ret = 5; /* expect 'real' data */
         goto _matrix_load_quit;
     }
     if (t->isLogical) {
@@ -69,6 +74,10 @@ int matrix_load(const char * file, matrix_t * matrix)
             goto _matrix_load_quit;
         }
         mat_sparse_t * ts = (mat_sparse_t *) t->data;
+        if (ts == NULL) {
+            ret = 8;
+            goto _matrix_load_quit;
+        }
         /* Compressed Sparse Column: col = j+1; row = k+1 */
         for (int j = 0; j < ts->njc - 1; j++) { /* matlab likes CSC */
             for (int i = ts->jc[j]; i < ts->jc[j + 1] && i < ts->ndata; i++) {
