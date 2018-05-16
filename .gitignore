@@ -25,6 +25,7 @@ tests/libumfpack
 tests/libmatio
 testsuite
 testsuite.dir/
+readngvol
 zedhat
 zedhat-*/
 zedhat-*.tar.gz

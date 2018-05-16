@@ -3,7 +3,8 @@
 AUTOMAKE_OPTIONS = foreign
 
 # the actual program to be installed at the end
-bin_PROGRAMS = zedhat
+bin_PROGRAMS = zedhat readngvol
+readngvol_SOURCES = src/readngvol.c
 zedhat_SOURCES = src/zedhat.c src/argv.c src/matrix.c
 
 AM_CFLAGS = $(CFLAGS)
