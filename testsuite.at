@@ -188,3 +188,21 @@ AT_CHECK(AT_PACKAGE_NAME[[ --tol 0     -f testAXB-v73.mat | sed 's/^\(fail.*=\).
 fail: || A X - B ||_2 =
 ],)
 AT_CLEANUP
+
+AT_BANNER([unit tests])
+AT_SETUP([netgen .vol])
+AT_KEYWORDS([netgen])
+m4_define(ZH_DATA_FILE_NETGEN,
+  [AT_DATA([ngcube.vol-xxd],m4_esyscmd(gzip -c tests/ngcube.vol | xxd -p))]
+  xxd -r -p ngcube.vol-xxd | gunzip -d > ngcube.vol
+)
+ZH_DATA_FILE_NETGEN
+AT_CHECK([readngvol ngcube.vol],0,
+[reading ngcube.vol
+dimension 3
+geomtype 0
+6 volumeelements
+8 points
+],)
+AT_CLEANUP
+

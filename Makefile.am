@@ -3,8 +3,7 @@
 AUTOMAKE_OPTIONS = foreign
 
 # the actual program to be installed at the end
-bin_PROGRAMS = zedhat readngvol
-readngvol_SOURCES = src/readngvol.c
+bin_PROGRAMS = zedhat
 zedhat_SOURCES = src/zedhat.c src/argv.c src/matrix.c
 
 AM_CFLAGS = $(CFLAGS)
@@ -24,10 +23,11 @@ dist_man_MANS = man/zedhat.1
 EXTRA_DIST = $(bin_SCRIPTS) \
 				 ChangeLog README.md NEWS LICENSE
 
-BUILT_TESTS = tests/libcblas_dgemm tests/liblapacke_dgels tests/libumfpack tests/libmatio
+BUILT_TESTS = tests/libcblas_dgemm tests/liblapacke_dgels tests/libumfpack tests/libmatio tests/readngvol
 check_PROGRAMS = $(BUILT_TESTS)
 #tests_unit_perftimer_SOURCES = tests/unit-perftimer.c src/perftimer.c
 #tests_unit_perftimer_CPPFLAGS = -I$(srcdir)/src
+#readngvol_SOURCES = src/readngvol.c
 
 clean-local: clean-local-check
 	  -rm -f src/*.lo
