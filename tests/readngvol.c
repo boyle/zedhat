@@ -100,4 +100,5 @@ __quit:
             fprintf(stderr, "error: failed to close %s\n", argv[1]);
         }
     }
+    return ret;
 }

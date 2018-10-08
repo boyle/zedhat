@@ -53,7 +53,8 @@ int matrix_load(const char * file, matrix_t * matrix)
     }
     matrix->m = 0;
     matrix->n = 1;
-    for (int i = 0; i < t->rank; i++) {
+    int i;
+    for (i = 0; i < t->rank; i++) {
         switch(i) {
         case 0: matrix->m = t->dims[i]; break;
         case 1: matrix->n = t->dims[i]; break;
@@ -80,8 +81,9 @@ int matrix_load(const char * file, matrix_t * matrix)
             goto _matrix_load_quit;
         }
         /* Compressed Sparse Column: col = j+1; row = k+1 */
-        for (int j = 0; j < ts->njc - 1; j++) { /* matlab likes CSC */
-            for (int i = ts->jc[j]; i < ts->jc[j + 1] && i < ts->ndata; i++) {
+        int i, j;
+        for (j = 0; j < ts->njc - 1; j++) { /* matlab likes CSC */
+            for (i = ts->jc[j]; i < ts->jc[j + 1] && i < ts->ndata; i++) {
                 const int k = ts->ir[i];
                 const double dd = ((double *) ts->data)[i];
                 matrix->dense[ (j * matrix->m ) + k ] = dd;

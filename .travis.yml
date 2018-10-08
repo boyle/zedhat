@@ -7,28 +7,19 @@ os:
 #   - osx
 
 compiler:
-   - gcc-6
+   - gcc
    - clang
-env: GCOV="gcov-6"
 
 before_install:
    - eval "${MATRIX_EVAL}"
    - echo -n | openssl s_client -connect https://scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
-   - if [[ "x$TRAVIS_OS_NAME" == "xlinux" ]]; then sudo apt-get -qq update; fi
    - pip install --user cpp-coveralls
 #   - if [[ "x$TRAVIS_OS_NAME" == "xosx" ]]; then brew update; brew install homebrew/science/openblas; brew install  homebrew/science/suite-sparse; pushd /usr/include; sudo ln -s $(find . -name cblas.h); popd; fi
 # missing lapacke... no homebrew to tap
 
-#matrix:
-#   allow_failures:
-#      - os: osx
-
 addons:
    apt:
-      sources:
-         - ubuntu-toolchain-r-test
       packages:
-         - gcc-6
          - gfortran
          - libblas-dev
          - libopenblas-dev
@@ -48,17 +39,21 @@ addons:
       build_command: "make"
       branch_pattern: coverity_scan
 
+#        - gcc-6
 script:
    - ./autogen
    - ./configure
-   - make distcheck
+   - make check
    - make cov
 
 after_failure:
-   - cat ${TRAVIS_BUILD_DIR}/*/testsuite.log
+   - awk '/## Summary of the failures. ##/{flag=1;next}/## config.log ##/{flag=0}flag' ${TRAVIS_BUILD_DIR}/*/testsuite.log
+#  - cat ${TRAVIS_BUILD_DIR}/*/testsuite.log
+
 
 after_success:
-   - coveralls --exclude lib --exclude tests --gcov-options '\-lp'
+   - echo "CC = $CC, CXX = $CXX"
+   - coveralls --exclude tests --gcov-options '\-lp'
 
 env:
    global:

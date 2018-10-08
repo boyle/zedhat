@@ -29,9 +29,10 @@ matrix_t * get_fwd_matrix(const args_t args, const char * name)
 #ifdef DEBUG
 void matrix_printf(const char * str, matrix_t * M, double * D)
 {
+    int i, j;
     printf("--- %10s ---\n", str);
-    for(int i = 0; i < M->m; i++) {
-        for(int j = 0; j < M->n; j++) {
+    for(i = 0; i < M->m; i++) {
+        for(j = 0; j < M->n; j++) {
             printf("\t%g", D[i + (j * M->m)]);
         }
         printf("\n");
@@ -97,7 +98,8 @@ int main(int argc, char ** argv)
             goto fwd_quit;
         }
         /* Compute  || BB - X ||_2 */
-        for( int i = 0; i < Xmn; i++) {
+        int i;
+        for(i = 0; i < Xmn; i++) {
             BB[i] -= X->dense[i];
         }
         const double err_div = cblas_dnrm2( Xmn, BB, 1); /* n, X, incX */

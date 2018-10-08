@@ -45,7 +45,7 @@ dist-hook:
 
 .PHONY: cov
 cov.log: dist
-	$(srcdir)/cov $(distdir).tar.gz | tee cov.log
+	$(srcdir)/cov | tee cov.log
 cov: cov.log
 #	[ "x$(shell tail -4 $^ | grep '100.0%' | wc -l)" == "x3" ] || exit 1 # 100% test coverage please!
 
