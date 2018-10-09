@@ -44,7 +44,7 @@ script:
    - ./autogen
    - ./configure
    - make check
-   - make cov
+   - if [[ "$CC" == "gcc" ]]; then make cov; fi
 
 after_failure:
    - awk '/## Summary of the failures. ##/{flag=1;next}/## config.log ##/{flag=0}flag' ${TRAVIS_BUILD_DIR}/*/testsuite.log
@@ -52,8 +52,7 @@ after_failure:
 
 
 after_success:
-   - echo "CC = $CC, CXX = $CXX"
-   - coveralls --exclude tests --gcov-options '\-lp'
+   - if [[ "$CC" == "gcc" ]]; then coveralls --exclude tests --gcov-options '\-lp'; fi
 
 env:
    global:
