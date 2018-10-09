@@ -201,6 +201,7 @@ AT_CHECK([readngvol ngcube.vol],0,
 [reading ngcube.vol
 dimension 3
 geomtype 0
+12 surfaceelements
 6 volumeelements
 8 points
 ],)

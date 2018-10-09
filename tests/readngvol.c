@@ -12,7 +12,8 @@ int main(int argc, char ** argv)
     int cnt;
     char data[MAXCHAR];
     double * nodes = NULL; int n_nodes;
-    int * elems = NULL; int n_elems;
+    int * elems = NULL; int * matidx = NULL; int n_elems;
+    int * surfaceelems = NULL; int * bc = NULL; int n_se;
     if(argc != 2) {
         fprintf(stderr, "usage: %s <netgen.vol>\n", basename(argv[0]));
         return 1;
@@ -27,7 +28,12 @@ int main(int argc, char ** argv)
         goto __quit;
     }
     /* DANGER: inconsistent use of \r and \n by netgen */
-    if(!strcmp(data, "mesh3d\r")) {
+    for(cnt = 0; data[cnt] != 0; cnt++) {
+        if (data[cnt] == '\r' || data[cnt] == '\n') {
+            data[cnt] = '\0';
+        }
+    }
+    if(strcmp(data, "mesh3d")) {
         fprintf(stderr, "err: bad header\n");
         goto __quit;
     }
@@ -35,7 +41,12 @@ int main(int argc, char ** argv)
         if(!fgets(data, MAXCHAR, F)) {
             break;
         }
-        if(!strcmp(data, "dimension\n")) {
+        for(cnt = 0; data[cnt] != '\0'; cnt++) {
+            if (data[cnt] == '\r' || data[cnt] == '\n') {
+                data[cnt] = '\0';
+            }
+        }
+        if(!strcmp(data, "dimension")) {
             int dim = 0;
             cnt = fscanf(F, "%d\n", &dim);
             if((cnt != 1) || (dim != 3)) {
@@ -44,7 +55,11 @@ int main(int argc, char ** argv)
             }
             printf("dimension %d\n", dim);
         }
-        else if(!strcmp(data, "geomtype\n")) {
+        /* GEOM_STL=11: surfaceelementsgi
+         * GEOM_OCC=12, GEOM_ACIS=13: surfaceelementsuv
+         * default: surfaceelements
+         */
+        else if(!strcmp(data, "geomtype")) {
             int type = -1;
             cnt = fscanf(F, "%d\n", &type);
             if((cnt != 1) || (type != 0)) {
@@ -53,7 +68,25 @@ int main(int argc, char ** argv)
             }
             printf("geomtype %d\n", type);
         }
-        else if(!strcmp(data, "points\n")) {
+        else if(!strcmp(data, "surfaceelements")) {
+            cnt = fscanf(F, "%d\n", &n_se);
+            printf("%d surfaceelements\n", n_se);
+            int se = 0;
+            surfaceelems = malloc(sizeof(int) * n_se * 3);
+            bc = malloc(sizeof(int) * n_se *1);
+            if(!surfaceelems || !bc) {
+                return -1;
+            }
+            while(!feof(F) && se < n_se ) {
+                cnt += fscanf(F, "%*d %d %*d %*d 3 %d %d %d\n", &bc[se], &surfaceelems[3 * se + 0], &surfaceelems[3 * se + 1], &surfaceelems[3 * se + 2]);
+                se++;
+            }
+            if(cnt != n_se * 4 + 1) {
+                fprintf(stderr, "err: bad surfaceelements\n");
+                goto __quit;
+            }
+        }
+        else if(!strcmp(data, "points")) {
             cnt = fscanf(F, "%d\n", &n_nodes);
             printf("%d points\n", n_nodes);
             int node = 0;
@@ -70,19 +103,20 @@ int main(int argc, char ** argv)
                 goto __quit;
             }
         }
-        else if(!strcmp(data, "volumeelements\n")) {
+        else if(!strcmp(data, "volumeelements")) {
             cnt = fscanf(F, "%d\n", &n_elems);
             printf("%d volumeelements\n", n_elems);
             int elem = 0;
-            elems = malloc(sizeof(double) * n_elems * 4);
-            if(!elems) {
+            elems = malloc(sizeof(int) * n_elems * 4);
+            matidx = malloc(sizeof(int) * n_elems * 1);
+            if(!elems || !matidx) {
                 return -1;
             }
             while(!feof(F) && elem < n_elems ) {
-                cnt += fscanf(F, "1 4 %d %d %d %d\n", &elems[4 * elem + 0], &elems[4 * elem + 1], &elems[4 * elem + 2], &elems[4 * elem + 3]);
+                cnt += fscanf(F, "%d 4 %d %d %d %d\n", &matidx[elem], &elems[4 * elem + 0], &elems[4 * elem + 1], &elems[4 * elem + 2], &elems[4 * elem + 3]);
                 elem++;
             }
-            if(cnt != n_elems * 4 + 1) {
+            if(cnt != n_elems * 5 + 1) {
                 fprintf(stderr, "err: bad elems\n");
                 goto __quit;
             }
@@ -94,6 +128,9 @@ int main(int argc, char ** argv)
 __quit:
     free(nodes); nodes = NULL;
     free(elems); elems = NULL;
+    free(matidx); matidx = NULL;
+    free(surfaceelems); surfaceelems = NULL;
+    free(bc); bc = NULL;
     if(F) {
         ret = fclose(F);
         if(ret) {
