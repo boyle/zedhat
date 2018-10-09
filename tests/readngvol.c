@@ -73,7 +73,7 @@ int main(int argc, char ** argv)
             printf("%d surfaceelements\n", n_se);
             int se = 0;
             surfaceelems = malloc(sizeof(int) * n_se * 3);
-            bc = malloc(sizeof(int) * n_se *1);
+            bc = malloc(sizeof(int) * n_se * 1);
             if(!surfaceelems || !bc) {
                 return -1;
             }
