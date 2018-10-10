@@ -8,11 +8,10 @@
 #include "readngvol.h"
 
 #define MAXCHAR 1024
-int gzreadnext(gzFile F, char data[], int n)
+void gzreadnext(gzFile F, char data[], int n)
 {
-    if(!gzgets(F, data, n)) {
-        return 0; /* error */
-    }
+    data[0] = '\0';
+    gzgets(F, data, n);
     /* DANGER: inconsistent use of \r and \n by netgen */
     int cnt;
     for(cnt = 0; (data[cnt] != '\0') && (data[cnt] != '\n') && (cnt < n); cnt++) {
@@ -22,7 +21,6 @@ int gzreadnext(gzFile F, char data[], int n)
         }
     }
     data[cnt + 1] = '\0';
-    return 1; /* success */
 }
 
 int readngvol(char filename[], struct mesh * m)
@@ -37,18 +35,15 @@ int readngvol(char filename[], struct mesh * m)
         goto __quit;
     }
     printf("reading %s\n", filename);
-    if(!gzreadnext(F, data, 8) || strcmp(data, "mesh3d\n")) {
+    gzreadnext(F, data, 8);
+    if(strcmp(data, "mesh3d\n")) {
         fprintf(stderr, "err: bad header\n");
         goto __quit;
     }
     while(!gzeof(F)) {
-        if(!gzreadnext(F, data, MAXCHAR)) {
-            goto __quit;
-        }
+        gzreadnext(F, data, MAXCHAR);
         if(!strcmp(data, "dimension\n")) {
-            if(!gzreadnext(F, data, MAXCHAR)) {
-                goto __quit;
-            }
+            gzreadnext(F, data, MAXCHAR);
             cnt = sscanf(data, "%d\n", &(m->dim));
             if((cnt != 1) || (m->dim != 3)) {
                 fprintf(stderr, "err: bad dimension\n");
@@ -62,9 +57,7 @@ int readngvol(char filename[], struct mesh * m)
          */
         else if(!strcmp(data, "geomtype\n")) {
             int type = -1;
-            if(!gzreadnext(F, data, MAXCHAR)) {
-                goto __quit;
-            }
+            gzreadnext(F, data, MAXCHAR);
             cnt = sscanf(data, "%d\n", &type);
             if((cnt != 1) || (type != 0)) {
                 fprintf(stderr, "err: bad geomtype\n");
@@ -73,9 +66,7 @@ int readngvol(char filename[], struct mesh * m)
             printf("geomtype %d\n", type);
         }
         else if(!strcmp(data, "surfaceelements\n")) {
-            if(!gzreadnext(F, data, MAXCHAR)) {
-                goto __quit;
-            }
+            gzreadnext(F, data, MAXCHAR);
             cnt = sscanf(data, "%d\n", &m->n_se);
             printf("%d surfaceelements\n", m->n_se);
             int se = 0;
@@ -85,9 +76,7 @@ int readngvol(char filename[], struct mesh * m)
                 goto __quit;
             }
             while(!gzeof(F) && se < m->n_se ) {
-                if(!gzreadnext(F, data, MAXCHAR)) {
-                    break;
-                }
+                gzreadnext(F, data, MAXCHAR);
                 cnt += sscanf(data, "%*d %d %*d %*d 3 %d %d %d\n", &m->bc[se], &m->surfaceelems[3 * se + 0], &m->surfaceelems[3 * se + 1], &m->surfaceelems[3 * se + 2]);
                 se++;
             }
@@ -97,20 +86,16 @@ int readngvol(char filename[], struct mesh * m)
             }
         }
         else if(!strcmp(data, "points\n")) {
-            if(!gzreadnext(F, data, MAXCHAR)) {
-                goto __quit;
-            }
+            gzreadnext(F, data, MAXCHAR);
             cnt = sscanf(data, "%d\n", &m->n_nodes);
             printf("%d points\n", m->n_nodes);
             int node = 0;
             m->nodes = malloc(sizeof(double) * m->n_nodes * 3);
             if(!m->nodes) {
-                return -1;
+                goto __quit;
             }
             while(!gzeof(F) && node < m->n_nodes ) {
-                if(!gzreadnext(F, data, MAXCHAR)) {
-                    break;
-                }
+                gzreadnext(F, data, MAXCHAR);
                 cnt += sscanf(data, " %lf %lf %lf\n", &m->nodes[3 * node + 0], &m->nodes[3 * node + 1], &m->nodes[3 * node + 2]);
                 node++;
             }
@@ -120,9 +105,7 @@ int readngvol(char filename[], struct mesh * m)
             }
         }
         else if(!strcmp(data, "volumeelements\n")) {
-            if(!gzreadnext(F, data, MAXCHAR)) {
-                goto __quit;
-            }
+            gzreadnext(F, data, MAXCHAR);
             cnt = sscanf(data, "%d\n", &m->n_elems);
             printf("%d volumeelements\n", m->n_elems);
             int elem = 0;
@@ -132,9 +115,7 @@ int readngvol(char filename[], struct mesh * m)
                 goto __quit;
             }
             while(!gzeof(F) && elem < m->n_elems ) {
-                if(!gzreadnext(F, data, MAXCHAR)) {
-                    break;
-                }
+                gzreadnext(F, data, MAXCHAR);
                 cnt += sscanf(data, "%d 4 %d %d %d %d\n", &m->matidx[elem], &m->elems[4 * elem + 0], &m->elems[4 * elem + 1], &m->elems[4 * elem + 2], &m->elems[4 * elem + 3]);
                 elem++;
             }
@@ -144,18 +125,22 @@ int readngvol(char filename[], struct mesh * m)
             }
         }
     }
-    ret = 0;
-//   if((n_elems > 0) && (n_nodes > 0)) {
-//      printf("happiness!\n");
-//   }
+    if( (m->n_nodes == 0) || (m->n_elems == 0) || (m->n_se == 0) ) {
+        fprintf(stderr, "err: %s: empty mesh nodes = %d, elems = %d, surfs = %d\n",
+                filename, m->n_nodes, m->n_elems, m->n_se);
+        ret = 2;
+    }
+    else {
+        ret = 0;
+    }
 __quit:
     if(ret != 0) {
         mesh_free(m);
     }
     if(F) {
-        ret = gzclose(F);
-        if(ret) {
+        if(gzclose(F) != Z_OK) {
             fprintf(stderr, "error: failed to close %s\n", filename);
+            ret = 1;
         }
     }
     return ret;
