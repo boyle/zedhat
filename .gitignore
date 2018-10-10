@@ -32,3 +32,9 @@ zedhat-*.tar.gz
 test_coverage/
 tags
 TAGS
+*.gcda
+*.gcno
+ng.ini
+ngmesh.ini
+ng.opt
+zedhat_test.info

@@ -25,21 +25,18 @@ int gzreadnext(gzFile F, char data[], int n)
     return 1; /* success */
 }
 
-int readngvol(char filename[], struct mesh *m)
+int readngvol(char filename[], struct mesh * m)
 {
     int ret = 1;
     int cnt;
     char data[MAXCHAR];
-    /* free(mesh) */
-    /* init mesh */
-
+    mesh_free(m);
     gzFile F = gzopen(filename, "r");
     if(!F) {
         fprintf(stderr, "error: failed to open %s\n", filename);
         goto __quit;
     }
     printf("reading %s\n", filename);
-
     if(!gzreadnext(F, data, 8) || strcmp(data, "mesh3d\n")) {
         fprintf(stderr, "err: bad header\n");
         goto __quit;
@@ -152,11 +149,9 @@ int readngvol(char filename[], struct mesh *m)
 //      printf("happiness!\n");
 //   }
 __quit:
-    free(m->nodes); m->nodes = NULL;
-    free(m->elems); m->elems = NULL;
-    free(m->matidx); m->matidx = NULL;
-    free(m->surfaceelems); m->surfaceelems = NULL;
-    free(m->bc); m->bc = NULL;
+    if(ret != 0) {
+        mesh_free(m);
+    }
     if(F) {
         ret = gzclose(F);
         if(ret) {

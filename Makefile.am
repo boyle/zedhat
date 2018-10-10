@@ -28,7 +28,7 @@ check_PROGRAMS = $(BUILT_TESTS)
 #tests_unit_perftimer_SOURCES = tests/unit-perftimer.c src/perftimer.c
 #tests_unit_perftimer_CPPFLAGS = -I$(srcdir)/src
 #readngvol_SOURCES = src/readngvol.c
-tests_readngvol_SOURCES = tests/readngvol.c src/readngvol.c
+tests_readngvol_SOURCES = tests/readngvol.c src/readngvol.c src/model.c
 
 clean-local: clean-local-check
 	  -rm -f src/*.lo

@@ -9,3 +9,6 @@ struct mesh {
     int * bc; /* n_se x 1 */
     int n_se;
 };
+
+void mesh_init(struct mesh * m);
+void mesh_free(struct mesh * m);
