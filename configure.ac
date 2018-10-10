@@ -97,6 +97,8 @@ MATIO_LIBS="$LIBS"
 LIBS="$save_LIBS"
 AS_IF([test "x$matio_ok" == "xyes"],,[AC_MSG_ERROR([missing matio library])])
 
+AX_CHECK_ZLIB
+
 dnl  dnl Definitions at top of <config.h>.
 dnl  AH_TOP([
 dnl  /* BEGIN_C_DECLS should be used at the beginning of your declarations,

@@ -1,14 +1,32 @@
 
 #include <stdlib.h> /* malloc, free */
-#include <stdio.h> /* printf, fprintf, feof, fgets */
+#include <stdio.h> /* printf, fprintf */
 #include <libgen.h> /* basename */
 #include <string.h> /* strlen */
 #include <ctype.h> /* isspace */
+#include <zlib.h> /* gzopen, gzgets, gzeof, gzclose */
 
 #define MAXCHAR 1024
+int gzreadnext(gzFile F, char data[], int n)
+{
+    if(!gzgets(F, data, n)) {
+        return 0; /* error */
+    }
+    /* DANGER: inconsistent use of \r and \n by netgen */
+    int cnt;
+    for(cnt = 0; (data[cnt] != '\0') && (data[cnt] != '\n') && (cnt < n); cnt++) {
+        if (data[cnt] == '\r') {
+            data[cnt] = '\n';
+            break;
+        }
+    }
+    data[cnt + 1] = '\0';
+    return 1; /* success */
+}
+
 int main(int argc, char ** argv)
 {
-    int ret = 0;
+    int ret = 1;
     int cnt;
     char data[MAXCHAR];
     double * nodes = NULL; int n_nodes;
@@ -18,37 +36,26 @@ int main(int argc, char ** argv)
         fprintf(stderr, "usage: %s <netgen.vol>\n", basename(argv[0]));
         return 1;
     }
-    FILE * F = fopen(argv[1], "r");
+    gzFile F = gzopen(argv[1], "r");
     if(!F) {
-        fprintf(stderr, "error: failed to open %s\n", argv[0]);
+        fprintf(stderr, "error: failed to open %s\n", argv[1]);
         goto __quit;
     }
     printf("reading %s\n", argv[1]);
-    if(!fgets(data, 8, F)) {
-        goto __quit;
-    }
-    /* DANGER: inconsistent use of \r and \n by netgen */
-    for(cnt = 0; data[cnt] != 0; cnt++) {
-        if (data[cnt] == '\r' || data[cnt] == '\n') {
-            data[cnt] = '\0';
-        }
-    }
-    if(strcmp(data, "mesh3d")) {
+    if(!gzreadnext(F, data, 8) || strcmp(data, "mesh3d\n")) {
         fprintf(stderr, "err: bad header\n");
         goto __quit;
     }
-    while(!feof(F)) {
-        if(!fgets(data, MAXCHAR, F)) {
-            break;
+    while(!gzeof(F)) {
+        if(!gzreadnext(F, data, MAXCHAR)) {
+            goto __quit;
         }
-        for(cnt = 0; data[cnt] != '\0'; cnt++) {
-            if (data[cnt] == '\r' || data[cnt] == '\n') {
-                data[cnt] = '\0';
-            }
-        }
-        if(!strcmp(data, "dimension")) {
+        if(!strcmp(data, "dimension\n")) {
             int dim = 0;
-            cnt = fscanf(F, "%d\n", &dim);
+            if(!gzreadnext(F, data, MAXCHAR)) {
+                goto __quit;
+            }
+            cnt = sscanf(data, "%d\n", &dim);
             if((cnt != 1) || (dim != 3)) {
                 fprintf(stderr, "err: bad dimension\n");
                 goto __quit;
@@ -59,26 +66,35 @@ int main(int argc, char ** argv)
          * GEOM_OCC=12, GEOM_ACIS=13: surfaceelementsuv
          * default: surfaceelements
          */
-        else if(!strcmp(data, "geomtype")) {
+        else if(!strcmp(data, "geomtype\n")) {
             int type = -1;
-            cnt = fscanf(F, "%d\n", &type);
+            if(!gzreadnext(F, data, MAXCHAR)) {
+                goto __quit;
+            }
+            cnt = sscanf(data, "%d\n", &type);
             if((cnt != 1) || (type != 0)) {
                 fprintf(stderr, "err: bad geomtype\n");
                 goto __quit;
             }
             printf("geomtype %d\n", type);
         }
-        else if(!strcmp(data, "surfaceelements")) {
-            cnt = fscanf(F, "%d\n", &n_se);
+        else if(!strcmp(data, "surfaceelements\n")) {
+            if(!gzreadnext(F, data, MAXCHAR)) {
+                goto __quit;
+            }
+            cnt = sscanf(data, "%d\n", &n_se);
             printf("%d surfaceelements\n", n_se);
             int se = 0;
             surfaceelems = malloc(sizeof(int) * n_se * 3);
             bc = malloc(sizeof(int) * n_se * 1);
             if(!surfaceelems || !bc) {
-                return -1;
+                goto __quit;
             }
-            while(!feof(F) && se < n_se ) {
-                cnt += fscanf(F, "%*d %d %*d %*d 3 %d %d %d\n", &bc[se], &surfaceelems[3 * se + 0], &surfaceelems[3 * se + 1], &surfaceelems[3 * se + 2]);
+            while(!gzeof(F) && se < n_se ) {
+                if(!gzreadnext(F, data, MAXCHAR)) {
+                    break;
+                }
+                cnt += sscanf(data, "%*d %d %*d %*d 3 %d %d %d\n", &bc[se], &surfaceelems[3 * se + 0], &surfaceelems[3 * se + 1], &surfaceelems[3 * se + 2]);
                 se++;
             }
             if(cnt != n_se * 4 + 1) {
@@ -86,16 +102,22 @@ int main(int argc, char ** argv)
                 goto __quit;
             }
         }
-        else if(!strcmp(data, "points")) {
-            cnt = fscanf(F, "%d\n", &n_nodes);
+        else if(!strcmp(data, "points\n")) {
+            if(!gzreadnext(F, data, MAXCHAR)) {
+                goto __quit;
+            }
+            cnt = sscanf(data, "%d\n", &n_nodes);
             printf("%d points\n", n_nodes);
             int node = 0;
             nodes = malloc(sizeof(double) * n_nodes * 3);
             if(!nodes) {
                 return -1;
             }
-            while(!feof(F) && node < n_nodes ) {
-                cnt += fscanf(F, " %lf %lf %lf\n", &nodes[3 * node + 0], &nodes[3 * node + 1], &nodes[3 * node + 2]);
+            while(!gzeof(F) && node < n_nodes ) {
+                if(!gzreadnext(F, data, MAXCHAR)) {
+                    break;
+                }
+                cnt += sscanf(data, " %lf %lf %lf\n", &nodes[3 * node + 0], &nodes[3 * node + 1], &nodes[3 * node + 2]);
                 node++;
             }
             if(cnt != n_nodes * 3 + 1) {
@@ -103,17 +125,23 @@ int main(int argc, char ** argv)
                 goto __quit;
             }
         }
-        else if(!strcmp(data, "volumeelements")) {
-            cnt = fscanf(F, "%d\n", &n_elems);
+        else if(!strcmp(data, "volumeelements\n")) {
+            if(!gzreadnext(F, data, MAXCHAR)) {
+                goto __quit;
+            }
+            cnt = sscanf(data, "%d\n", &n_elems);
             printf("%d volumeelements\n", n_elems);
             int elem = 0;
             elems = malloc(sizeof(int) * n_elems * 4);
             matidx = malloc(sizeof(int) * n_elems * 1);
             if(!elems || !matidx) {
-                return -1;
+                goto __quit;
             }
-            while(!feof(F) && elem < n_elems ) {
-                cnt += fscanf(F, "%d 4 %d %d %d %d\n", &matidx[elem], &elems[4 * elem + 0], &elems[4 * elem + 1], &elems[4 * elem + 2], &elems[4 * elem + 3]);
+            while(!gzeof(F) && elem < n_elems ) {
+                if(!gzreadnext(F, data, MAXCHAR)) {
+                    break;
+                }
+                cnt += sscanf(data, "%d 4 %d %d %d %d\n", &matidx[elem], &elems[4 * elem + 0], &elems[4 * elem + 1], &elems[4 * elem + 2], &elems[4 * elem + 3]);
                 elem++;
             }
             if(cnt != n_elems * 5 + 1) {
@@ -122,6 +150,7 @@ int main(int argc, char ** argv)
             }
         }
     }
+    ret = 0;
 //   if((n_elems > 0) && (n_nodes > 0)) {
 //      printf("happiness!\n");
 //   }
@@ -132,7 +161,7 @@ __quit:
     free(surfaceelems); surfaceelems = NULL;
     free(bc); bc = NULL;
     if(F) {
-        ret = fclose(F);
+        ret = gzclose(F);
         if(ret) {
             fprintf(stderr, "error: failed to close %s\n", argv[1]);
         }
