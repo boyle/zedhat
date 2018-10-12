@@ -1,3 +1,7 @@
+/* Copyright 2018, Alistair Boyle, 3-clause BSD License */
+#ifndef __MODEL_H__
+#define __MODEL_H__
+
 struct mesh {
     int dim;
     double * nodes; /* n_nodes x dim */
@@ -12,3 +16,6 @@ struct mesh {
 
 void mesh_init(struct mesh * m);
 void mesh_free(struct mesh * m);
+
+double det(int n, double A[n][n]);
+#endif

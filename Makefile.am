@@ -23,12 +23,13 @@ dist_man_MANS = man/zedhat.1
 EXTRA_DIST = $(bin_SCRIPTS) \
 				 ChangeLog README.md NEWS LICENSE
 
-BUILT_TESTS = tests/libcblas_dgemm tests/liblapacke_dgels tests/libumfpack tests/libmatio tests/readngvol
+BUILT_TESTS = tests/libcblas_dgemm tests/liblapacke_dgels tests/libumfpack tests/libmatio tests/readngvol tests/model
 check_PROGRAMS = $(BUILT_TESTS)
 #tests_unit_perftimer_SOURCES = tests/unit-perftimer.c src/perftimer.c
 #tests_unit_perftimer_CPPFLAGS = -I$(srcdir)/src
 #readngvol_SOURCES = src/readngvol.c
 tests_readngvol_SOURCES = tests/readngvol.c src/readngvol.c src/model.c
+tests_model_SOURCES = tests/model.c src/model.c tests/cmocka.c
 
 clean-local: clean-local-check
 	  -rm -f src/*.lo
