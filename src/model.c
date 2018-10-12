@@ -35,7 +35,7 @@ double* A inv(double * A, int n)
 }
 */
 
-#if 1
+#if 0
 double det(int n, double A[3][3])
 {
     int i;
@@ -51,10 +51,10 @@ double det(int n, double A[n][n])
     if(n == 2) {
         return A[0][0] * A[1][1] - A[0][1] * A[1][0];
     }
-    int d = 0;
+    double d = 0;
     double sign = 1.0;
     int i, j, k, s;
-    for(i = 0; i < n; i++, sign *= -1) {
+    for(i = 0; i < n; i++, sign *= -1.0) {
         /* construct sub-matrix B */
         double B[n - 1][n - 1];
         for(j = 1; j < n; j++) {
