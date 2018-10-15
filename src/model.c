@@ -1,13 +1,17 @@
 /* Copyright 2018, Alistair Boyle, 3-clause BSD License */
-#include <string.h> /* memset */
+#include <string.h> /* bzero */
 #include <stdlib.h> /* free */
 #include <lapacke.h> /* inv: dgetrf, dgetri */
 
 #include "model.h"
 
+/* references:
+ * [1] A. Boyle, PhD Thesis, 2016, Geophysical Applications of Electrical Impedance Tomography, Carleton University
+ */
+
 void mesh_init(struct mesh * m)
 {
-    memset(m, 0, sizeof(struct mesh));
+    bzero(m, sizeof(struct mesh));
 }
 
 void mesh_free(struct mesh * m)
@@ -20,20 +24,17 @@ void mesh_free(struct mesh * m)
     mesh_init(m);
 }
 
-/*
-double* A inv(double * A, int n)
+double * inv(int n, double A[n][n])
 {
-    int ipiv[n + 1] = {0};
-    lapack_int ret;
-    if(LAPACKE_dgetrf(LAPACK_ROW_MAJOR, n, n, A, n, ipiv)) {
+    double * Ap = &(A[0][0]);
+    int ipiv[n + 1];
+    bzero(ipiv, (n + 1)*sizeof(int));
+    if(LAPACKE_dgetrf(LAPACK_ROW_MAJOR, n, n, Ap, n, ipiv) ||
+       LAPACKE_dgetri(LAPACK_ROW_MAJOR, n, Ap, n, ipiv)) {
         return NULL;
     }
-    if(LAPACKE_dgetri(LAPACK_ROW_MAJOR, n, A, n, ipiv)) {
-        return NULL;
-    }
-    return A;
+    return Ap;
 }
-*/
 
 double det(int n, double A[n][n])
 {

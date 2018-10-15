@@ -18,4 +18,5 @@ void mesh_init(struct mesh * m);
 void mesh_free(struct mesh * m);
 
 double det(int n, double A[n][n]);
+double * inv(int n, double A[n][n]);
 #endif
