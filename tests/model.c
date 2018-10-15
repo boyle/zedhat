@@ -18,6 +18,18 @@
    assert_true(fabs(a - b) <= delta); \
 } while(0)
 
+double simple_det3(int n, double A[3][3])
+{
+    assert_int_equal(n,3);
+
+    int i;
+    double d = 0;
+    for (i = 0; i < 3; i++) {
+        d += A[0][i] * (A[1][(i + 1) % 3] * A[2][(i + 2) % 3] - A[2][(i + 1) % 3] * A[1][(i + 2) % 3]);
+    }
+    return d;
+}
+
 void test_det2(void ** state)
 {
     double I[2][2] = {
@@ -96,6 +108,12 @@ void test_det3(void ** state)
     assert_double_equal( det(3, A), det(3, At), 0.0);
     assert_double_equal( det(3, AB), det(3, A)*det(3, B), 2e4 * DBL_EPSILON);
     printf("checks |I| = 1; |A| = |At|; |A*B| = |A|*|B|\n");
+    /* compare to simple_det3 when n == 3 */
+    assert_double_equal( det(3, I), simple_det3(3, I), 0.0);
+    assert_double_equal( det(3, A), simple_det3(3, A), 0.0);
+    assert_double_equal( det(3, B), simple_det3(3, B), 0.0);
+    assert_double_equal( det(3, At), simple_det3(3, At), 0.0);
+    assert_double_equal( det(3, AB), simple_det3(3, AB), 0.0);
 }
 
 void test_det4(void ** state)

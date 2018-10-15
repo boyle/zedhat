@@ -35,17 +35,6 @@ double* A inv(double * A, int n)
 }
 */
 
-#if 0
-double det(int n, double A[3][3])
-{
-    int i;
-    double d = 0;
-    for (i = 0; i < 3; i++) {
-        d += A[0][i] * (A[1][(i + 1) % 3] * A[2][(i + 2) % 3] - A[2][(i + 1) % 3] * A[1][(i + 2) % 3]);
-    }
-    return d;
-}
-#else
 double det(int n, double A[n][n])
 {
     if(n == 2) {
@@ -69,4 +58,3 @@ double det(int n, double A[n][n])
     }
     return d;
 }
-#endif
