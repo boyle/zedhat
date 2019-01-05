@@ -411,46 +411,53 @@ void test_bad_inv(void ** state)
     assert_true( inv(2, singularA) == NULL );
 }
 
+double* sym_to_full(int n, double* As, double *Bf) {
+    int i, j;
+    memset(Bf, 0, sizeof(double)*n*n);
+    int m = 0;
+    printf("sym = ");
+    for ( i = 0; i < n; i++ ) { /* row-major */
+       for ( j = i; j < n; j++ ) {
+          Bf[i + j*n] = As[m];
+          Bf[i*n + j] = As[m];
+          printf(" %0.2f", As[m]);
+          m++;
+       }
+    }
+    printf(" (row-major, upper-triangular)\n");
+    return Bf;
+}
+
 void test_shape(void ** state)
 {
+    double out[4*4];
+    double tmp[4*4];
     double singularA[3][3] = {
         {0, 0, 0},
         {0, 0, 0},
         {0, 1, 0},
     };
-    printf("Sh: check for singular matrix erroring out\n");
-    assert_true( Sh(3, singularA) == NULL );
+    printf("Se: check for singular matrix erroring out\n");
+    assert_true( calc_Se(3, singularA, out) == NULL );
     /* matlab:
      *   E = inv([1 1 0; 1 0 1; 1 0 0])
      *   Sh = E(2:3,:)*sqrt(1/2/abs(det(E)))
-     *   S = Sh'*Sh
+     *   Se = Sh'*Sh
      */
-    double tmp2[3][3] = {{0}};
     double A[3][3] = {
         {0.1, 1.0, 0.0},
         {0.2, 0.0, 1.0},
         {0.3, 0.0, 0.0},
     };
     printf_mat("A", 3, &(A[0][0]));
-    printf_mat("A --> S^{1/2}", 3, mat_wrap(3, A, tmp2, Sh));
-    double S2[3][3] = {{0}};
-    /* S = Sh^T * Sh */
-    int i, j, k;
-    for (i = 0; i < 3; i++) {
-        for (j = 0; j < 3; j++) {
-            for (k = 1; k < 3; k++) { /* skip first row of S^{1/2} */
-                S2[i][j] += tmp2[k][i] * tmp2[k][j];
-            }
-        }
-    }
-    printf_mat("S", 3, &(S2[0][0]));
+    printf_mat("A --> S", 3, sym_to_full(3, calc_Se(3, A, tmp), out));
     double Se2[3][3] = {
         { 0.5,  0.0, -0.5},
         { 0.0,  0.5, -0.5},
         {-0.5, -0.5,  1.0},
     };
     printf_mat("Se", 3, &(Se2[0][0]));
-    double * tmp2S = &(S2[0][0]);
+    double * tmp2S = &(out[0]);
     double * tmp2Se = &(Se2[0][0]);
     assert_mat_equal( 3, tmp2S, tmp2Se, DBL_EPSILON);
     /* matlab:
@@ -458,7 +465,6 @@ void test_shape(void ** state)
      *   Sh = E(2:4,:)*sqrt(1/6/abs(det(E)))
      *   S = Sh'*Sh
      */
-    double tmp3[4][4] = {{0}};
     double B[4][4] = {
         {0.1, 1.0, 0.0, 0.0},
         {0.2, 0.0, 1.0, 0.0},
@@ -466,17 +472,7 @@ void test_shape(void ** state)
         {0.4, 0.0, 0.0, 0.0},
     };
     printf_mat("B", 4, &(B[0][0]));
-    printf_mat("B --> S^{1/2}", 4, mat_wrap(4, B, tmp3, Sh));
-    double S3[4][4] = {{0}};
-    /* S = Sh^T * Sh */
-    for (i = 0; i < 4; i++) {
-        for (j = 0; j < 4; j++) {
-            for (k = 1; k < 4; k++) { /* skip first row of S^{1/2} */
-                S3[i][j] += tmp3[k][i] * tmp3[k][j];
-            }
-        }
-    }
-    printf_mat("S", 4, &(S3[0][0]));
+    printf_mat("B --> S", 4, sym_to_full(4, calc_Se(4, B, tmp), out));
     double Se3[4][4] = {
         {1.0 / 6.0, 0, 0, -1.0 / 6.0},
         {0, 1.0 / 6.0, 0, -1.0 / 6.0},
@@ -484,7 +480,7 @@ void test_shape(void ** state)
         {-1.0 / 6.0, -1.0 / 6.0, -1.0 / 6.0, 1.0 / 2.0},
     };
     printf_mat("Se", 4, &(Se3[0][0]));
-    double * tmp3S = &(S3[0][0]);
+    double * tmp3S = &(out[0]);
     double * tmp3Se = &(Se3[0][0]);
     assert_mat_equal( 4, tmp3S, tmp3Se, DBL_EPSILON);
 }

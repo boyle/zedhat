@@ -23,9 +23,10 @@ tests/libcblas_dgemm
 tests/liblapacke_dgels
 tests/libumfpack
 tests/libmatio
+tests/model
+tests/readngvol
 testsuite
 testsuite.dir/
-readngvol
 zedhat
 zedhat-*/
 zedhat-*.tar.gz

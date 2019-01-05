@@ -62,16 +62,17 @@ double det(int n, double A[n][n])
 }
 
 /* shape function
- * S^{1/2} from [1] eq (C.32) -- first-order tetrahedral element
+ * Se from [1] eq (C.31) -- first-order tetrahedral element
+ * Se is symmetric, only the lower triangular portion is calculated (E1^T E1 is symmetric)
  * inputs: n = size of n x n matrix E, E[0..n][1..n] = matrix of node locations
- * output: mangles E and returns S^{1/2} as E[1..n][0..n]
- * returns: double* &(E[1][0]) or NULL if matrix inverse fails
+ * output: mangles Se as upper triangular symmetric matrix, row-major order
+ * returns: NULL if matrix inverse fails, Se otherwise
  */
-double * Sh(int n, double E[n][n])
+double* calc_Se(int n, double E[n][n], double* Se)
 {
-    int i, j;
+    int i, j, k, m;
     for(i = 0; i < n; i++) {
-        E[i][0] = 1;
+        E[i][0] = 1; /* from [1] eq (C.33) */
     }
     if(inv(n, E) == NULL) {
         return NULL;
@@ -82,11 +83,19 @@ double * Sh(int n, double E[n][n])
     for( nd = n - 1; nd > 0; nd-- ) {
         ndf *= nd;
     }
-    const double c = sqrt(1 / (ndf * detE));
-    for(i = 1; i < n; i++) {
-        for(j = 0; j < n; j++) {
-            E[i][j] *= c;
+    const double c = 1 / (ndf * detE);
+    /* Se = c * E1^T E1, where E1 is E without the top row */
+    m = 0;
+    for( i = 0; i < n; i++ ) {
+        for( j = i; j < n; j++ ) {
+            Se[m] = 0;
+            for( k = 1; k < n; k++) {
+               Se[m] += E[k][i] * E[k][j];
+            }
+            /* TODO pull this out and multiply by conductivity D, to save some multiply operations */
+            Se[m] *= c;
+            m++;
         }
     }
-    return &(E[1][0]);
+    return Se;
 }
