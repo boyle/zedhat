@@ -411,18 +411,19 @@ void test_bad_inv(void ** state)
     assert_true( inv(2, singularA) == NULL );
 }
 
-double* sym_to_full(int n, double* As, double *Bf) {
+double * sym_to_full(int n, double * As, double * Bf)
+{
     int i, j;
-    memset(Bf, 0, sizeof(double)*n*n);
+    memset(Bf, 0, sizeof(double)*n * n);
     int m = 0;
     printf("sym = ");
     for ( i = 0; i < n; i++ ) { /* row-major */
-       for ( j = i; j < n; j++ ) {
-          Bf[i + j*n] = As[m];
-          Bf[i*n + j] = As[m];
-          printf(" %0.2f", As[m]);
-          m++;
-       }
+        for ( j = i; j < n; j++ ) {
+            Bf[i + j * n] = As[m];
+            Bf[i * n + j] = As[m];
+            printf(" %0.2f", As[m]);
+            m++;
+        }
     }
     printf(" (row-major, upper-triangular)\n");
     return Bf;
@@ -430,59 +431,68 @@ double* sym_to_full(int n, double* As, double *Bf) {
 
 void test_shape(void ** state)
 {
-    double out[4*4];
-    double tmp[4*4];
-    double singularA[3][3] = {
-        {0, 0, 0},
-        {0, 0, 0},
-        {0, 1, 0},
-    };
-    printf("Se: check for singular matrix erroring out\n");
-    assert_true( calc_Se(3, singularA, out) == NULL );
+    double out[4 * 4];
+    double tmp[4 * 4];
+    {
+        double singularA[3][3] = {
+            {0, 0, 0},
+            {0, 0, 0},
+            {0, 1, 0},
+        };
+        const double * N[] = {&singularA[0][1], &singularA[1][1], &singularA[2][1]};
+        printf("Se: check for singular matrix erroring out\n");
+        assert_true( calc_Se_v(2, N, out) == NULL );
+    }
     /* matlab:
      *   E = inv([1 1 0; 1 0 1; 1 0 0])
      *   Sh = E(2:3,:)*sqrt(1/2/abs(det(E)))
      *   Se = Sh'*Sh
      */
-    double A[3][3] = {
-        {0.1, 1.0, 0.0},
-        {0.2, 0.0, 1.0},
-        {0.3, 0.0, 0.0},
-    };
-    printf_mat("A", 3, &(A[0][0]));
-    printf_mat("A --> S", 3, sym_to_full(3, calc_Se(3, A, tmp), out));
-    double Se2[3][3] = {
-        { 0.5,  0.0, -0.5},
-        { 0.0,  0.5, -0.5},
-        {-0.5, -0.5,  1.0},
-    };
-    printf_mat("Se", 3, &(Se2[0][0]));
-    double * tmp2S = &(out[0]);
-    double * tmp2Se = &(Se2[0][0]);
-    assert_mat_equal( 3, tmp2S, tmp2Se, DBL_EPSILON);
+    {
+        double A[3][3] = {
+            {0.1, 1.0, 0.0},
+            {0.2, 0.0, 1.0},
+            {0.3, 0.0, 0.0},
+        };
+        const double * N[] = {&A[0][1], &A[1][1], &A[2][1]};
+        printf_mat("A", 3, &(A[0][0]));
+        printf_mat("A --> S", 3, sym_to_full(3, calc_Se_v(2, N, tmp), out));
+        double Se2[3][3] = {
+            { 0.5,  0.0, -0.5},
+            { 0.0,  0.5, -0.5},
+            {-0.5, -0.5,  1.0},
+        };
+        printf_mat("Se", 3, &(Se2[0][0]));
+        double * tmp2S = &(out[0]);
+        double * tmp2Se = &(Se2[0][0]);
+        assert_mat_equal( 3, tmp2S, tmp2Se, DBL_EPSILON);
+    }
     /* matlab:
      *   E = inv([1 1 0 0; 1 0 1 0; 1 0 0 1; 1 0 0 0])
      *   Sh = E(2:4,:)*sqrt(1/6/abs(det(E)))
      *   S = Sh'*Sh
      */
-    double B[4][4] = {
-        {0.1, 1.0, 0.0, 0.0},
-        {0.2, 0.0, 1.0, 0.0},
-        {0.3, 0.0, 0.0, 1.0},
-        {0.4, 0.0, 0.0, 0.0},
-    };
-    printf_mat("B", 4, &(B[0][0]));
-    printf_mat("B --> S", 4, sym_to_full(4, calc_Se(4, B, tmp), out));
-    double Se3[4][4] = {
-        {1.0 / 6.0, 0, 0, -1.0 / 6.0},
-        {0, 1.0 / 6.0, 0, -1.0 / 6.0},
-        {0, 0, 1.0 / 6.0, -1.0 / 6.0},
-        {-1.0 / 6.0, -1.0 / 6.0, -1.0 / 6.0, 1.0 / 2.0},
-    };
-    printf_mat("Se", 4, &(Se3[0][0]));
-    double * tmp3S = &(out[0]);
-    double * tmp3Se = &(Se3[0][0]);
-    assert_mat_equal( 4, tmp3S, tmp3Se, DBL_EPSILON);
+    {
+        double B[4][4] = {
+            {0.1, 1.0, 0.0, 0.0},
+            {0.2, 0.0, 1.0, 0.0},
+            {0.3, 0.0, 0.0, 1.0},
+            {0.4, 0.0, 0.0, 0.0},
+        };
+        const double * N[] = {&B[0][1], &B[1][1], &B[2][1], &B[3][1]};
+        printf_mat("B", 4, &(B[0][0]));
+        printf_mat("B --> S", 4, sym_to_full(4, calc_Se_v(3, N, tmp), out));
+        double Se3[4][4] = {
+            {1.0 / 6.0, 0, 0, -1.0 / 6.0},
+            {0, 1.0 / 6.0, 0, -1.0 / 6.0},
+            {0, 0, 1.0 / 6.0, -1.0 / 6.0},
+            {-1.0 / 6.0, -1.0 / 6.0, -1.0 / 6.0, 1.0 / 2.0},
+        };
+        printf_mat("Se", 4, &(Se3[0][0]));
+        double * tmp3S = &(out[0]);
+        double * tmp3Se = &(Se3[0][0]);
+        assert_mat_equal( 4, tmp3S, tmp3Se, DBL_EPSILON);
+    }
 }
 
 int main(void)
