@@ -429,7 +429,7 @@ double * sym_to_full(int n, double * As, double * Bf)
     return Bf;
 }
 
-void test_shape(void ** state)
+void test_shape_Se_v(void ** state)
 {
     double out[4 * 4];
     double tmp[4 * 4];
@@ -454,7 +454,7 @@ void test_shape(void ** state)
             {0.2, 0.0, 1.0},
             {0.3, 0.0, 0.0},
         };
-        const double * N[] = {&A[0][1], &A[1][1], &A[2][1]};
+        const double * N[] = {&(A[0][1]), &(A[1][1]), &(A[2][1])};
         printf_mat("A", 3, &(A[0][0]));
         printf_mat("A --> S", 3, sym_to_full(3, calc_Se_v(2, N, tmp), out));
         double Se2[3][3] = {
@@ -495,6 +495,17 @@ void test_shape(void ** state)
     }
 }
 
+void test_shape_Se_ij(void ** state)
+{
+    assert_true(0);
+}
+
+void test_shape_Se_n(void ** state)
+{
+    assert_true(calc_Se_n(2) == 6);
+    assert_true(calc_Se_n(3) == 10);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -505,7 +516,9 @@ int main(void)
         cmocka_unit_test(test_inv3),
         cmocka_unit_test(test_inv4),
         cmocka_unit_test(test_bad_inv),
-        cmocka_unit_test(test_shape),
+        cmocka_unit_test(test_shape_Se_v),
+//        cmocka_unit_test(test_shape_Se_ij),
+        cmocka_unit_test(test_shape_Se_n),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

@@ -19,5 +19,7 @@ void mesh_free(struct mesh * m);
 
 double det(int n, double A[n][n]);
 double * inv(int n, double A[n][n]);
-double * calc_Se_v(int nd, double const * const * const N, double * Se);
+double * calc_Se_v(const int nd, double const * const * const nodes, double * Se);
+void calc_Se_ij(const int nd, int const * const elem, int * ii, int * jj);
+int calc_Se_n(const int nd);
 #endif

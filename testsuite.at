@@ -271,8 +271,8 @@ AT_CHECK([readngvol junk7.not_vol],1,
 error: failed to load junk7.not_vol
 ])
 AT_CLEANUP
-AT_SETUP([mesh - system matrix calculator])
+AT_SETUP([model - system matrix calculator])
 AT_KEYWORDS([mesh])
-AT_CHECK([model],0,ignore,[[[  PASSED  ] 8 test(s).
+AT_CHECK([model],0,ignore,[[[  PASSED  ] 9 test(s).
 ]])
 AT_CLEANUP
