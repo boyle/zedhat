@@ -124,7 +124,8 @@ void calc_Se_ij(const int nd, int const * const elem, int * ii, int * jj)
     }
 }
 
-int calc_Se_n(const int nd) {
-   const int n = nd + 1;
-   return n*(n+1)/2;
+int calc_Se_n(const int nd)
+{
+    const int n = nd + 1;
+    return n * (n + 1) / 2;
 }

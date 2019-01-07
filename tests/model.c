@@ -495,15 +495,50 @@ void test_shape_Se_v(void ** state)
     }
 }
 
-void test_shape_Se_ij(void ** state)
-{
-    assert_true(0);
-}
-
 void test_shape_Se_n(void ** state)
 {
     assert_true(calc_Se_n(2) == 6);
     assert_true(calc_Se_n(3) == 10);
+}
+
+void printf_ii(const char * name, int n, int * ii)
+{
+    int j;
+    printf("%5s = %d", name, ii[0]);
+    for(j = 1; j < n; j++) {
+        printf(", %d", ii[j]);
+    }
+    printf("\n");
+}
+
+void test_shape_Se_ij(void ** state)
+{
+    const int n3 = calc_Se_n(3);
+    int ii [n3 + 1];
+    int jj [n3 + 1];
+    int elems[4] = {1, 2, 3, 4};
+    int i, j, k;
+    int nd;
+    for( nd = 2; nd <= 3; nd++) {
+        const int n = calc_Se_n(nd);
+        ii[n] = -1;
+        jj[n] = -1;
+        printf_ii("elems", nd+1, elems);
+        calc_Se_ij(nd, elems, ii, jj);
+        printf_ii("ii", n, ii);
+        printf_ii("jj", n, jj);
+        k = 0;
+        for( i = 0; i < nd + 1; i++ ) {
+            for( j = i; j < nd + 1; j++ ) {
+                assert_int_equal(ii[k], i + 1);
+                assert_int_equal(jj[k], j + 1);
+                k++;
+            }
+        }
+        /* check guard values at end of array */
+        assert_int_equal(ii[k], -1);
+        assert_int_equal(jj[k], -1);
+    }
 }
 
 int main(void)
@@ -516,9 +551,9 @@ int main(void)
         cmocka_unit_test(test_inv3),
         cmocka_unit_test(test_inv4),
         cmocka_unit_test(test_bad_inv),
-        cmocka_unit_test(test_shape_Se_v),
-//        cmocka_unit_test(test_shape_Se_ij),
         cmocka_unit_test(test_shape_Se_n),
+        cmocka_unit_test(test_shape_Se_v),
+        cmocka_unit_test(test_shape_Se_ij),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
