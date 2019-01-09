@@ -44,7 +44,7 @@ typedef struct matrix {
 int matrix_load(const char * file, matrix_t * matrix);
 /* int matrix_save(const char * file, const matrix_t matrix); */
 
-matrix_t * matrix_malloc(const char * name);
+matrix_t * matrix_malloc(const char * name, const char * symbol, const char * units);
 void matrix_free(matrix_t * matrix);
 
 #endif

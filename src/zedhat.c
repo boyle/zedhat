@@ -8,9 +8,9 @@
 #include "argv.h"
 #include "matrix.h"
 
-matrix_t * get_fwd_matrix(const args_t args, const char * name)
+matrix_t * get_fwd_matrix(const args_t args, const char * name, const char * symbol, const char * units)
 {
-    matrix_t * A = matrix_malloc(name);
+    matrix_t * A = matrix_malloc(name, symbol, units);
     if (A == NULL) {
         printf("fwd %s: ret = malloc failed (%s)\n", name, args.file[0]);
         return NULL;
@@ -27,17 +27,17 @@ matrix_t * get_fwd_matrix(const args_t args, const char * name)
 }
 
 #ifdef DEBUG
-void matrix_printf(const char * str, matrix_t * M, double * D)
+void matrix_printf(matrix_t * M, double * D)
 {
     int i, j;
-    printf("--- %10s ---\n", str);
+    printf("--- %10s (%2s) ---\n", M->name, M->symbol);
     for(i = 0; i < M->m; i++) {
         for(j = 0; j < M->n; j++) {
             printf("\t%g", D[i + (j * M->m)]);
         }
         printf("\n");
     }
-    printf("----%10s----\n", "----------");
+    printf("----%10s%6s----\n", "----------", "------");
 }
 #endif
 
@@ -53,9 +53,9 @@ int main(int argc, char ** argv)
         double * AA = NULL;
         double * BB = NULL;
         /* load: A X = B */
-        matrix_t * A = get_fwd_matrix(args, "A");
-        matrix_t * B = get_fwd_matrix(args, "B");
-        matrix_t * X = get_fwd_matrix(args, "X");
+        matrix_t * A = get_fwd_matrix(args, "A", NULL, NULL);
+        matrix_t * B = get_fwd_matrix(args, "B", NULL, NULL);
+        matrix_t * X = get_fwd_matrix(args, "X", NULL, NULL);
         if (!A || !B || !X) {
             ret = 1;
             goto fwd_quit;

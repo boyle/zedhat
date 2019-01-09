@@ -116,16 +116,22 @@ void matrix_sparse_free(matrix_sparse_t * sparse)
     sparse->ja = NULL;
 }
 
-matrix_t * matrix_malloc(const char * name)
+matrix_t * matrix_malloc(const char * name, const char * symbol, const char * units)
 {
     matrix_t * matrix = malloc(sizeof(matrix_t));
     if ( matrix == NULL ) {
         return NULL;
     }
     memset(matrix, 0, sizeof(matrix_t));
-    matrix->name = strdup(name);
-    matrix->units = strdup("□");
-    matrix->symbol = strdup("□");
+    if(name) {
+        matrix->name = strdup(name);
+    }
+    if(symbol) {
+        matrix->units = strdup(symbol);
+    }
+    if(units) {
+        matrix->symbol = strdup(units);
+    }
     return matrix;
 }
 

@@ -523,7 +523,7 @@ void test_shape_Se_ij(void ** state)
         const int n = calc_Se_n(nd);
         ii[n] = -1;
         jj[n] = -1;
-        printf_ii("elems", nd+1, elems);
+        printf_ii("elems", nd + 1, elems);
         calc_Se_ij(nd, elems, ii, jj);
         printf_ii("ii", n, ii);
         printf_ii("jj", n, jj);
