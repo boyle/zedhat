@@ -11,12 +11,12 @@
  * [1] A. Boyle, PhD Thesis, 2016, Geophysical Applications of Electrical Impedance Tomography, Carleton University
  */
 
-void mesh_init(struct mesh * m)
+void mesh_init(mesh_t * m)
 {
-    bzero(m, sizeof(struct mesh));
+    bzero(m, sizeof(mesh_t));
 }
 
-void mesh_free(struct mesh * m)
+void mesh_free(mesh_t * m)
 {
     free(m->nodes);
     free(m->elems);
@@ -128,4 +128,26 @@ int calc_Se_n(const int nd)
 {
     const int n = nd + 1;
     return n * (n + 1) / 2;
+}
+
+/* returns 0 on success, > 0 on failure as the singular element number e+1 */
+int calc_Se(const int nd, const int n_elems, double const * const nodes, int const * elems, int * ii, int * jj, double * Se)
+{
+    int i, j;
+    const int n = calc_Se_n(nd);
+    for( i = 0; i < n_elems; i++) {
+        calc_Se_ij(nd, elems, ii, jj);
+        double const * node_list [4];
+        for( j = 0; j < nd + 1; j ++) {
+            node_list[j] = &(nodes[elems[j] * nd]);
+        }
+        if(calc_Se_v(nd, node_list, Se) == NULL) {
+            return i + 1;
+        }
+        elems += (nd + 1);
+        ii += n;
+        jj += n;
+        Se += n;
+    }
+    return 0;
 }

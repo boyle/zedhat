@@ -7,6 +7,7 @@
 #include <string.h> /* cmocka.h, memcpy */
 #include <float.h> /* DBL_EPSILON */
 #include <math.h> /* fabs, pow */
+#include <stdlib.h> /* qsort */
 
 #include "cmocka.h"
 #include "model.h"
@@ -167,7 +168,7 @@ void test_det4(void ** state)
     printf("checks |I| = 1; |A| = |At|; |A*B| = |A|*|B|\n");
 }
 
-void printf_mat(char * varname, int n, double * m)
+void printf_mat_double(char * varname, int n, int m, double * mat)
 {
     printf("%s =\n", varname);
     const int space = 3;
@@ -177,8 +178,25 @@ void printf_mat(char * varname, int n, double * m)
             printf(" ");
         }
         printf("[");
-        for (j = 0; j < n; j++) {
-            printf(" % 20.15g", m[i * n + j]);
+        for (j = 0; j < m; j++) {
+            printf(" % 20.15g", mat[i * m + j]);
+        }
+        printf(" ]\n");
+    }
+}
+
+void printf_mat_int(char * varname, int n, int m, int * mat)
+{
+    printf("%s =\n", varname);
+    const int space = 3;
+    int i, j;
+    for (i = 0; i < n; i++) {
+        for (j = 0; j < space; j++) {
+            printf(" ");
+        }
+        printf("[");
+        for (j = 0; j < m; j++) {
+            printf(" % 10d", mat[i * m + j]);
         }
         printf(" ]\n");
     }
@@ -263,10 +281,10 @@ void test_inv2(void ** state)
     };
     double tmp[2][2] = {{0}};
     double * expected = NULL;
-    printf_mat("I^-1", 2, simple_inv2(2, I, tmp));
-    printf_mat("A^-1", 2, simple_inv2(2, A, tmp));
-    printf_mat("Ai", 2, &(Ai[0][0]));
-    printf_mat("B^-1", 2, simple_inv2(2, B, tmp));
+    printf_mat_double("I^-1", 2, 2, simple_inv2(2, I, tmp));
+    printf_mat_double("A^-1", 2, 2, simple_inv2(2, A, tmp));
+    printf_mat_double("Ai", 2, 2, &(Ai[0][0]));
+    printf_mat_double("B^-1", 2, 2, simple_inv2(2, B, tmp));
     expected = &(I[0][0]);
     assert_mat_equal( 2, simple_inv2(2, I, tmp), expected, 0.0);
     expected = &(Ai[0][0]);
@@ -317,10 +335,10 @@ void test_inv3(void ** state)
     };
     double tmp[3][3] = {{0}};
     double * expected = NULL;
-    printf_mat("I^-1", 3, simple_inv3(3, I, tmp));
-    printf_mat("A^-1", 3, simple_inv3(3, A, tmp));
-    printf_mat("Ai", 3, &(Ai[0][0]));
-    printf_mat("B^-1", 3, simple_inv3(3, B, tmp));
+    printf_mat_double("I^-1", 3, 3, simple_inv3(3, I, tmp));
+    printf_mat_double("A^-1", 3, 3, simple_inv3(3, A, tmp));
+    printf_mat_double("Ai", 3, 3, &(Ai[0][0]));
+    printf_mat_double("B^-1", 3, 3, simple_inv3(3, B, tmp));
     expected = &(I[0][0]);
     assert_mat_equal( 3, simple_inv3(3, I, tmp), expected, 0.0);
     expected = &(Ai[0][0]);
@@ -338,7 +356,7 @@ void test_inv3(void ** state)
     }
     expected = &(I[0][0]);
     double * in = &(BiB[0][0]);
-    printf_mat("B^-1*B = I? ...", 3, &(BiB[0][0]));
+    printf_mat_double("B^-1*B = I? ...", 3, 3, &(BiB[0][0]));
     assert_mat_equal( 3, in, expected, 5 * DBL_EPSILON);
     printf("checks I^-1 = I; A^-1 = Ai for diag A; B^-1 * B = I\n");
     double tt[3][3] = {{0}};
@@ -376,10 +394,10 @@ void test_inv4(void ** state)
     };
     double tmp[4][4] = {{0}};
     double * expected = NULL;
-    printf_mat("I^-1", 4, mat_wrap(4, I, tmp, inv));
-    printf_mat("A^-1", 4, mat_wrap(4, A, tmp, inv));
-    printf_mat("Ai", 4, &(Ai[0][0]));
-    printf_mat("B^-1", 4, mat_wrap(4, B, tmp, inv));
+    printf_mat_double("I^-1", 4, 4, mat_wrap(4, I, tmp, inv));
+    printf_mat_double("A^-1", 4, 4, mat_wrap(4, A, tmp, inv));
+    printf_mat_double("Ai", 4, 4, &(Ai[0][0]));
+    printf_mat_double("B^-1", 4, 4, mat_wrap(4, B, tmp, inv));
     expected = &(I[0][0]);
     assert_mat_equal( 4, mat_wrap(4, I, tmp, inv), expected, 0.0);
     expected = &(Ai[0][0]);
@@ -397,7 +415,7 @@ void test_inv4(void ** state)
     }
     expected = &(I[0][0]);
     double * in = &(BiB[0][0]);
-    printf_mat("B^-1*B = I? ...", 3, &(BiB[0][0]));
+    printf_mat_double("B^-1*B = I? ...", 3, 3, &(BiB[0][0]));
     assert_mat_equal( 4, in, expected, 5 * DBL_EPSILON);
     printf("checks I^-1 = I; A^-1 = Ai for diag A; B^-1 * B = I\n");
 }
@@ -455,14 +473,14 @@ void test_shape_Se_v(void ** state)
             {0.3, 0.0, 0.0},
         };
         const double * N[] = {&(A[0][1]), &(A[1][1]), &(A[2][1])};
-        printf_mat("A", 3, &(A[0][0]));
-        printf_mat("A --> S", 3, sym_to_full(3, calc_Se_v(2, N, tmp), out));
+        printf_mat_double("A", 3, 3, &(A[0][0]));
+        printf_mat_double("A --> S", 3, 3, sym_to_full(3, calc_Se_v(2, N, tmp), out));
         double Se2[3][3] = {
             { 0.5,  0.0, -0.5},
             { 0.0,  0.5, -0.5},
             {-0.5, -0.5,  1.0},
         };
-        printf_mat("Se", 3, &(Se2[0][0]));
+        printf_mat_double("Se", 3, 3, &(Se2[0][0]));
         double * tmp2S = &(out[0]);
         double * tmp2Se = &(Se2[0][0]);
         assert_mat_equal( 3, tmp2S, tmp2Se, DBL_EPSILON);
@@ -480,15 +498,15 @@ void test_shape_Se_v(void ** state)
             {0.4, 0.0, 0.0, 0.0},
         };
         const double * N[] = {&B[0][1], &B[1][1], &B[2][1], &B[3][1]};
-        printf_mat("B", 4, &(B[0][0]));
-        printf_mat("B --> S", 4, sym_to_full(4, calc_Se_v(3, N, tmp), out));
+        printf_mat_double("B", 4, 4, &(B[0][0]));
+        printf_mat_double("B --> S", 4, 4, sym_to_full(4, calc_Se_v(3, N, tmp), out));
         double Se3[4][4] = {
             {1.0 / 6.0, 0, 0, -1.0 / 6.0},
             {0, 1.0 / 6.0, 0, -1.0 / 6.0},
             {0, 0, 1.0 / 6.0, -1.0 / 6.0},
             {-1.0 / 6.0, -1.0 / 6.0, -1.0 / 6.0, 1.0 / 2.0},
         };
-        printf_mat("Se", 4, &(Se3[0][0]));
+        printf_mat_double("Se", 4, 4, &(Se3[0][0]));
         double * tmp3S = &(out[0]);
         double * tmp3Se = &(Se3[0][0]);
         assert_mat_equal( 4, tmp3S, tmp3Se, DBL_EPSILON);
@@ -541,6 +559,64 @@ void test_shape_Se_ij(void ** state)
     }
 }
 
+int cmp_diff(const void * a, const void * b)
+{
+    double d = *(double *)a - *(double *)b;
+    if(fabs(d) < DBL_EPSILON) {
+        return 0;
+    }
+    else {
+        return (d > 0) ? +1 : -1;
+    }
+}
+
+void test_shape_3d(void ** state)
+{
+    int i;
+    /* 3D cube:
+     *    all nodes used as in elems
+     * 2D square:
+     *    first four nodes at z=0
+     *    first two elems */
+    double nodes[8][3] = {
+        {0, 0, 0},
+        {0, 0, 1},
+        {1, 0, 0},
+        {0, 1, 0},
+        {1, 0, 1},
+        {0, 1, 1},
+        {1, 1, 0},
+        {1, 1, 1},
+    };
+    printf_mat_double("nodes", 8, 3, &(nodes[0][0]));
+    /* TODO currently each row of elems must be sorted
+     * or we won't get an upper triangular matrix */
+    /* Our 'elems' is a C index and starts at 0; netgen starts at 1 */
+    int elems[6][4] = { /* from netgen cube.geo */
+        {4, 2, 6, 8},
+        {8, 7, 2, 5},
+        {3, 2, 1, 7},
+        {3, 5, 2, 7},
+        {1, 2, 4, 7},
+        {8, 7, 4, 2},
+    };
+    int * e = &(elems[0][0]);
+    printf_mat_int("elems", 6, 4, e);
+    for( i = 0; i < 6 * 4; i++) {
+        e[i] -= 1;
+    }
+    for( i = 0; i < 6; i++) {
+        qsort(&(e[i * 4]), 4, sizeof(int), &cmp_diff);
+    }
+    printf_mat_int("elems-1", 6, 4, e);
+    const int n = calc_Se_n(3) * 6;
+    int * ii = malloc(sizeof(int) * n);
+    int * jj = malloc(sizeof(int) * n);
+    double * ss = malloc(sizeof(double) * n);
+    int ret = calc_Se(3, 6, &(nodes[0][0]), &(elems[0][0]), ii, jj, ss);
+    assert_int_equal(ret, 0);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -554,6 +630,7 @@ int main(void)
         cmocka_unit_test(test_shape_Se_n),
         cmocka_unit_test(test_shape_Se_v),
         cmocka_unit_test(test_shape_Se_ij),
+        cmocka_unit_test(test_shape_3d),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
