@@ -44,9 +44,10 @@ int main (void)
      * ans = [ -0.2500, -3.1250, 2.5000, 0.2500 ]' */
     double expect[4] = {-0.2500, -3.1250, 2.5000, 0.2500 };
     double Adx [4][4] = { { 1, 2, 3, 0 },
-                          { 2, 0, 0, 6 },
-                          { 3, 0, 0, 7 },
-                          { 0, 6, 7, 9 } };
+        { 2, 0, 0, 6 },
+        { 3, 0, 0, 7 },
+        { 0, 6, 7, 9 }
+    };
     cholmod_dense Ad = { 4, 4, 16, 4, &Adx, NULL, CHOLMOD_REAL, CHOLMOD_DOUBLE };
     cholmod_sparse * Atmp = cholmod_dense_to_sparse(&Ad, 1, &c);
     if (Atmp == NULL) {
@@ -74,15 +75,15 @@ int main (void)
     cholmod_sdmult (A, 0, m1, one, x, r, &c) ;      /* r = r-Ax */
     printf ("norm(b-Ax) %8.1e\n",
             cholmod_norm_dense (r, 0, &c)) ;        /* print norm(r) */
-    double* tmp = x->x;
+    double * tmp = x->x;
     int i;
-   for (i=0; i<4; i++) { 
-       printf("expect[%d] = % 10.4f, x[%d] = % 10.4f, delta = %+g\n",i,expect[i],i,tmp[i],expect[i]-tmp[i]);
-         if(fabs(expect[i] - tmp[i]) > 100*DBL_EPSILON) {
-             printf("FAIL\n");
-             return 1;
-         }
-   }
+    for (i = 0; i < 4; i++) {
+        printf("expect[%d] = % 10.4f, x[%d] = % 10.4f, delta = %+g\n", i, expect[i], i, tmp[i], expect[i] - tmp[i]);
+        if(fabs(expect[i] - tmp[i]) > 100 * DBL_EPSILON) {
+            printf("FAIL\n");
+            return 1;
+        }
+    }
     cholmod_free_factor (&L, &c) ;          /* free matrices */
     cholmod_free_sparse (&A, &c) ;
     cholmod_free_dense (&r, &c) ;

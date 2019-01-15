@@ -2,7 +2,7 @@
 #ifndef __MODEL_H__
 #define __MODEL_H__
 
-typedef struct mesh {
+typedef struct mesh_type {
     int dim;
     double * nodes; /* n_nodes x dim */
     int n_nodes;
@@ -12,10 +12,10 @@ typedef struct mesh {
     int * surfaceelems; /* n_se x dim */
     int * bc; /* n_se x 1 */
     int n_se;
-} mesh_t;
+} mesh;
 
-void mesh_init(mesh_t * m);
-void mesh_free(mesh_t * m);
+void mesh_init(mesh * m);
+void mesh_free(mesh * m);
 
 double det(int n, double A[n][n]);
 double * inv(int n, double A[n][n]);

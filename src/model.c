@@ -11,12 +11,12 @@
  * [1] A. Boyle, PhD Thesis, 2016, Geophysical Applications of Electrical Impedance Tomography, Carleton University
  */
 
-void mesh_init(mesh_t * m)
+void mesh_init(mesh * m)
 {
-    bzero(m, sizeof(mesh_t));
+    bzero(m, sizeof(mesh));
 }
 
-void mesh_free(mesh_t * m)
+void mesh_free(mesh * m)
 {
     free(m->nodes);
     free(m->elems);

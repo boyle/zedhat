@@ -7,12 +7,12 @@
 #include "config.h"
 #include "matrix.h"
 
-int matrix_load(const char * file, matrix_t * matrix)
+int matrix_load(const char * file, matrix * M)
 {
     int ret = 0;
     mat_t * in = NULL;
     matvar_t * t = NULL;
-    if (matrix == NULL) {
+    if (M == NULL) {
         return 1;    /* bad ptr */
     }
     in = Mat_Open(file, MAT_ACC_RDONLY);
@@ -24,21 +24,21 @@ int matrix_load(const char * file, matrix_t * matrix)
         t = Mat_VarReadNextInfo(in);
     }
     while ( (t != NULL) &&
-            strncmp(t->name, matrix->name, strlen(matrix->name)) );
+            strncmp(t->name, M->name, strlen(M->name)) );
     if (t == NULL) {
-        ret = 3;    /* end of list, matrix->name not found */
+        ret = 3;    /* end of list, M->name not found */
         goto _matrix_load_quit;
     }
     Mat_VarFree(t);
     Mat_Rewind(in);
-    t = Mat_VarRead(in, matrix->name);
+    t = Mat_VarRead(in, M->name);
     if (t == NULL) {
         ret = 4;
         goto _matrix_load_quit;
     }
     /* Mat_VarPrint(t, 1); */
     /* now check that we like what we found */
-    matrix->scale = 1.0;
+    M->scale = 1.0;
     if (t->isComplex) {
         ret = 5; /* expect 'real' data */
         goto _matrix_load_quit;
@@ -51,27 +51,27 @@ int matrix_load(const char * file, matrix_t * matrix)
         ret = 6; /* expect 'double' data */
         goto _matrix_load_quit;
     }
-    matrix->m = 0;
-    matrix->n = 1;
+    M->m = 0;
+    M->n = 1;
     int i;
     for (i = 0; i < t->rank; i++) {
         switch(i) {
-        case 0: matrix->m = t->dims[i]; break;
-        case 1: matrix->n = t->dims[i]; break;
+        case 0: M->m = t->dims[i]; break;
+        case 1: M->n = t->dims[i]; break;
         default: ret = 6; goto _matrix_load_quit; /* too many dimensions */
         }
     }
     switch (t->class_type) {
     case MAT_C_DOUBLE: /* steal 'dense' matrix data */
-        matrix->type = DENSE;
-        matrix->dense = (double *) t->data;
+        M->type = DENSE;
+        M->dense = (double *) t->data;
         t->data = NULL;
         break;
     case MAT_C_SPARSE:
         /* TODO proper loading of sparse matrices */
-        matrix->type = DENSE;
-        matrix->dense = calloc(matrix->m * matrix->n, sizeof(double));
-        if(matrix->dense == NULL) {
+        M->type = DENSE;
+        M->dense = calloc(M->m * M->n, sizeof(double));
+        if(M->dense == NULL) {
             ret = 7;
             goto _matrix_load_quit;
         }
@@ -86,7 +86,7 @@ int matrix_load(const char * file, matrix_t * matrix)
             for (i = ts->jc[j]; i < ts->jc[j + 1] && i < ts->ndata; i++) {
                 const int k = ts->ir[i];
                 const double dd = ((double *) ts->data)[i];
-                matrix->dense[ (j * matrix->m ) + k ] = dd;
+                M->dense[ (j * M->m ) + k ] = dd;
             }
         }
         break;
@@ -101,12 +101,12 @@ _matrix_load_quit: /* and clean up */
 }
 
 /*
-int matrix_save(const char * file, const matrix_t matrix)
+int matrix_save(const char * file, const matrix * M)
 {
 }
 */
 
-void matrix_sparse_free(matrix_sparse_t * sparse)
+void matrix_sparse_free(matrix_sparse * sparse)
 {
     free(sparse->a);
     free(sparse->ia);
@@ -116,49 +116,49 @@ void matrix_sparse_free(matrix_sparse_t * sparse)
     sparse->ja = NULL;
 }
 
-matrix_t * matrix_malloc(const char * name, const char * symbol, const char * units)
+matrix * matrix_malloc(const char * name, const char * symbol, const char * units)
 {
-    matrix_t * matrix = malloc(sizeof(matrix_t));
-    if ( matrix == NULL ) {
+    matrix * M = malloc(sizeof(matrix));
+    if ( M == NULL ) {
         return NULL;
     }
-    memset(matrix, 0, sizeof(matrix_t));
+    memset(M, 0, sizeof(matrix));
     if(name) {
-        matrix->name = strdup(name);
+        M->name = strdup(name);
     }
     if(symbol) {
-        matrix->units = strdup(symbol);
+        M->units = strdup(symbol);
     }
     if(units) {
-        matrix->symbol = strdup(units);
+        M->symbol = strdup(units);
     }
-    return matrix;
+    return M;
 }
 
-void matrix_free(matrix_t * matrix)
+void matrix_free(matrix * M)
 {
-    if(matrix == NULL) {
+    if(M == NULL) {
         return;
     }
-    switch (matrix->type) {
+    switch (M->type) {
     case DENSE:
-        free(matrix->dense);
-        matrix->dense = NULL;
+        free(M->dense);
+        M->dense = NULL;
         break;
     case CSR:
     case CSC:
     case COO:
-        matrix_sparse_free(matrix->sparse);
-        matrix->sparse = NULL;
+        matrix_sparse_free(M->sparse);
+        M->sparse = NULL;
         break;
     case IDENTITY:
         break;
     }
-    free(matrix->symbol);
-    free(matrix->name);
-    free(matrix->units);
-    matrix->symbol = NULL;
-    matrix->name = NULL;
-    matrix->units = NULL;
-    free(matrix);
+    free(M->symbol);
+    free(M->name);
+    free(M->units);
+    M->symbol = NULL;
+    M->name = NULL;
+    M->units = NULL;
+    free(M);
 }

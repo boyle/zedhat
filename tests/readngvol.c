@@ -6,7 +6,7 @@
 
 int main(int argc, char ** argv)
 {
-    struct mesh m = {0};
+    mesh m = {0};
     if(argc != 2) {
         fprintf(stderr, "usage: %s <netgen.vol>\n", basename(argv[0]));
         return 1;

@@ -23,7 +23,7 @@ void gzreadnext(gzFile F, char data[], int n)
     data[cnt + 1] = '\0';
 }
 
-int readngvol(char filename[], mesh_t * m)
+int readngvol(char filename[], mesh * m)
 {
     int ret = 1;
     int cnt;
