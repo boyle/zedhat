@@ -1,8 +1,9 @@
 /* Copyright 2018, Alistair Boyle, 3-clause BSD License */
 #include <string.h> /* bzero */
-#include <stdlib.h> /* free */
+#include <stdlib.h> /* free, qsort */
 #include <lapacke.h> /* inv: dgetrf, dgetri */
 #include <math.h> /* fabs */
+#include <limits.h> /* MAX_INT */
 
 #include "matrix.h"
 #include "model.h"
@@ -143,7 +144,7 @@ int calc_Se(mesh const * const m, int * ii, int * jj, double * Se)
         calc_Se_ij(nd, elems, ii, jj);
         double const * node_list [4];
         for( j = 0; j < nd + 1; j ++) {
-            node_list[j] = &(nodes[(elems[j]-1) * nd]);
+            node_list[j] = &(nodes[(elems[j] - 1) * nd]);
         }
         if(calc_Se_v(nd, node_list, Se) == NULL) {
             return i + 1;
@@ -154,4 +155,42 @@ int calc_Se(mesh const * const m, int * ii, int * jj, double * Se)
         Se += n;
     }
     return 0;
+}
+
+/* Removes ground node 'gnd' from COO entries by searching ii and jj.
+ * Side effect: sorts ii, jj, Se
+ * Returns number of entries removed */
+int cmp_int( const void * a, const void * b )
+{
+    return *(int *)a - *(int *)b;
+}
+int calc_gnd(const int gnd, int * nnz, int * ii, int * jj, double * Se)
+{
+    int ret = 0;
+    int i;
+    int idx [*nnz];
+    for ( i = 0; i < *nnz; i++ ) {
+        if ( ii[i] == gnd || jj[i] == gnd) {
+            idx[i] = INT_MAX;
+            ret++;
+        }
+        else {
+            idx[i] = i;
+            if ( ii[i] > gnd ) {
+                ii[i]--;
+            }
+            if ( jj[i] > gnd ) {
+                jj[i]--;
+            }
+        }
+    }
+    qsort(idx, *nnz, sizeof(int), &cmp_int);
+    for(i = 0 ; i < *nnz - ret; i++) {
+        const int x = idx[i];
+        ii[i] = ii[x];
+        jj[i] = jj[x];
+        Se[i] = Se[x];
+    }
+    nnz -= ret;
+    return ret;
 }

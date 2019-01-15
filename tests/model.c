@@ -559,11 +559,10 @@ void test_shape_Se_ij(void ** state)
     }
 }
 
-int cmp_int(const void * a, const void * b)
+int cmp_int_tests( const void * a, const void * b )
 {
     return *(int *)a - *(int *)b;
 }
-
 void test_shape_3d(void ** state)
 {
     int i;
@@ -600,21 +599,35 @@ void test_shape_3d(void ** state)
     int * e = &(elems[1][0]);
     printf_mat_int("elems", 6, 4, e);
     for( i = 0; i < 6; i++) {
-        qsort(&(e[i * 4]), 4, sizeof(int), &cmp_int);
+        qsort(&(e[i * 4]), 4, sizeof(int), &cmp_int_tests);
     }
     printf_mat_int("elems (sorted)", 6, 4, e);
-    const int n = calc_Se_n(3) * 6;
-    int * ii = malloc(sizeof(int) * n);
-    int * jj = malloc(sizeof(int) * n);
-    double * ss = malloc(sizeof(double) * n);
-    mesh m = { 0 };
-    m.dim = 3;
-    m.elems = &(elems[1][0]);
-    m.nodes = &(nodes[0][0]);
-    m.n_elems = 6;
-    m.n_nodes = 8;
-    int ret = calc_Se(&m, ii, jj, ss);
-    assert_int_equal(ret, 0);
+    int gnd;
+    for( gnd = -1; gnd < 10; gnd++ ) {
+        int nnz = calc_Se_n(3) * 6;
+        int * ii = malloc(sizeof(int) * nnz);
+        int * jj = malloc(sizeof(int) * nnz);
+        double * ss = malloc(sizeof(double) * nnz);
+        mesh m = { 0 };
+        m.dim = 3;
+        m.elems = &(elems[1][0]);
+        m.nodes = &(nodes[0][0]);
+        m.n_elems = 6;
+        m.n_nodes = 8;
+        int ret = calc_Se(&m, ii, jj, ss);
+        assert_int_equal(ret, 0);
+        int ngnd = calc_gnd(gnd, &nnz, ii, jj, ss);
+        printf("calc_gnd() gnd node #%d: deleted %d entries\n", gnd, ngnd);
+        if (gnd >= 0 && gnd < 8 ) {
+            assert_int_not_equal(ngnd, 0);
+        }
+        else {
+            assert_int_equal(ngnd, 0);
+        }
+        free(ii);
+        free(jj);
+        free(ss);
+    }
 }
 
 int main(void)

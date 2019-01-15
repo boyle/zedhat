@@ -23,4 +23,5 @@ double * calc_Se_v(const int nd, double const * const * const nodes, double * Se
 void calc_Se_ij(const int nd, int const * const elem, int * ii, int * jj);
 int calc_Se_n(const int nd);
 int calc_Se(mesh const * const mdl, int * ii, int * jj, double * Se);
+int calc_gnd(const int gnd, int * nnz, int * ii, int * jj, double * Se);
 #endif
