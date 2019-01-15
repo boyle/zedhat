@@ -607,7 +607,13 @@ void test_shape_3d(void ** state)
     int * ii = malloc(sizeof(int) * n);
     int * jj = malloc(sizeof(int) * n);
     double * ss = malloc(sizeof(double) * n);
-    int ret = calc_Se(3, 6, &(nodes[0][0]), &(elems[1][0]), ii, jj, ss);
+    mesh m = { 0 };
+    m.dim = 3;
+    m.elems = &(elems[1][0]);
+    m.nodes = &(nodes[0][0]);
+    m.n_elems = 6;
+    m.n_nodes = 8;
+    int ret = calc_Se(&m, ii, jj, ss);
     assert_int_equal(ret, 0);
 }
 

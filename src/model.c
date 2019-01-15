@@ -131,8 +131,12 @@ int calc_Se_n(const int nd)
 }
 
 /* returns 0 on success, > 0 on failure as the singular element number e+1 */
-int calc_Se(const int nd, const int n_elems, double const * const nodes, int const * elems, int * ii, int * jj, double * Se)
+int calc_Se(mesh const * const m, int * ii, int * jj, double * Se)
 {
+    const int nd = m->dim;
+    const int n_elems = m->n_elems;
+    const int * elems = m->elems;
+    const double * nodes = m->nodes;
     int i, j;
     const int n = calc_Se_n(nd);
     for( i = 0; i < n_elems; i++) {
