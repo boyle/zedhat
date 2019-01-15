@@ -22,6 +22,7 @@ package.m4
 tests/libcblas_dgemm
 tests/liblapacke_dgels
 tests/libumfpack
+tests/libcholmod
 tests/libmatio
 tests/model
 tests/readngvol

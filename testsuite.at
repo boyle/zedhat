@@ -77,6 +77,11 @@ AT_KEYWORDS([umfpack libs])
 AT_CHECK([libumfpack],0,ignore)
 AT_CLEANUP
 
+AT_SETUP([cholmod])
+AT_KEYWORDS([cholmod libs])
+AT_CHECK([libcholmod],0,ignore)
+AT_CLEANUP
+
 AT_SETUP([matio])
 AT_KEYWORDS([matio libs])
 

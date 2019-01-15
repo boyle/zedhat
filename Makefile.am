@@ -8,7 +8,7 @@ zedhat_SOURCES = src/zedhat.c src/argv.c src/matrix.c
 
 AM_CFLAGS = $(CFLAGS)
 AM_CFLAGS += $(MATIO_CFLAGS) $(UMFPACK_CFLAGS) $(LAPACKE_CFLAGS) $(LAPACK_CFLAGS) $(BLAS_CFLAGS)
-LIBS += $(MATIO_LIBS) $(UMFPACK_LIBS) $(LAPACKE_LIBS) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)
+LIBS += $(MATIO_LIBS) $(UMFPACK_LIBS) $(CHOLMOD_LIBS) $(LAPACKE_LIBS) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)
 AM_CFLAGS += -Werror -Wall #-Wextra
 
 # header files that need to be distributed but not installed
@@ -23,7 +23,9 @@ dist_man_MANS = man/zedhat.1
 EXTRA_DIST = $(bin_SCRIPTS) \
 				 ChangeLog README.md NEWS LICENSE
 
-BUILT_TESTS = tests/libcblas_dgemm tests/liblapacke_dgels tests/libumfpack tests/libmatio tests/readngvol tests/model
+BUILT_TESTS = tests/libcblas_dgemm tests/liblapacke_dgels \
+			  tests/libumfpack tests/libcholmod tests/libmatio \
+			  tests/readngvol tests/model
 check_PROGRAMS = $(BUILT_TESTS)
 #tests_unit_perftimer_SOURCES = tests/unit-perftimer.c src/perftimer.c
 #tests_unit_perftimer_CPPFLAGS = -I$(srcdir)/src

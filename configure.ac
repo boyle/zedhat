@@ -91,6 +91,15 @@ AC_SEARCH_LIBS([umfpack_di_symbolic], [umfpack], , [AC_MSG_ERROR([missing umfpac
 UMFPACK_LIBS="$LIBS"
 LIBS="$save_LIBS"
 
+PKG_CHECK_MODULES([CHOLMOD],[cholmod],,true) # no pkg-config for cholmod on Ubuntu?
+AC_CHECK_HEADERS([suitesparse/cholmod.h],[CHOLMOD_CFLAGS="$CHOLMOD_CFLAGS -I/usr/include/suitesparse";cholmod_h_ok=yes;break;])
+AC_CHECK_HEADERS([cholmod.h],[cholmod_h_ok=yes;break;])
+AS_IF([test "x$cholmod_h_ok" == "xyes"],,[AC_MSG_ERROR([missing cholmod.h])])
+save_LIBS="$LIBS"; LIBS="$CHOLMOD_LIBS $LIBS"
+AC_SEARCH_LIBS([cholmod_analyze], [cholmod], , [AC_MSG_ERROR([missing cholmod library])])
+CHOLMOD_LIBS="$LIBS"
+LIBS="$save_LIBS"
+
 PKG_CHECK_MODULES([MATIO],[matio])
 AC_CHECK_HEADERS([matio.h],[matio_h_ok=yes;break;])
 AS_IF([test "x$matio_h_ok" == "xyes"],,[AC_MSG_ERROR([missing matio.h])])
@@ -171,6 +180,9 @@ AS_IF([test "x$ax_lapacke_ok" = xyes -a "x$LAPACKE_LIBS" != "x"],
 AS_IF([test "x$umfpack_h_ok" = xyes -a "x$UMFPACK_LIBS" != "x"],
       AC_MSG_RESULT([    UMFPACK: $UMFPACK_LIBS ; $UMFPACK_CFLAGS]),
       AC_MSG_RESULT([    UMFPACK: $umfpack_h_ok]))
+AS_IF([test "x$cholmod_h_ok" = xyes -a "x$CHOLMOD_LIBS" != "x"],
+      AC_MSG_RESULT([    CHOLMOD: $CHOLMOD_LIBS ; $CHOLMOD_CFLAGS]),
+      AC_MSG_RESULT([    CHOLMOD: $cholmod_h_ok]))
 AS_IF([test "x$matio_ok" = xyes -a "x$MATIO_LIBS" != "x"],
       AC_MSG_RESULT([      MATIO: $MATIO_LIBS]),
       AC_MSG_RESULT([      MATIO: $matio_ok]))
