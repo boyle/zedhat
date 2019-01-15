@@ -117,8 +117,8 @@ void calc_Se_ij(const int nd, int const * const elem, int * ii, int * jj)
     int i, j;
     for( i = 0; i < n; i++ ) {
         for( j = i; j < n; j++ ) {
-            ii[idx] = elem[i];
-            jj[idx] = elem[j];
+            ii[idx] = elem[i] - 1;
+            jj[idx] = elem[j] - 1;
             idx++;
         }
     }
@@ -139,7 +139,7 @@ int calc_Se(const int nd, const int n_elems, double const * const nodes, int con
         calc_Se_ij(nd, elems, ii, jj);
         double const * node_list [4];
         for( j = 0; j < nd + 1; j ++) {
-            node_list[j] = &(nodes[elems[j] * nd]);
+            node_list[j] = &(nodes[(elems[j]-1) * nd]);
         }
         if(calc_Se_v(nd, node_list, Se) == NULL) {
             return i + 1;

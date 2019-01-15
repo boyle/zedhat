@@ -548,8 +548,8 @@ void test_shape_Se_ij(void ** state)
         k = 0;
         for( i = 0; i < nd + 1; i++ ) {
             for( j = i; j < nd + 1; j++ ) {
-                assert_int_equal(ii[k], i + 1);
-                assert_int_equal(jj[k], j + 1);
+                assert_int_equal(ii[k], i);
+                assert_int_equal(jj[k], j);
                 k++;
             }
         }
@@ -559,15 +559,9 @@ void test_shape_Se_ij(void ** state)
     }
 }
 
-int cmp_diff(const void * a, const void * b)
+int cmp_int(const void * a, const void * b)
 {
-    double d = *(double *)a - *(double *)b;
-    if(fabs(d) < DBL_EPSILON) {
-        return 0;
-    }
-    else {
-        return (d > 0) ? +1 : -1;
-    }
+    return *(int *)a - *(int *)b;
 }
 
 void test_shape_3d(void ** state)
@@ -578,7 +572,7 @@ void test_shape_3d(void ** state)
      * 2D square:
      *    first four nodes at z=0
      *    first two elems */
-    double nodes[8][3] = {
+    double nodes[9][3] = {
         {0, 0, 0},
         {0, 0, 1},
         {1, 0, 0},
@@ -587,33 +581,33 @@ void test_shape_3d(void ** state)
         {0, 1, 1},
         {1, 1, 0},
         {1, 1, 1},
+        {0, 0, 0}, /* guard */
     };
     printf_mat_double("nodes", 8, 3, &(nodes[0][0]));
     /* TODO currently each row of elems must be sorted
      * or we won't get an upper triangular matrix */
-    /* Our 'elems' is a C index and starts at 0; netgen starts at 1 */
-    int elems[6][4] = { /* from netgen cube.geo */
+    /* Our 'elems' starts at 1 which agrees with netgen */
+    int elems[8][4] = { /* from netgen cube.geo */
+        {0, 0, 0, 0}, /* guard */
         {4, 2, 6, 8},
         {8, 7, 2, 5},
         {3, 2, 1, 7},
         {3, 5, 2, 7},
         {1, 2, 4, 7},
         {8, 7, 4, 2},
+        {0, 0, 0, 0}, /* guard */
     };
-    int * e = &(elems[0][0]);
+    int * e = &(elems[1][0]);
     printf_mat_int("elems", 6, 4, e);
-    for( i = 0; i < 6 * 4; i++) {
-        e[i] -= 1;
-    }
     for( i = 0; i < 6; i++) {
-        qsort(&(e[i * 4]), 4, sizeof(int), &cmp_diff);
+        qsort(&(e[i * 4]), 4, sizeof(int), &cmp_int);
     }
-    printf_mat_int("elems-1", 6, 4, e);
+    printf_mat_int("elems (sorted)", 6, 4, e);
     const int n = calc_Se_n(3) * 6;
     int * ii = malloc(sizeof(int) * n);
     int * jj = malloc(sizeof(int) * n);
     double * ss = malloc(sizeof(double) * n);
-    int ret = calc_Se(3, 6, &(nodes[0][0]), &(elems[0][0]), ii, jj, ss);
+    int ret = calc_Se(3, 6, &(nodes[0][0]), &(elems[1][0]), ii, jj, ss);
     assert_int_equal(ret, 0);
 }
 
