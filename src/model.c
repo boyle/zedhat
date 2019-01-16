@@ -144,7 +144,11 @@ int calc_Se(mesh const * const m, int * ii, int * jj, double * Se)
         calc_Se_ij(nd, elems, ii, jj);
         double const * node_list [4];
         for( j = 0; j < nd + 1; j ++) {
-            node_list[j] = &(nodes[(elems[j] - 1) * nd]);
+            int idx = elems[j] - 1;
+            if ( idx < 0 ) {
+                idx = 0;
+            }
+            node_list[j] = &(nodes[idx * nd]);
         }
         if(calc_Se_v(nd, node_list, Se) == NULL) {
             return i + 1;
@@ -158,86 +162,81 @@ int calc_Se(mesh const * const m, int * ii, int * jj, double * Se)
 }
 
 /* Removes ground node 'gnd' from COO entries by searching ii and jj.
- * Side effect: sorts ii, jj, Se
- * Returns number of entries removed */
+ * Returns number of entries modified or deleted */
 int cmp_int( const void * a, const void * b )
 {
     return *(int *)a - *(int *)b;
 }
 int calc_gnd(const int gnd, int * nnz, int * ii, int * jj, double * Se)
 {
+    const int gndidx = gnd - 1;
     int ret = 0;
     int i;
     int idx [*nnz];
     for ( i = 0; i < *nnz; i++ ) {
-        if ( ii[i] == gnd || jj[i] == gnd) {
-            idx[i] = INT_MAX;
+        if ( ii[i] == gndidx || jj[i] == gndidx) {
+            if (ret == 0) { /* replace with (gndidx,gndidx)=1.0 */
+                idx[i] = i;
+                ii[i] = gndidx;
+                jj[i] = gndidx;
+                Se[i] = 1.0;
+            }
+            else {
+                idx[i] = INT_MAX; /* remove */
+            }
             ret++;
         }
         else {
             idx[i] = i;
-            if ( ii[i] > gnd ) {
-                ii[i]--;
-            }
-            if ( jj[i] > gnd ) {
-                jj[i]--;
-            }
         }
     }
+    if( ret <= 1 ) {
+        return ret;
+    }
     qsort(idx, *nnz, sizeof(int), &cmp_int);
-    for(i = 0 ; i < *nnz - ret; i++) {
+    *nnz -= ret - 1;
+    /* we only shift entries down in the indices, so
+     * its safe to do straight copy without swap */
+    for(i = 0 ; i < *nnz; i++) {
         const int x = idx[i];
         ii[i] = ii[x];
         jj[i] = jj[x];
         Se[i] = Se[x];
     }
-    nnz -= ret;
     return ret;
 }
 
-/* Construct a dense column vector for Neumann (current) stimulus +amp on
- * boundary m->bc = sp, -amp on boundary condition m->bc = sn.
+/* Construct a dense column vector for Neumann (current) stimulus 'amp' on
+ * boundary m->bc = bc.
  * Returns number of nodes perturbed: 0 = failure. */
-int calc_stim_neumann(mesh const * const m, double amp, int sp, int sn, int gnd, double * b)
+int calc_stim_neumann(mesh const * const m, double amp, int bc, int gnd, double * b)
 {
     const int dim = m->dim;
-    int cnt_sp = 0;
-    int cnt_sn = 0;
+    int cnt_bc_local_nodes = 0;
     int i, j;
     for(i = 0; i < m->n_se; i ++ ) {
-        const int bc = m->bc[i];
-        if (bc == sp) {
-            cnt_sp += dim;
-        }
-        if (bc == sn) {
-            cnt_sn += dim;
+        const int bci = m->bc[i];
+        if (bci == bc) {
+            cnt_bc_local_nodes += dim;
         }
     }
-    const double amp_sp = +amp / (double) cnt_sp;
-    const double amp_sn = -amp / (double) cnt_sn;
+    const double amp_nodal = +amp / (double) cnt_bc_local_nodes;
+    const int gndidx = gnd - 1; /* convert node number to index in 'b' */
     for(i = 0; i < m->n_se; i ++ ) {
-        const int bc = m->bc[i];
-        if (bc == sp || bc == sn) {
-            for( j = 0; j < dim; j++) {
-                int node = m->surfaceelems[i * dim + j];
-                if ( node == gnd ) {
-                    /* ground node: no node to apply current */
-                    if( bc == sp ) {
-                        cnt_sp--;
-                    }
-                    else {
-                        cnt_sn--;
-                    }
-                    continue;
-                }
-                else if ( node > gnd ) {
-                    /* we drop the ground node and therefore lose an entry on
-                     * the stimulus vector */
-                    node--;
-                }
-                b[ node ] += (bc == sp) ? amp_sp : amp_sn;
+        const int bci = m->bc[i];
+        if (bci != bc) {
+            continue;
+        }
+        for( j = 0; j < dim; j++) {
+            int idx = m->surfaceelems[i * dim + j] - 1;
+            if ( idx == gndidx ) {
+                /* ground node: do not apply current */
+                cnt_bc_local_nodes--;
+            }
+            else {
+                b[ idx ] += amp_nodal;
             }
         }
     }
-    return (cnt_sn + cnt_sp);
+    return cnt_bc_local_nodes;
 }

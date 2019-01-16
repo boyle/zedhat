@@ -18,9 +18,9 @@
    } \
 } while(0)
 
-#define assert_mat_equal(n, a, b, delta) do { \
+#define assert_mat_equal(m, n, a, b, delta) do { \
    int i; \
-   for (i=0; i<n*n; i++) { \
+   for (i=0; i < m*n; i++) { \
          assert_true(fabs(a[i] - b[i]) <= delta); \
    }\
 } while(0)
@@ -286,9 +286,9 @@ void test_inv2(void ** state)
     printf_mat_double("Ai", 2, 2, &(Ai[0][0]));
     printf_mat_double("B^-1", 2, 2, simple_inv2(2, B, tmp));
     expected = &(I[0][0]);
-    assert_mat_equal( 2, simple_inv2(2, I, tmp), expected, 0.0);
+    assert_mat_equal( 2, 2, simple_inv2(2, I, tmp), expected, 0.0);
     expected = &(Ai[0][0]);
-    assert_mat_equal( 2, simple_inv2(2, A, tmp), expected, 0.0);
+    assert_mat_equal( 2, 2, simple_inv2(2, A, tmp), expected, 0.0);
     double Bi[2][2] = {{0}};
     double BiB[2][2] = {{0}};
     simple_inv2(2, B, Bi);
@@ -302,13 +302,13 @@ void test_inv2(void ** state)
     }
     expected = &(I[0][0]);
     double * in = &(BiB[0][0]);
-    assert_mat_equal( 2, in, expected, DBL_EPSILON);
+    assert_mat_equal( 2, 2, in, expected, DBL_EPSILON);
     printf("checks I^-1 = I; A^-1 = Ai for diag A; B^-1 * B = I\n");
     double tt[2][2] = {{0}};
-    assert_mat_equal( 2, mat_wrap(2, I, tmp, inv), simple_inv2(2, I, tt), 0);
-    assert_mat_equal( 2, mat_wrap(2, A, tmp, inv), simple_inv2(2, A, tt), 0);
-    assert_mat_equal( 2, mat_wrap(2, Ai, tmp, inv), simple_inv2(2, Ai, tt), 0);
-    assert_mat_equal( 2, mat_wrap(2, B, tmp, inv), simple_inv2(2, B, tt), DBL_EPSILON);
+    assert_mat_equal( 2, 2, mat_wrap(2, I, tmp, inv), simple_inv2(2, I, tt), 0);
+    assert_mat_equal( 2, 2, mat_wrap(2, A, tmp, inv), simple_inv2(2, A, tt), 0);
+    assert_mat_equal( 2, 2, mat_wrap(2, Ai, tmp, inv), simple_inv2(2, Ai, tt), 0);
+    assert_mat_equal( 2, 2, mat_wrap(2, B, tmp, inv), simple_inv2(2, B, tt), DBL_EPSILON);
 }
 
 void test_inv3(void ** state)
@@ -340,9 +340,9 @@ void test_inv3(void ** state)
     printf_mat_double("Ai", 3, 3, &(Ai[0][0]));
     printf_mat_double("B^-1", 3, 3, simple_inv3(3, B, tmp));
     expected = &(I[0][0]);
-    assert_mat_equal( 3, simple_inv3(3, I, tmp), expected, 0.0);
+    assert_mat_equal( 3, 3, simple_inv3(3, I, tmp), expected, 0.0);
     expected = &(Ai[0][0]);
-    assert_mat_equal( 3, simple_inv3(3, A, tmp), expected, 0.0);
+    assert_mat_equal( 3, 3, simple_inv3(3, A, tmp), expected, 0.0);
     double Bi[3][3] = {{0}};
     double BiB[3][3] = {{0}};
     simple_inv3(3, B, Bi);
@@ -357,13 +357,13 @@ void test_inv3(void ** state)
     expected = &(I[0][0]);
     double * in = &(BiB[0][0]);
     printf_mat_double("B^-1*B = I? ...", 3, 3, &(BiB[0][0]));
-    assert_mat_equal( 3, in, expected, 5 * DBL_EPSILON);
+    assert_mat_equal( 3, 3, in, expected, 5 * DBL_EPSILON);
     printf("checks I^-1 = I; A^-1 = Ai for diag A; B^-1 * B = I\n");
     double tt[3][3] = {{0}};
-    assert_mat_equal( 3, mat_wrap(3, I, tmp, inv), simple_inv3(3, I, tt), 0);
-    assert_mat_equal( 3, mat_wrap(3, A, tmp, inv), simple_inv3(3, A, tt), 0);
-    assert_mat_equal( 3, mat_wrap(3, Ai, tmp, inv), simple_inv3(3, Ai, tt), 0);
-    assert_mat_equal( 3, mat_wrap(3, B, tmp, inv), simple_inv3(3, B, tt), DBL_EPSILON);
+    assert_mat_equal( 3, 3, mat_wrap(3, I, tmp, inv), simple_inv3(3, I, tt), 0);
+    assert_mat_equal( 3, 3, mat_wrap(3, A, tmp, inv), simple_inv3(3, A, tt), 0);
+    assert_mat_equal( 3, 3, mat_wrap(3, Ai, tmp, inv), simple_inv3(3, Ai, tt), 0);
+    assert_mat_equal( 3, 3, mat_wrap(3, B, tmp, inv), simple_inv3(3, B, tt), DBL_EPSILON);
 }
 
 void test_inv4(void ** state)
@@ -399,9 +399,9 @@ void test_inv4(void ** state)
     printf_mat_double("Ai", 4, 4, &(Ai[0][0]));
     printf_mat_double("B^-1", 4, 4, mat_wrap(4, B, tmp, inv));
     expected = &(I[0][0]);
-    assert_mat_equal( 4, mat_wrap(4, I, tmp, inv), expected, 0.0);
+    assert_mat_equal( 4, 4, mat_wrap(4, I, tmp, inv), expected, 0.0);
     expected = &(Ai[0][0]);
-    assert_mat_equal( 4, mat_wrap(4, A, tmp, inv), expected, 0.0);
+    assert_mat_equal( 4, 4, mat_wrap(4, A, tmp, inv), expected, 0.0);
     double Bi[4][4] = {{0}};
     double BiB[4][4] = {{0}};
     mat_wrap(4, B, Bi, inv);
@@ -416,7 +416,7 @@ void test_inv4(void ** state)
     expected = &(I[0][0]);
     double * in = &(BiB[0][0]);
     printf_mat_double("B^-1*B = I? ...", 3, 3, &(BiB[0][0]));
-    assert_mat_equal( 4, in, expected, 5 * DBL_EPSILON);
+    assert_mat_equal( 4, 4, in, expected, 5 * DBL_EPSILON);
     printf("checks I^-1 = I; A^-1 = Ai for diag A; B^-1 * B = I\n");
 }
 
@@ -483,7 +483,7 @@ void test_shape_Se_v(void ** state)
         printf_mat_double("Se", 3, 3, &(Se2[0][0]));
         double * tmp2S = &(out[0]);
         double * tmp2Se = &(Se2[0][0]);
-        assert_mat_equal( 3, tmp2S, tmp2Se, DBL_EPSILON);
+        assert_mat_equal( 3, 3, tmp2S, tmp2Se, DBL_EPSILON);
     }
     /* matlab:
      *   E = inv([1 1 0 0; 1 0 1 0; 1 0 0 1; 1 0 0 0])
@@ -509,7 +509,7 @@ void test_shape_Se_v(void ** state)
         printf_mat_double("Se", 4, 4, &(Se3[0][0]));
         double * tmp3S = &(out[0]);
         double * tmp3Se = &(Se3[0][0]);
-        assert_mat_equal( 4, tmp3S, tmp3Se, DBL_EPSILON);
+        assert_mat_equal( 4, 4, tmp3S, tmp3Se, DBL_EPSILON);
     }
 }
 
@@ -593,7 +593,7 @@ void test_shape_2d(void ** state)
         qsort(&(e[i * 3]), 3, sizeof(int), &cmp_int_tests);
     }
     printf_mat_int("elems (sorted)", 2, 3, e);
-    int nnz = calc_Se_n(2) * 2;
+    const int nnz = calc_Se_n(2) * 2;
     int * ii = malloc(sizeof(int) * nnz);
     int * jj = malloc(sizeof(int) * nnz);
     double * ss = malloc(sizeof(double) * nnz);
@@ -604,12 +604,13 @@ void test_shape_2d(void ** state)
     m.n_elems = 2;
     m.n_nodes = 4;
     int gnd;
-    for( gnd = -1; gnd < 6; gnd++ ) {
+    for( gnd = 0; gnd < 7; gnd++ ) {
         int ret = calc_Se(&m, ii, jj, ss);
         assert_int_equal(ret, 0);
-        int ngnd = calc_gnd(gnd, &nnz, ii, jj, ss);
+        int nnz_local = nnz;
+        int ngnd = calc_gnd(gnd, &nnz_local, ii, jj, ss);
         printf("calc_gnd() gnd node #%d: deleted %d entries\n", gnd, ngnd);
-        if (gnd >= 0 && gnd < 4 ) {
+        if (gnd > 0 && gnd <= 4 ) {
             assert_int_not_equal(ngnd, 0);
         }
         else {
@@ -672,7 +673,7 @@ void test_shape_3d(void ** state)
         qsort(&(e[i * 4]), 4, sizeof(int), &cmp_int_tests);
     }
     printf_mat_int("elems (sorted)", 6, 4, e);
-    int nnz = calc_Se_n(3) * 6;
+    const int nnz = calc_Se_n(3) * 6;
     int * ii = malloc(sizeof(int) * nnz);
     int * jj = malloc(sizeof(int) * nnz);
     double * ss = malloc(sizeof(double) * nnz);
@@ -683,12 +684,13 @@ void test_shape_3d(void ** state)
     m.n_elems = 6;
     m.n_nodes = 8;
     int gnd;
-    for( gnd = -1; gnd < 10; gnd++ ) {
+    for( gnd = 0; gnd < 11; gnd++ ) {
         int ret = calc_Se(&m, ii, jj, ss);
         assert_int_equal(ret, 0);
-        int ngnd = calc_gnd(gnd, &nnz, ii, jj, ss);
+        int nnz_local = nnz;
+        int ngnd = calc_gnd(gnd, &nnz_local, ii, jj, ss);
         printf("calc_gnd() gnd node #%d: deleted %d entries\n", gnd, ngnd);
-        if (gnd >= 0 && gnd < 8 ) {
+        if (gnd > 0 && gnd <= 8 ) {
             assert_int_not_equal(ngnd, 0);
         }
         else {
@@ -712,7 +714,7 @@ void test_shape_3d(void ** state)
     free(ss);
 }
 
-void test_bc_2d (void ** state)
+void test_bc_2d_neumann (void ** state)
 {
     int bc[4] = {0, 2, 0, 1};
     int se[4][2] = {
@@ -728,29 +730,44 @@ void test_bc_2d (void ** state)
     m.n_se = 4;
     m.n_nodes = 4;
     int gnd;
-    for (gnd = 1; gnd < 4; gnd++) {
-        double b[3] = {0}; /* nodes-1 */
-        int ret = calc_stim_neumann(&m, +1, 1, 2, gnd, &(b[0]));
-        assert_int_equal(ret, 3);
+    for (gnd = 0; gnd <= 4; gnd++) {
+        double b[4] = {0}; /* nodes-1 */
+        int ret = calc_stim_neumann(&m, +1, 1, gnd, &(b[0]));
+        ret += calc_stim_neumann(&m, -1, 2, gnd, &(b[0]));
+        double expect[4] = { +0.5,
+                             -0.5,
+                             +0.5,
+                             -0.5,
+                           };
+        if(gnd > 0) {
+            expect[gnd - 1] = 0;
+            assert_int_equal(ret, 3);
+        }
+        else {
+            assert_int_equal(ret, 4);
+        }
+        printf("gnd = %d\n", gnd);
+        printf_mat_double("b", 4, 1, &(b[0]));
+        assert_mat_equal( 4, 1, b, expect, DBL_EPSILON);
     }
 }
 
-void test_bc_3d (void ** state)
+void test_bc_3d_neumann (void ** state)
 {
     int bc[12] = {1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6};
     int se[12][3] = {
-        {1, 4, 7},
-        {7, 3, 1},
-        {4, 1, 2},
-        {2, 6, 4},
-        {8, 7, 4},
-        {6, 8, 4},
-        {7, 8, 5},
-        {3, 7, 5},
-        {8, 6, 2},
-        {2, 5, 8},
-        {3, 5, 2},
+        {1, 2, 5},
+        {2, 5, 6},
+        {4, 3, 8},
+        {3, 8, 7},
+        {6, 8, 2},
+        {8, 2, 4},
+        {1, 5, 3},
+        {5, 3, 7},
+        {5, 7, 8},
+        {5, 8, 6},
         {1, 3, 2},
+        {3, 2, 4},
     };
     mesh m = {0};
     m.dim = 3;
@@ -759,10 +776,41 @@ void test_bc_3d (void ** state)
     m.n_se = 12;
     m.n_nodes = 8;
     int gnd;
-    for (gnd = 1; gnd < 8; gnd++) {
-        double b[7] = {0}; /* nodes-1 */
-        int ret = calc_stim_neumann(&m, +1, 1, 2, 3, &(b[0]));
-        assert_int_equal(ret, 11);
+    for (gnd = 0; gnd <= 8; gnd++) {
+        double b[8] = {0}; /* nodes-1 */
+        int ret = calc_stim_neumann(&m, +1, 1, gnd, &(b[0]));
+        ret += calc_stim_neumann(&m, -1, 2, gnd, &(b[0]));
+        /* TODO these are not right... I is the same for all boundary edge nodes */
+        double expect[8] = { +1.0 / 6.0,
+                             +2.0 / 6.0,
+                             -2.0 / 6.0,
+                             -1.0 / 6.0,
+                             +2.0 / 6.0,
+                             +1.0 / 6.0,
+                             -1.0 / 6.0,
+                             -2.0 / 6.0,
+                           };
+        if(gnd > 0) {
+            expect[gnd - 1] = 0;
+        }
+        int expect_ret;
+        switch(gnd) {
+        case 0:
+            expect_ret = 12;
+            break;
+        case 1:
+        case 4:
+        case 6:
+        case 7:
+            expect_ret = 11;
+            break;
+        default:
+            expect_ret = 10;
+        }
+        printf("gnd = %d, expect %d local nodes\n", gnd, expect_ret);
+        printf_mat_double("b", 8, 1, &(b[0]));
+        assert_mat_equal( 8, 1, b, expect, 10 * DBL_EPSILON);
+        assert_int_equal(ret, expect_ret);
     }
 }
 
@@ -781,8 +829,8 @@ int main(void)
         cmocka_unit_test(test_shape_Se_ij),
         cmocka_unit_test(test_shape_2d),
         cmocka_unit_test(test_shape_3d),
-        cmocka_unit_test(test_bc_2d),
-        cmocka_unit_test(test_bc_3d),
+        cmocka_unit_test(test_bc_2d_neumann),
+        cmocka_unit_test(test_bc_3d_neumann),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
