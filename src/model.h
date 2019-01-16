@@ -24,4 +24,5 @@ void calc_Se_ij(const int nd, int const * const elem, int * ii, int * jj);
 int calc_Se_n(const int nd);
 int calc_Se(mesh const * const mdl, int * ii, int * jj, double * Se);
 int calc_gnd(const int gnd, int * nnz, int * ii, int * jj, double * Se);
+int calc_stim_neumann(mesh const * const m, double amp, int sp, int sn, int gnd, double * b);
 #endif

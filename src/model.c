@@ -194,3 +194,50 @@ int calc_gnd(const int gnd, int * nnz, int * ii, int * jj, double * Se)
     nnz -= ret;
     return ret;
 }
+
+/* Construct a dense column vector for Neumann (current) stimulus +amp on
+ * boundary m->bc = sp, -amp on boundary condition m->bc = sn.
+ * Returns number of nodes perturbed: 0 = failure. */
+int calc_stim_neumann(mesh const * const m, double amp, int sp, int sn, int gnd, double * b)
+{
+    const int dim = m->dim;
+    int cnt_sp = 0;
+    int cnt_sn = 0;
+    int i, j;
+    for(i = 0; i < m->n_se; i ++ ) {
+        const int bc = m->bc[i];
+        if (bc == sp) {
+            cnt_sp += dim;
+        }
+        if (bc == sn) {
+            cnt_sn += dim;
+        }
+    }
+    const double amp_sp = +amp / (double) cnt_sp;
+    const double amp_sn = -amp / (double) cnt_sn;
+    for(i = 0; i < m->n_se; i ++ ) {
+        const int bc = m->bc[i];
+        if (bc == sp || bc == sn) {
+            for( j = 0; j < dim; j++) {
+                int node = m->surfaceelems[i * dim + j];
+                if ( node == gnd ) {
+                    /* ground node: no node to apply current */
+                    if( bc == sp ) {
+                        cnt_sp--;
+                    }
+                    else {
+                        cnt_sn--;
+                    }
+                    continue;
+                }
+                else if ( node > gnd ) {
+                    /* we drop the ground node and therefore lose an entry on
+                     * the stimulus vector */
+                    node--;
+                }
+                b[ node ] += (bc == sp) ? amp_sp : amp_sn;
+            }
+        }
+    }
+    return (cnt_sn + cnt_sp);
+}

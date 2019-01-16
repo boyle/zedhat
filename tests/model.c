@@ -712,6 +712,60 @@ void test_shape_3d(void ** state)
     free(ss);
 }
 
+void test_bc_2d (void ** state)
+{
+    int bc[4] = {0, 2, 0, 1};
+    int se[4][2] = {
+        {1, 2},
+        {2, 4},
+        {4, 3},
+        {3, 1},
+    };
+    mesh m = {0};
+    m.dim = 2;
+    m.bc = &(bc[0]);
+    m.surfaceelems = &(se[0][0]);
+    m.n_se = 4;
+    m.n_nodes = 4;
+    int gnd;
+    for (gnd = 1; gnd < 4; gnd++) {
+        double b[3] = {0}; /* nodes-1 */
+        int ret = calc_stim_neumann(&m, +1, 1, 2, gnd, &(b[0]));
+        assert_int_equal(ret, 3);
+    }
+}
+
+void test_bc_3d (void ** state)
+{
+    int bc[12] = {1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6};
+    int se[12][3] = {
+        {1, 4, 7},
+        {7, 3, 1},
+        {4, 1, 2},
+        {2, 6, 4},
+        {8, 7, 4},
+        {6, 8, 4},
+        {7, 8, 5},
+        {3, 7, 5},
+        {8, 6, 2},
+        {2, 5, 8},
+        {3, 5, 2},
+        {1, 3, 2},
+    };
+    mesh m = {0};
+    m.dim = 3;
+    m.bc = &(bc[0]);
+    m.surfaceelems = &(se[0][0]);
+    m.n_se = 12;
+    m.n_nodes = 8;
+    int gnd;
+    for (gnd = 1; gnd < 8; gnd++) {
+        double b[7] = {0}; /* nodes-1 */
+        int ret = calc_stim_neumann(&m, +1, 1, 2, 3, &(b[0]));
+        assert_int_equal(ret, 11);
+    }
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -727,6 +781,8 @@ int main(void)
         cmocka_unit_test(test_shape_Se_ij),
         cmocka_unit_test(test_shape_2d),
         cmocka_unit_test(test_shape_3d),
+        cmocka_unit_test(test_bc_2d),
+        cmocka_unit_test(test_bc_3d),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
