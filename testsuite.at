@@ -278,6 +278,6 @@ error: failed to load junk7.not_vol
 AT_CLEANUP
 AT_SETUP([model - system matrix calculator])
 AT_KEYWORDS([mesh])
-AT_CHECK([model],0,ignore,[[[  PASSED  ] 11 test(s).
+AT_CHECK([model],0,ignore,[[[  PASSED  ] 12 test(s).
 ]])
 AT_CLEANUP

@@ -563,6 +563,76 @@ int cmp_int_tests( const void * a, const void * b )
 {
     return *(int *)a - *(int *)b;
 }
+
+void test_shape_2d(void ** state)
+{
+    int i;
+    /* 2D square:
+     *    first four nodes at z=0
+     *    first two elems */
+    double nodes[5][2] = {
+        {0, 0},
+        {1, 0},
+        {0, 1},
+        {1, 1},
+        {0, 0}, /* guard */
+    };
+    printf_mat_double("nodes", 4, 2, &(nodes[0][0]));
+    /* TODO currently each row of elems must be sorted
+     * or we won't get an upper triangular matrix */
+    /* Our 'elems' starts at 1 which agrees with netgen */
+    int elems[4][3] = { /* from netgen cube.geo */
+        {0, 0, 0}, /* guard */
+        {2, 1, 4},
+        {1, 3, 4},
+        {0, 0, 0}, /* guard */
+    };
+    int * e = &(elems[1][0]);
+    printf_mat_int("elems", 2, 3, e);
+    for( i = 0; i < 2; i++) {
+        qsort(&(e[i * 3]), 3, sizeof(int), &cmp_int_tests);
+    }
+    printf_mat_int("elems (sorted)", 2, 3, e);
+    int nnz = calc_Se_n(2) * 2;
+    int * ii = malloc(sizeof(int) * nnz);
+    int * jj = malloc(sizeof(int) * nnz);
+    double * ss = malloc(sizeof(double) * nnz);
+    mesh m = { 0 };
+    m.dim = 2;
+    m.elems = &(elems[1][0]);
+    m.nodes = &(nodes[0][0]);
+    m.n_elems = 2;
+    m.n_nodes = 4;
+    int gnd;
+    for( gnd = -1; gnd < 6; gnd++ ) {
+        int ret = calc_Se(&m, ii, jj, ss);
+        assert_int_equal(ret, 0);
+        int ngnd = calc_gnd(gnd, &nnz, ii, jj, ss);
+        printf("calc_gnd() gnd node #%d: deleted %d entries\n", gnd, ngnd);
+        if (gnd >= 0 && gnd < 4 ) {
+            assert_int_not_equal(ngnd, 0);
+        }
+        else {
+            assert_int_equal(ngnd, 0);
+        }
+    }
+    /* intentionally try building a bad mesh */
+    {
+        m.elems = &(elems[0][0]);
+        int ret = calc_Se(&m, ii, jj, ss);
+        assert_int_equal(ret, 1);
+    }
+    {
+        m.elems = &(elems[2][0]);
+        int ret = calc_Se(&m, ii, jj, ss);
+        assert_int_equal(ret, 2);
+    }
+    /* clean up */
+    free(ii);
+    free(jj);
+    free(ss);
+}
+
 void test_shape_3d(void ** state)
 {
     int i;
@@ -573,12 +643,12 @@ void test_shape_3d(void ** state)
      *    first two elems */
     double nodes[9][3] = {
         {0, 0, 0},
-        {0, 0, 1},
         {1, 0, 0},
         {0, 1, 0},
+        {1, 1, 0},
+        {0, 0, 1},
         {1, 0, 1},
         {0, 1, 1},
-        {1, 1, 0},
         {1, 1, 1},
         {0, 0, 0}, /* guard */
     };
@@ -588,12 +658,12 @@ void test_shape_3d(void ** state)
     /* Our 'elems' starts at 1 which agrees with netgen */
     int elems[8][4] = { /* from netgen cube.geo */
         {0, 0, 0, 0}, /* guard */
-        {4, 2, 6, 8},
-        {8, 7, 2, 5},
-        {3, 2, 1, 7},
-        {3, 5, 2, 7},
-        {1, 2, 4, 7},
-        {8, 7, 4, 2},
+        {2, 5, 1, 4},
+        {1, 5, 3, 4},
+        {3, 5, 7, 8},
+        {8, 4, 5, 6},
+        {2, 6, 5, 4},
+        {8, 4, 3, 5},
         {0, 0, 0, 0}, /* guard */
     };
     int * e = &(elems[1][0]);
@@ -655,6 +725,7 @@ int main(void)
         cmocka_unit_test(test_shape_Se_n),
         cmocka_unit_test(test_shape_Se_v),
         cmocka_unit_test(test_shape_Se_ij),
+        cmocka_unit_test(test_shape_2d),
         cmocka_unit_test(test_shape_3d),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
