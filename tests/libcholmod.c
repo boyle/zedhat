@@ -39,7 +39,7 @@ int main (void)
     cholmod_common c ;
     cholmod_start (&c) ;                /* start CHOLMOD */
     /* A = cholmod_read_sparse (stdin, &c) ; */     /* read in a matrix */
-    /* MODIFIED: have a built in matrix as a COO object, then convert to CSR */
+    /* MODIFIED: have a built in matrix as a DENSE object, then convert to CSR */
     /* MATLAB: A = [ 1 2 3 0; 2 0 0 6; 3 0 0 7; 0 6 7 9 ]; b = ones(4,1); A\b
      * ans = [ -0.2500, -3.1250, 2.5000, 0.2500 ]' */
     double expect[4] = {-0.2500, -3.1250, 2.5000, 0.2500 };
