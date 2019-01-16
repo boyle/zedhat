@@ -602,18 +602,18 @@ void test_shape_3d(void ** state)
         qsort(&(e[i * 4]), 4, sizeof(int), &cmp_int_tests);
     }
     printf_mat_int("elems (sorted)", 6, 4, e);
+    int nnz = calc_Se_n(3) * 6;
+    int * ii = malloc(sizeof(int) * nnz);
+    int * jj = malloc(sizeof(int) * nnz);
+    double * ss = malloc(sizeof(double) * nnz);
+    mesh m = { 0 };
+    m.dim = 3;
+    m.elems = &(elems[1][0]);
+    m.nodes = &(nodes[0][0]);
+    m.n_elems = 6;
+    m.n_nodes = 8;
     int gnd;
     for( gnd = -1; gnd < 10; gnd++ ) {
-        int nnz = calc_Se_n(3) * 6;
-        int * ii = malloc(sizeof(int) * nnz);
-        int * jj = malloc(sizeof(int) * nnz);
-        double * ss = malloc(sizeof(double) * nnz);
-        mesh m = { 0 };
-        m.dim = 3;
-        m.elems = &(elems[1][0]);
-        m.nodes = &(nodes[0][0]);
-        m.n_elems = 6;
-        m.n_nodes = 8;
         int ret = calc_Se(&m, ii, jj, ss);
         assert_int_equal(ret, 0);
         int ngnd = calc_gnd(gnd, &nnz, ii, jj, ss);
@@ -624,10 +624,22 @@ void test_shape_3d(void ** state)
         else {
             assert_int_equal(ngnd, 0);
         }
-        free(ii);
-        free(jj);
-        free(ss);
     }
+    /* intentionally try building a bad mesh */
+    {
+        m.elems = &(elems[0][0]);
+        int ret = calc_Se(&m, ii, jj, ss);
+        assert_int_equal(ret, 1);
+    }
+    {
+        m.elems = &(elems[2][0]);
+        int ret = calc_Se(&m, ii, jj, ss);
+        assert_int_equal(ret, 6);
+    }
+    /* clean up */
+    free(ii);
+    free(jj);
+    free(ss);
 }
 
 int main(void)
