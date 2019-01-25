@@ -451,17 +451,25 @@ double * sym_to_full(int n, double * As, double * Bf)
 
 void test_shape_Se_v(void ** state)
 {
+    int ii [4 * 4];
+    int jj [4 * 4];
+    double ss[4 * 4];
     double out[4 * 4];
-    double tmp[4 * 4];
+    int elems[4] = {1, 2, 3, 4};
+    mesh m = { 0 };
+    m.dim = 2;
+    m.elems = &(elems[0]);
+    m.n_elems = 1;
+    m.n_nodes = 3;
     {
-        double singularA[3][3] = {
-            {0, 0, 0},
-            {0, 0, 0},
-            {0, 1, 0},
+        double singularA[3][2] = {
+            {0, 0},
+            {0, 0},
+            {1, 0},
         };
-        const double * N[] = {&singularA[0][1], &singularA[1][1], &singularA[2][1]};
         printf("Se: check for singular matrix erroring out\n");
-        assert_true( calc_Se_v(2, N, out) == NULL );
+        m.nodes = &(singularA[0][0]);
+        assert_int_equal( calc_Se(&m, ii, jj, ss), 1 );
     }
     /* matlab:
      *   E = inv([1 1 0; 1 0 1; 1 0 0])
@@ -469,23 +477,23 @@ void test_shape_Se_v(void ** state)
      *   Se = Sh'*Sh
      */
     {
-        double A[3][3] = {
-            {0.1, 1.0, 0.0},
-            {0.2, 0.0, 1.0},
-            {0.3, 0.0, 0.0},
+        double A[3][2] = {
+            {1.0, 0.0},
+            {0.0, 1.0},
+            {0.0, 0.0},
         };
-        const double * N[] = {&(A[0][1]), &(A[1][1]), &(A[2][1])};
-        printf_mat_double("A", 3, 3, &(A[0][0]));
-        printf_mat_double("A --> S", 3, 3, sym_to_full(3, calc_Se_v(2, N, tmp), out));
+        m.nodes = &(A[0][0]);
+        assert_int_equal( calc_Se(&m, ii, jj, ss), 0 );
+        printf_mat_double("A", 3, 2, &(A[0][0]));
+        printf_mat_double("A --> S", 3, 3, sym_to_full(3, ss, out));
         double Se2[3][3] = {
             { 0.5,  0.0, -0.5},
             { 0.0,  0.5, -0.5},
             {-0.5, -0.5,  1.0},
         };
         printf_mat_double("Se", 3, 3, &(Se2[0][0]));
-        double * tmp2S = &(out[0]);
         double * tmp2Se = &(Se2[0][0]);
-        assert_mat_equal( 3, 3, tmp2S, tmp2Se, DBL_EPSILON);
+        assert_mat_equal( 3, 3, out, tmp2Se, DBL_EPSILON);
     }
     /* matlab:
      *   E = inv([1 1 0 0; 1 0 1 0; 1 0 0 1; 1 0 0 0])
@@ -493,15 +501,17 @@ void test_shape_Se_v(void ** state)
      *   S = Sh'*Sh
      */
     {
-        double B[4][4] = {
-            {0.1, 1.0, 0.0, 0.0},
-            {0.2, 0.0, 1.0, 0.0},
-            {0.3, 0.0, 0.0, 1.0},
-            {0.4, 0.0, 0.0, 0.0},
+        double B[4][3] = {
+            {1.0, 0.0, 0.0},
+            {0.0, 1.0, 0.0},
+            {0.0, 0.0, 1.0},
+            {0.0, 0.0, 0.0},
         };
-        const double * N[] = {&B[0][1], &B[1][1], &B[2][1], &B[3][1]};
-        printf_mat_double("B", 4, 4, &(B[0][0]));
-        printf_mat_double("B --> S", 4, 4, sym_to_full(4, calc_Se_v(3, N, tmp), out));
+        m.dim = 3;
+        m.nodes = &(B[0][0]);
+        assert_int_equal( calc_Se(&m, ii, jj, ss), 0 );
+        printf_mat_double("B", 4, 3, &(B[0][0]));
+        printf_mat_double("B --> S", 4, 4, sym_to_full(4, ss, out));
         double Se3[4][4] = {
             {1.0 / 6.0, 0, 0, -1.0 / 6.0},
             {0, 1.0 / 6.0, 0, -1.0 / 6.0},
@@ -509,9 +519,8 @@ void test_shape_Se_v(void ** state)
             {-1.0 / 6.0, -1.0 / 6.0, -1.0 / 6.0, 1.0 / 2.0},
         };
         printf_mat_double("Se", 4, 4, &(Se3[0][0]));
-        double * tmp3S = &(out[0]);
         double * tmp3Se = &(Se3[0][0]);
-        assert_mat_equal( 4, 4, tmp3S, tmp3Se, DBL_EPSILON);
+        assert_mat_equal( 4, 4, out, tmp3Se, DBL_EPSILON);
     }
 }
 
