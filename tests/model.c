@@ -536,15 +536,28 @@ void test_shape_Se_ij(void ** state)
     const int n3 = calc_Se_n(3);
     int ii [n3 + 1];
     int jj [n3 + 1];
+    double ss [n3 + 1];
+    double nodes[4][3] = {
+        {1, 0, 0},
+        {1, 1, 0},
+        {0, 1, 1},
+        {0, 0, 0},
+    };
     int elems[4] = {1, 2, 3, 4};
+    mesh m = { 0 };
+    m.elems = &(elems[0]);
+    m.nodes = &(nodes[0][0]);
+    m.n_elems = 1;
+    m.n_nodes = 4;
     int i, j, k;
     int nd;
     for( nd = 2; nd <= 3; nd++) {
+        m.dim = nd;
         const int n = calc_Se_n(nd);
         ii[n] = -1;
         jj[n] = -1;
         printf_ii("elems", nd + 1, elems);
-        calc_Se_ij(nd, elems, ii, jj);
+        calc_Se(&m, ii, jj, ss);
         printf_ii("ii", n, ii);
         printf_ii("jj", n, jj);
         k = 0;
