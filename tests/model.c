@@ -15,16 +15,10 @@
 #include "cmocka.h"
 #include "model.h"
 
-#define assert_double_equal(a, b, delta) do { \
-   if(!(fabs(a - b) <= delta)) { \
-      printf("|a:%0.16g - b:%0.16g| = %0.16g > %0.16g\n", a, b, fabs(a-b), delta); \
-   } \
-} while(0)
-
 #define assert_mat_equal(m, n, a, b, delta) do { \
    int i; \
    for (i=0; i < m*n; i++) { \
-         assert_true(fabs(a[i] - b[i]) <= delta); \
+         assert_float_equal(a[i],b[i],delta); \
    }\
 } while(0)
 
@@ -71,9 +65,9 @@ void test_det2(void ** state)
     printf("|At| = %g\n", det(2, At));
     printf("|B| = %g\n", det(2, B));
     printf("|AB| = %g\n", det(2, AB));
-    assert_double_equal( det(2, I), 1.0, 0.0);
-    assert_double_equal( det(2, A), det(2, At), 0.0);
-    assert_double_equal( det(2, AB), det(2, A)*det(2, B), 2e4 * DBL_EPSILON);
+    assert_float_equal( det(2, I), 1.0, 0.0);
+    assert_float_equal( det(2, A), det(2, At), 0.0);
+    assert_float_equal( det(2, AB), det(2, A)*det(2, B), 2e4 * DBL_EPSILON);
     printf("checks |I| = 1; |A| = |At|; |A*B| = |A|*|B|\n");
 }
 
@@ -113,16 +107,16 @@ void test_det3(void ** state)
     printf("|At| = %g\n", det(3, At));
     printf("|B| = %g\n", det(3, B));
     printf("|AB| = %g\n", det(3, AB));
-    assert_double_equal( det(3, I), 1.0, 0.0);
-    assert_double_equal( det(3, A), det(3, At), 0.0);
-    assert_double_equal( det(3, AB), det(3, A)*det(3, B), 2e4 * DBL_EPSILON);
+    assert_float_equal( det(3, I), 1.0, 0.0);
+    assert_float_equal( det(3, A), det(3, At), 0.0);
+    assert_float_equal( det(3, AB), det(3, A)*det(3, B), 2e4 * DBL_EPSILON);
     printf("checks |I| = 1; |A| = |At|; |A*B| = |A|*|B|\n");
     /* compare to simple_det3 when n == 3 */
-    assert_double_equal( det(3, I), simple_det3(3, I), 0.0);
-    assert_double_equal( det(3, A), simple_det3(3, A), 0.0);
-    assert_double_equal( det(3, B), simple_det3(3, B), 0.0);
-    assert_double_equal( det(3, At), simple_det3(3, At), 0.0);
-    assert_double_equal( det(3, AB), simple_det3(3, AB), 0.0);
+    assert_float_equal( det(3, I), simple_det3(3, I), 0.0);
+    assert_float_equal( det(3, A), simple_det3(3, A), 0.0);
+    assert_float_equal( det(3, B), simple_det3(3, B), 0.0);
+    assert_float_equal( det(3, At), simple_det3(3, At), 0.0);
+    assert_float_equal( det(3, AB), simple_det3(3, AB), 0.0);
 }
 
 void test_det4(void ** state)
@@ -165,9 +159,9 @@ void test_det4(void ** state)
     printf("|At| = %g\n", det(4, At));
     printf("|B| = %0.16g\n", det(4, B));
     printf("|AB| = %0.16g\n", det(4, AB));
-    assert_double_equal( det(4, I), 1.0, 0.0);
-    assert_double_equal( det(4, A), det(4, At), 0.0);
-    assert_double_equal( det(4, AB), det(4, A)*det(4, B), 2e5 * DBL_EPSILON);
+    assert_float_equal( det(4, I), 1.0, 0.0);
+    assert_float_equal( det(4, A), det(4, At), 0.0);
+    assert_float_equal( det(4, AB), det(4, A)*det(4, B), 2e5 * DBL_EPSILON);
     printf("checks |I| = 1; |A| = |At|; |A*B| = |A|*|B|\n");
 }
 
@@ -913,7 +907,7 @@ void test_2d_resistor (void ** state)
     double norm = cholmod_norm_dense (r, 0, &c);
     printf ("norm(b-Ax) = %8.1e\n",
             cholmod_norm_dense (r, 0, &c)) ;        /* print norm(r) */
-    assert_double_equal(norm, 0.0, DBL_EPSILON);
+    assert_float_equal(norm, 0.0, DBL_EPSILON);
     double * soln = x->x;
     printf_mat_double("x", 4, 1, soln);
     /* check x */
@@ -1033,8 +1027,8 @@ void test_3d_resistor (void ** state)
     cholmod_sdmult (A, 0, m1, one, x, r, &c) ;      /* r = r-Ax */
     double norm = cholmod_norm_dense (r, 0, &c);
     printf ("norm(b-Ax) = %8.1e\n",
-            cholmod_norm_dense (r, 0, &c)) ;        /* print norm(r) */
-    assert_double_equal(norm, 0.0, DBL_EPSILON);
+            norm) ;        /* print norm(r) */
+    assert_float_equal(norm, 0.0, 2 * DBL_EPSILON);
     double * soln = x->x;
     printf_mat_double("x", m.n_nodes, 1, soln);
     /* check x */

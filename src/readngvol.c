@@ -1,11 +1,17 @@
 
-#include <stdlib.h> /* malloc, free */
+#include <stdlib.h> /* malloc */
 #include <stdio.h> /* printf, fprintf */
 #include <string.h> /* strlen */
 #include <ctype.h> /* isspace */
 #include <zlib.h> /* gzopen, gzgets, gzeof, gzclose */
 
 #include "readngvol.h"
+
+#ifdef UNIT_TESTING
+extern void * _test_malloc(const size_t size, const char * file, const int line);
+#define malloc(size) _test_malloc(size, __FILE__, __LINE__)
+#endif
+
 
 #define MAXCHAR 1024
 void gzreadnext(gzFile F, char data[], int n)

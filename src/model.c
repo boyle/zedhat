@@ -12,6 +12,11 @@
  * [1] A. Boyle, PhD Thesis, 2016, Geophysical Applications of Electrical Impedance Tomography, Carleton University
  */
 
+#ifdef UNIT_TESTING
+extern void _test_free(void* const ptr, const char* file, const int line);
+#define free(ptr) _test_free(ptr, __FILE__, __LINE__)
+#endif
+
 void mesh_init(mesh * m)
 {
     bzero(m, sizeof(mesh));
@@ -19,6 +24,9 @@ void mesh_init(mesh * m)
 
 void mesh_free(mesh * m)
 {
+    if(m == NULL) {
+        return;
+    }
     free(m->nodes);
     free(m->elems);
     free(m->matidx);
