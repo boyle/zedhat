@@ -38,7 +38,8 @@ int main (int argc, const char * argv[])
         printf("\n");
     }
     for(i = 0; i < 6; i++) {
-        if(fabs(expect[i] - b[i]) > 2e-15) {
+        if(fabs(expect[i] - b[i]) > 4e-15) {
+            printf("%d %g\n", i, fabs(expect[i] - b[i]));
             printf("FAIL\n");
             exit(EXIT_FAILURE);
         }
