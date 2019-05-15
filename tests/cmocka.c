@@ -43,6 +43,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <float.h>
 
 /*
  * This allows to add a platform specific header file. Some embedded platforms
@@ -69,7 +70,9 @@
 #define MALLOC_ALLOC_PATTERN 0xBA
 #define MALLOC_FREE_PATTERN 0xCD
 /* Alignment of allocated blocks.  NOTE: This must be base2. */
+#ifndef MALLOC_ALIGNMENT
 #define MALLOC_ALIGNMENT sizeof(size_t)
+#endif
 
 /* Printf formatting for source code locations. */
 #define SOURCE_LOCATION_FORMAT "%s:%u"
@@ -312,6 +315,8 @@ static enum cm_message_output global_msg_output = CM_OUTPUT_STDOUT;
 
 static const char * global_test_filter_pattern;
 
+static const char * global_skip_filter_pattern;
+
 #ifndef _WIN32
 /* Signals caught by exception_handler(). */
 static const int exception_signals[] = {
@@ -553,7 +558,7 @@ static void fail_if_leftover_values(const char * test_name)
     }
     remove_always_return_values_from_list(&global_call_ordering_head);
     if (check_for_leftover_values_list(&global_call_ordering_head,
-                                       "%s function was expected to be called but was not not.\n")) {
+                                       "%s function was expected to be called but was not.\n")) {
         error_occurred = 1;
     }
     if (error_occurred) {
@@ -895,7 +900,7 @@ static size_t check_for_leftover_values_list(const ListNode * head,
              child_node = child_node->next, ++leftover_count) {
             const FuncOrderingValue * const o =
                 (const FuncOrderingValue *) child_node->value;
-            cm_print_error(error_message, o->function);
+            cm_print_error(error_message, "%s", o->function);
             cm_print_error(SOURCE_LOCATION_FORMAT
                            ": note: remaining item was declared here\n",
                            o->location.file, o->location.line);
@@ -926,7 +931,7 @@ static size_t check_for_leftover_values(
         if (!list_empty(child_list)) {
             if (number_of_symbol_names == 1) {
                 const ListNode * child_node;
-                cm_print_error(error_message, value->symbol_name);
+                cm_print_error(error_message, "%s", value->symbol_name);
                 for (child_node = child_list->next; child_node != child_list;
                      child_node = child_node->next) {
                     const SourceLocation * const location =
@@ -1113,6 +1118,60 @@ void _expect_function_call(
     set_source_location(&ordering->location, file, line);
     ordering->function = function_name;
     list_add_value(&global_call_ordering_head, ordering, count);
+}
+
+/* Returns 1 if the specified float values are equal, else returns 0. */
+static int float_compare(const float left,
+                         const float right,
+                         const float epsilon)
+{
+    float absLeft;
+    float absRight;
+    float largest;
+    float relDiff;
+    float diff = left - right;
+    diff = (diff >= 0.f) ? diff : -diff;
+    // Check if the numbers are really close -- needed
+    // when comparing numbers near zero.
+    if (diff <= epsilon) {
+        return 1;
+    }
+    absLeft = (left >= 0.f) ? left : -left;
+    absRight = (right >= 0.f) ? right : -right;
+    largest = (absRight > absLeft) ? absRight : absLeft;
+    relDiff = largest * FLT_EPSILON;
+    if (diff > relDiff) {
+        return 0;
+    }
+    return 1;
+}
+
+/* Returns 1 if the specified float values are equal. If the values are not equal
+ * an error is displayed and 0 is returned. */
+static int float_values_equal_display_error(const float left,
+        const float right,
+        const float epsilon)
+{
+    const int equal = float_compare(left, right, epsilon);
+    if (!equal) {
+        cm_print_error(FloatPrintfFormat " != "
+                       FloatPrintfFormat "\n", left, right);
+    }
+    return equal;
+}
+
+/* Returns 1 if the specified float values are different. If the values are equal
+ * an error is displayed and 0 is returned. */
+static int float_values_not_equal_display_error(const float left,
+        const float right,
+        const float epsilon)
+{
+    const int not_equal = (float_compare(left, right, epsilon) == 0);
+    if (!not_equal) {
+        cm_print_error(FloatPrintfFormat " == "
+                       FloatPrintfFormat "\n", left, right);
+    }
+    return not_equal;
 }
 
 /* Returns 1 if the specified values are equal.  If the values are not equal
@@ -1746,6 +1805,28 @@ void _assert_return_code(const LargestIntegralType result,
     }
 }
 
+void _assert_float_equal(const float a,
+                         const float b,
+                         const float epsilon,
+                         const char * const file,
+                         const int line)
+{
+    if (!float_values_equal_display_error(a, b, epsilon)) {
+        _fail(file, line);
+    }
+}
+
+void _assert_float_not_equal(const float a,
+                             const float b,
+                             const float epsilon,
+                             const char * const file,
+                             const int line)
+{
+    if (!float_values_not_equal_display_error(a, b, epsilon)) {
+        _fail(file, line);
+    }
+}
+
 void _assert_int_equal(
     const LargestIntegralType a, const LargestIntegralType b,
     const char * const file, const int line)
@@ -1863,11 +1944,11 @@ static ListNode * get_allocated_blocks_list(void)
     return &global_allocated_blocks;
 }
 
-static void * libc_malloc(size_t size)
+static void * libc_calloc(size_t nmemb, size_t size)
 {
-#undef malloc
-    return malloc(size);
-#define malloc test_malloc
+#undef calloc
+    return calloc(nmemb, size);
+#define calloc test_calloc
 }
 
 static void libc_free(void * ptr)
@@ -1904,7 +1985,7 @@ static void vcm_print_error(const char * const format, va_list args)
     }
     if (cm_error_message == NULL) {
         /* CREATE MESSAGE */
-        cm_error_message = libc_malloc(len + 1);
+        cm_error_message = libc_calloc(1, len + 1);
         if (cm_error_message == NULL) {
             /* TODO */
             goto end;
@@ -1980,6 +2061,7 @@ void * _test_calloc(const size_t number_of_elements, const size_t size,
     }
     return ptr;
 }
+#define calloc test_calloc
 
 
 /* Use the real free in this function. */
@@ -2624,6 +2706,11 @@ void cmocka_set_test_filter(const char * pattern)
     global_test_filter_pattern = pattern;
 }
 
+void cmocka_set_skip_filter(const char * pattern)
+{
+    global_skip_filter_pattern = pattern;
+}
+
 /****************************************************************************
  * TIME CALCULATIONS
  ****************************************************************************/
@@ -2871,7 +2958,7 @@ int _cmocka_run_group_tests(const char * group_name,
     int rc;
     /* Make sure LargestIntegralType is at least the size of a pointer. */
     assert_true(sizeof(LargestIntegralType) >= sizeof(void *));
-    cm_tests = (struct CMUnitTestState *)libc_malloc(sizeof(struct CMUnitTestState) * num_tests);
+    cm_tests = libc_calloc(1, sizeof(struct CMUnitTestState) * num_tests);
     if (cm_tests == NULL) {
         return -1;
     }
@@ -2882,9 +2969,16 @@ int _cmocka_run_group_tests(const char * group_name,
              || tests[i].setup_func != NULL
              || tests[i].teardown_func != NULL)) {
             if (global_test_filter_pattern != NULL) {
-                int ok;
-                ok = c_strmatch(tests[i].name, global_test_filter_pattern);
-                if (!ok) {
+                int match;
+                match = c_strmatch(tests[i].name, global_test_filter_pattern);
+                if (!match) {
+                    continue;
+                }
+            }
+            if (global_skip_filter_pattern != NULL) {
+                int match;
+                match = c_strmatch(tests[i].name, global_skip_filter_pattern);
+                if (match) {
                     continue;
                 }
             }
@@ -3217,7 +3311,7 @@ int _run_tests(const UnitTest * const tests, const size_t number_of_tests)
     if (number_of_test_states != 0) {
         print_error("[  ERROR   ] Mismatched number of setup %"PRIdS " and "
                     "teardown %"PRIdS " functions\n", setups, teardowns);
-        total_failed = (size_t) - 1;
+        total_failed = (size_t) -1;
     }
     free(test_states);
     free((void *)failed_names);

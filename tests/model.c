@@ -2,6 +2,7 @@
 #include <stdarg.h> /* cmocka.h */
 #include <stddef.h> /* cmocka.h */
 #include <setjmp.h> /* cmocka.h */
+#include <stdint.h> /* cmocka.h */
 
 #include <stdio.h> /* cmocka.h */
 #include <string.h> /* cmocka.h, memcpy */
