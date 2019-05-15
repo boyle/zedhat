@@ -68,6 +68,8 @@
 
 AU_ALIAS([ACX_LAPACKE], [AX_LAPACKE])
 AC_DEFUN([AX_LAPACKE], [
+AC_REQUIRE([AX_LAPACK])
+AC_REQUIRE([AX_CBLAS])
 AC_REQUIRE([AX_BLAS])
 ax_lapacke_ok=no
 
@@ -82,15 +84,15 @@ esac
 
 LAPACKE_dgels="LAPACKE_dgels"
 
-# We cannot use LAPACKE if BLAS is not found
-if test "x$ax_blas_ok" != xyes; then
+# We cannot use LAPACKE if LAPACK is not found
+if test "x$ax_lapack_ok" != xyes; then
         ax_lapacke_ok=noblas
         LAPACKE_LIBS=""
 fi
 
 # First, check LAPACKE_LIBS environment variable
 if test "x$LAPACKE_LIBS" != x; then
-        save_LIBS="$LIBS"; LIBS="$LAPACKE_LIBS $BLAS_LIBS $LIBS $FLIBS"
+        save_LIBS="$LIBS"; LIBS="$LAPACKE_LIBS $LAPACK_LIBS $CBLAS_LIBS $BLAS_LIBS $LIBS $FLIBS"
         AC_MSG_CHECKING([for $LAPACKE_dgels in $LAPACKE_LIBS])
         AC_TRY_LINK_FUNC($LAPACKE_dgels, [ax_lapacke_ok=yes], [LAPACKE_LIBS=""])
         AC_MSG_RESULT($ax_lapacke_ok)
@@ -102,7 +104,7 @@ fi
 
 # LAPACK linked to by default?  (is sometimes included in BLAS lib)
 if test $ax_lapacke_ok = no; then
-        save_LIBS="$LIBS"; LIBS="$LIBS $BLAS_LIBS $FLIBS"
+        save_LIBS="$LIBS"; LIBS="$LIBS $LAPACK_LIBS $CBLAS_LIBS $BLAS_LIBS $FLIBS"
         AC_CHECK_FUNC($LAPACKE_dgels, [ax_lapacke_ok=yes])
         LIBS="$save_LIBS"
 fi
@@ -110,7 +112,7 @@ fi
 # Generic LAPACK library?
 for lapacke in lapacke lapacke_rs6k; do
         if test $ax_lapacke_ok = no; then
-                save_LIBS="$LIBS"; LIBS="$BLAS_LIBS $LIBS"
+                save_LIBS="$LIBS"; LIBS="$LAPACK_LIBS $CBLAS_LIBS $BLAS_LIBS $LIBS"
                 AC_CHECK_LIB($lapacke, $LAPACKE_dgels,
                     [ax_lapacke_ok=yes; LAPACKE_LIBS="-l$lapacke"], [], [$FLIBS])
                 LIBS="$save_LIBS"
@@ -121,7 +123,7 @@ AC_SUBST(LAPACKE_LIBS)
 
 # Finally, execute ACTION-IF-FOUND/ACTION-IF-NOT-FOUND:
 if test x"$ax_lapacke_ok" = xyes; then
-        ifelse([$1],,AC_DEFINE(HAVE_LAPACK,1,[Define if you have LAPACK library.]),[$1])
+        ifelse([$1],,AC_DEFINE(HAVE_LAPACKE,1,[Define if you have LAPACKE library.]),[$1])
         :
 else
         ax_lapacke_ok=no

@@ -1,7 +1,7 @@
 # Copyright 2016, Alistair Boyle, 3-clause BSD License
 # Process this file with autoconf to produce a configure script.
 
-AC_PREREQ([2.65])
+AC_PREREQ([2.69])
 AC_INIT([zedhat],[0.0.2],[alistair.js.boyle@gmail.com])
 
 AC_COPYRIGHT([Copyright 2016, Alistair Boyle, 3-clause BSD License])
@@ -65,7 +65,7 @@ AC_TYPE_UINT32_T
 AC_FUNC_ERROR_AT_LINE
 AC_FUNC_STRNLEN
 AC_CHECK_HEADER_STDBOOL # matrix.h
-AC_CHECK_HEADERS([float.h stdlib.h string.h sys/time.h malloc.h stddef.h signal.h],,[AC_MSG_ERROR([missing header])])
+AC_CHECK_HEADERS([float.h stdlib.h string.h sys/time.h malloc.h stddef.h signal.h],,AC_MSG_ERROR([missing header]))
 AC_CHECK_FUNCS([gettimeofday strndup memset strcasecmp strchr strdup strerror signal])
 AC_HEADER_ASSERT
 AC_CHECK_FUNCS([memmove strstr]) # cmocka.c
@@ -74,40 +74,42 @@ AC_FUNC_STRTOD # argv.c
 
 # Checks for libraries.
 PKG_CHECK_MODULES([BLAS],[blas],,true)
-AX_BLAS(,[AC_MSG_ERROR([missing blas])])
-AC_CHECK_HEADERS([cblas.h],[cblas_h_ok=yes;break;])
+AX_BLAS(,AC_MSG_ERROR([missing blas]))
+PKG_CHECK_MODULES([CBLAS],[cblas],,true)
+AX_CBLAS(,AC_MSG_ERROR([missing cblas]))
+#AC_CHECK_HEADERS([cblas.h],[cblas_h_ok=yes;break;])
 
 PKG_CHECK_MODULES([LAPACK],[lapack],,true)
-AX_LAPACK(,[AC_MSG_ERROR([missing lapack])])
+AX_LAPACK(,AC_MSG_ERROR([missing lapack]))
 PKG_CHECK_MODULES([LAPACKE],[lapacke],,true)
-AX_LAPACKE(,[AC_MSG_ERROR([missing lapacke])])
+AX_LAPACKE(,AC_MSG_ERROR([missing lapacke]))
 
 PKG_CHECK_MODULES([UMFPACK],[umfpack],,true) # no pkg-config for umfpack on Ubuntu?
 AC_CHECK_HEADERS([suitesparse/umfpack.h],[UMFPACK_CFLAGS="$UMFPACK_CFLAGS -I/usr/include/suitesparse";umfpack_h_ok=yes;break;])
 AC_CHECK_HEADERS([umfpack.h],[umfpack_h_ok=yes;break;])
-AS_IF([test "x$umfpack_h_ok" == "xyes"],,[AC_MSG_ERROR([missing umfpack.h])])
+AS_IF([test "x$umfpack_h_ok" == "xyes"],,AC_MSG_ERROR([missing umfpack.h]))
 save_LIBS="$LIBS"; LIBS="$UMFPACK_LIBS $LIBS"
-AC_SEARCH_LIBS([umfpack_di_symbolic], [umfpack], , [AC_MSG_ERROR([missing umfpack library])])
+AC_SEARCH_LIBS([umfpack_di_symbolic], [umfpack], , AC_MSG_ERROR([missing umfpack library]))
 UMFPACK_LIBS="$LIBS"
 LIBS="$save_LIBS"
 
 PKG_CHECK_MODULES([CHOLMOD],[cholmod],,true) # no pkg-config for cholmod on Ubuntu?
 AC_CHECK_HEADERS([suitesparse/cholmod.h],[CHOLMOD_CFLAGS="$CHOLMOD_CFLAGS -I/usr/include/suitesparse";cholmod_h_ok=yes;break;])
 AC_CHECK_HEADERS([cholmod.h],[cholmod_h_ok=yes;break;])
-AS_IF([test "x$cholmod_h_ok" == "xyes"],,[AC_MSG_ERROR([missing cholmod.h])])
+AS_IF([test "x$cholmod_h_ok" == "xyes"],,AC_MSG_ERROR([missing cholmod.h]))
 save_LIBS="$LIBS"; LIBS="$CHOLMOD_LIBS $LIBS"
-AC_SEARCH_LIBS([cholmod_analyze], [cholmod], , [AC_MSG_ERROR([missing cholmod library])])
+AC_SEARCH_LIBS([cholmod_analyze], [cholmod], , AC_MSG_ERROR([missing cholmod library]))
 CHOLMOD_LIBS="$LIBS"
 LIBS="$save_LIBS"
 
 PKG_CHECK_MODULES([MATIO],[matio])
 AC_CHECK_HEADERS([matio.h],[matio_h_ok=yes;break;])
-AS_IF([test "x$matio_h_ok" == "xyes"],,[AC_MSG_ERROR([missing matio.h])])
+AS_IF([test "x$matio_h_ok" == "xyes"],,AC_MSG_ERROR([missing matio.h]))
 save_LIBS="$LIBS"; LIBS="$MATIO_LIBS $LIBS"
 AC_SEARCH_LIBS([Mat_Open],[matio],matio_ok=yes,matio_ok=no)
 MATIO_LIBS="$LIBS"
 LIBS="$save_LIBS"
-AS_IF([test "x$matio_ok" == "xyes"],,[AC_MSG_ERROR([missing matio library])])
+AS_IF([test "x$matio_ok" == "xyes"],,AC_MSG_ERROR([missing matio library]))
 
 AX_CHECK_ZLIB
 
@@ -171,6 +173,9 @@ AC_MSG_RESULT([Solvers  -----------------------------])
 AS_IF([test "x$ax_blas_ok" = xyes -a "x$BLAS_LIBS" != ""],
       AC_MSG_RESULT([       BLAS: $BLAS_LIBS]),
       AC_MSG_RESULT([       BLAS: $ax_blas_ok]))
+AS_IF([test "x$ax_cblas_ok" = xyes -a "x$CBLAS_LIBS" != ""],
+      AC_MSG_RESULT([      CBLAS: $CBLAS_LIBS]),
+      AC_MSG_RESULT([      CBLAS: $ax_cblas_ok]))
 AS_IF([test "x$ax_lapack_ok" = xyes -a "x$LAPACK_LIBS" != "x"],
       AC_MSG_RESULT([     LAPACK: $LAPACK_LIBS]),
       AC_MSG_RESULT([     LAPACK: $ax_lapack_ok]))
