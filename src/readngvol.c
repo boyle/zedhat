@@ -1,6 +1,6 @@
 
 #include <stdlib.h> /* malloc */
-#include <stdio.h> /* printf, fprintf */
+#include <stdio.h> /* printf */
 #include <string.h> /* strlen */
 #include <ctype.h> /* isspace */
 #include <zlib.h> /* gzopen, gzgets, gzeof, gzclose */
@@ -37,13 +37,13 @@ int readngvol(char filename[], mesh * m)
     mesh_free(m);
     gzFile F = gzopen(filename, "r");
     if(!F) {
-        fprintf(stderr, "error: failed to open %s\n", filename);
+        printf("err: failed to open %s\n", filename);
         goto __quit;
     }
     printf("reading %s\n", filename);
     gzreadnext(F, data, 8);
     if(strcmp(data, "mesh3d\n")) {
-        fprintf(stderr, "err: bad header\n");
+        printf("err: bad header\n");
         goto __quit;
     }
     while(!gzeof(F)) {
@@ -52,7 +52,7 @@ int readngvol(char filename[], mesh * m)
             gzreadnext(F, data, MAXCHAR);
             cnt = sscanf(data, "%d\n", &(m->dim));
             if((cnt != 1) || (m->dim != 3)) {
-                fprintf(stderr, "err: bad dimension\n");
+                printf("err: bad dimension\n");
                 goto __quit;
             }
             printf("dimension %d\n", m->dim);
@@ -66,7 +66,7 @@ int readngvol(char filename[], mesh * m)
             gzreadnext(F, data, MAXCHAR);
             cnt = sscanf(data, "%d\n", &type);
             if((cnt != 1) || (type != 0)) {
-                fprintf(stderr, "err: bad geomtype\n");
+                printf("err: bad geomtype\n");
                 goto __quit;
             }
             printf("geomtype %d\n", type);
@@ -87,7 +87,7 @@ int readngvol(char filename[], mesh * m)
                 se++;
             }
             if(cnt != m->n_se * 4 + 1) {
-                fprintf(stderr, "err: bad surfaceelements\n");
+                printf("err: bad surfaceelements\n");
                 goto __quit;
             }
         }
@@ -106,7 +106,7 @@ int readngvol(char filename[], mesh * m)
                 node++;
             }
             if(cnt != m->n_nodes * 3 + 1) {
-                fprintf(stderr, "err: bad points\n");
+                printf("err: bad points\n");
                 goto __quit;
             }
         }
@@ -126,13 +126,13 @@ int readngvol(char filename[], mesh * m)
                 elem++;
             }
             if(cnt != m->n_elems * 5 + 1) {
-                fprintf(stderr, "err: bad elems\n");
+                printf("err: bad elems\n");
                 goto __quit;
             }
         }
     }
     if( (m->n_nodes == 0) || (m->n_elems == 0) || (m->n_se == 0) ) {
-        fprintf(stderr, "err: %s: empty mesh nodes = %d, elems = %d, surfs = %d\n",
+        printf("err: %s: empty mesh nodes = %d, elems = %d, surfs = %d\n",
                 filename, m->n_nodes, m->n_elems, m->n_se);
         ret = 2;
     }
@@ -145,7 +145,7 @@ __quit:
     }
     if(F) {
         if(gzclose(F) != Z_OK) {
-            fprintf(stderr, "error: failed to close %s\n", filename);
+            printf("err: failed to close %s\n", filename);
             ret = 1;
         }
     }

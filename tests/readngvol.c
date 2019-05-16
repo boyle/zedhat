@@ -35,7 +35,6 @@ gzFile __wrap_gzopen(const char * path, const char * mode)
     return (void *) mock();
 }
 
-int line_num; /* not thread safe! */
 char * __real_gzgets(gzFile file, char * buf, int len);
 char * __wrap_gzgets(gzFile file, char * buf, int len)
 {
@@ -48,8 +47,6 @@ char * __wrap_gzgets(gzFile file, char * buf, int len)
         buf[i] = str[i];
     }
     buf[i] = '\0';
-    printf("gzgets [%03d] -> %s", line_num, buf);
-    line_num++;
     return buf;
 }
 
@@ -71,41 +68,144 @@ int __wrap_gzeof(gzFile file)
     return mock();
 }
 
-void mock_file_happy()
+void mock_file(int n, int eof)
 {
-    line_num = 0;
-    will_return(__wrap_gzopen, MAGIC_FILE);
-    will_return(__wrap_gzgets, "mesh3d\n");
-    will_return(__wrap_gzgets, "dimension\n");
-    will_return(__wrap_gzgets, "3\n");
-    will_return(__wrap_gzgets, "geomtype\n");
-    will_return(__wrap_gzgets, "0\n");
-    will_return(__wrap_gzgets, "volumeelements\n");
-    will_return(__wrap_gzgets, "1\n");
-    will_return(__wrap_gzgets, "1 4 4 2 6 8\n");
-    will_return(__wrap_gzgets, "points\n");
-    will_return(__wrap_gzgets, "1\n");
-    will_return(__wrap_gzgets, "    0.0000000000000000      0.0000000000000000      0.0000000000000000\n");
-    will_return(__wrap_gzgets, "surfaceelements\n");
-    will_return(__wrap_gzgets, "1\n");
-    will_return(__wrap_gzgets, " 1 1 1 0 3 1 4 7\n");
-    will_return(__wrap_gzgets, "\n");
-    will_return_count(__wrap_gzeof, 0, 12);
-    will_return(__wrap_gzeof, 1);
+    if(n <= 0) {
+        n = 14 + n;
+    }
+    if(eof <= 0) {
+        eof = 13 + eof;
+    }
+    if(n >= 0) {
+        will_return(__wrap_gzopen, MAGIC_FILE);
+        will_return(__wrap_gzgets, "mesh3d\n");
+        will_return(__wrap_gzgets, "dimension\n");
+        will_return(__wrap_gzgets, "3\n");
+        will_return(__wrap_gzgets, "geomtype\n");
+        will_return(__wrap_gzgets, "0\n");
+        will_return(__wrap_gzgets, "volumeelements\n");
+        will_return(__wrap_gzgets, "1\n");
+    }
+    if(n > 7) {
+        will_return(__wrap_gzgets, "1 4 4 2 6 8\n");
+        will_return(__wrap_gzgets, "points\n");
+        will_return(__wrap_gzgets, "1\n");
+    }
+    if(n > 10) {
+        will_return(__wrap_gzgets, "    0.0000000000000000      0.0000000000000000      0.0000000000000000\n");
+        will_return(__wrap_gzgets, "surfaceelements\n");
+        will_return(__wrap_gzgets, "1\n");
+    }
+    if(n > 13) {
+        will_return(__wrap_gzgets, " 1 1 1 0 3 1 4 7\n");
+        will_return(__wrap_gzgets, "\n");
+    }
+    int i;
+    for(i = 0; i < eof - 1; i += 1) {
+        will_return(__wrap_gzeof, 0);
+    }
+    if(eof == 13) {
+        will_return(__wrap_gzeof, 1);
+    }
+    if(n <= 14)
     will_return(__wrap_gzclose, Z_OK);
+    else
+    will_return(__wrap_gzclose, Z_STREAM_ERROR);
 }
 
 static void test_happy (void ** state)
 {
     (void) state; /* unused */
-    int ret = 0;
     mesh m = {0};
-    mock_file_happy();
+    mock_file(0, 0);
     will_return_count(__wrap__test_malloc, 0, 5);
-    ret = readngvol("test", &m);
+    int ret = readngvol("test", &m);
     assert_int_equal(ret, 0);
     mesh_free(&m);
-    printf("happy\n");
+}
+
+static void test_malloc_fail1 (void ** state)
+{
+    (void) state; /* unused */
+    int ret;
+    mesh m = {0};
+    will_return(__wrap__test_malloc, 1);
+    will_return(__wrap__test_malloc, 0);
+    mock_file(7, 4);
+    ret = readngvol("test", &m);
+    assert_int_equal(ret, 1);
+    mesh_free(&m);
+}
+
+static void test_malloc_fail2 (void ** state)
+{
+    (void) state; /* unused */
+    int ret;
+    mesh m = {0};
+    will_return(__wrap__test_malloc, 0);
+    will_return(__wrap__test_malloc, 1);
+    mock_file(7, 4);
+    ret = readngvol("test", &m);
+    assert_int_equal(ret, 1);
+    mesh_free(&m);
+}
+
+static void test_malloc_fail3 (void ** state)
+{
+    (void) state; /* unused */
+    int ret;
+    mesh m = {0};
+    will_return(__wrap__test_malloc, 0);
+    will_return(__wrap__test_malloc, 0);
+    will_return(__wrap__test_malloc, 1);
+    mock_file(10, 7);
+    ret = readngvol("test", &m);
+    assert_int_equal(ret, 1);
+    mesh_free(&m);
+}
+
+static void test_malloc_fail4 (void ** state)
+{
+    (void) state; /* unused */
+    int ret;
+    mesh m = {0};
+    will_return(__wrap__test_malloc, 0);
+    will_return(__wrap__test_malloc, 0);
+    will_return(__wrap__test_malloc, 0);
+    will_return(__wrap__test_malloc, 1);
+    will_return(__wrap__test_malloc, 0);
+    mock_file(13, 10);
+    ret = readngvol("test", &m);
+    assert_int_equal(ret, 1);
+    mesh_free(&m);
+}
+
+static void test_malloc_fail5 (void ** state)
+{
+    (void) state; /* unused */
+    int ret;
+    mesh m = {0};
+    will_return(__wrap__test_malloc, 0);
+    will_return(__wrap__test_malloc, 0);
+    will_return(__wrap__test_malloc, 0);
+    will_return(__wrap__test_malloc, 0);
+    will_return(__wrap__test_malloc, 1);
+    mock_file(13, 10);
+    ret = readngvol("test", &m);
+    assert_int_equal(ret, 1);
+    mesh_free(&m);
+}
+
+static void test_gzclose_fail (void ** state)
+{
+    (void) state; /* unused */
+    int ret;
+    mesh m = {0};
+    will_return_count(__wrap__test_malloc, 0, 5);
+    mock_file(100, 13);
+    ret = readngvol("test", &m);
+    assert_int_equal(ret, 1);
+    mesh_free(&m);
 }
 
 int main(int argc, char ** argv)
@@ -119,6 +219,12 @@ int main(int argc, char ** argv)
         test_malloc_enabled = 1;
         const struct CMUnitTest tests[] = {
             cmocka_unit_test(test_happy),
+            cmocka_unit_test(test_malloc_fail1),
+            cmocka_unit_test(test_malloc_fail2),
+            cmocka_unit_test(test_malloc_fail3),
+            cmocka_unit_test(test_malloc_fail4),
+            cmocka_unit_test(test_malloc_fail5),
+            cmocka_unit_test(test_gzclose_fail),
         };
         return cmocka_run_group_tests(tests, NULL, NULL);
     }
