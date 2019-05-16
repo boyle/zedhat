@@ -107,10 +107,12 @@ void mock_file(int n, int eof)
     if(eof == 13) {
         will_return(__wrap_gzeof, 1);
     }
-    if(n <= 14)
-    will_return(__wrap_gzclose, Z_OK);
-    else
-    will_return(__wrap_gzclose, Z_STREAM_ERROR);
+    if(n <= 14) {
+        will_return(__wrap_gzclose, Z_OK);
+    }
+    else {
+        will_return(__wrap_gzclose, Z_STREAM_ERROR);
+    }
 }
 
 static void test_happy (void ** state)

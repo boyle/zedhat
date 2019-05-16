@@ -133,7 +133,7 @@ int readngvol(char filename[], mesh * m)
     }
     if( (m->n_nodes == 0) || (m->n_elems == 0) || (m->n_se == 0) ) {
         printf("err: %s: empty mesh nodes = %d, elems = %d, surfs = %d\n",
-                filename, m->n_nodes, m->n_elems, m->n_se);
+               filename, m->n_nodes, m->n_elems, m->n_se);
         ret = 2;
     }
     else {
