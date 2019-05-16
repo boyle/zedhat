@@ -97,8 +97,9 @@ void mock_file_happy()
     will_return(__wrap_gzclose, Z_OK);
 }
 
-void test_happy (void ** state)
+static void test_happy (void ** state)
 {
+    (void) state; /* unused */
     int ret = 0;
     mesh m = {0};
     mock_file_happy();
@@ -106,6 +107,7 @@ void test_happy (void ** state)
     ret = readngvol("test", &m);
     assert_int_equal(ret, 0);
     mesh_free(&m);
+    printf("happy\n");
 }
 
 int main(int argc, char ** argv)

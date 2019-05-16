@@ -31,7 +31,8 @@ check_PROGRAMS = $(BUILT_TESTS)
 #tests_unit_perftimer_CPPFLAGS = -I$(srcdir)/src
 #readngvol_SOURCES = src/readngvol.c
 tests_readngvol_SOURCES = tests/readngvol.c src/readngvol.c src/model.c tests/cmocka.c
-tests_readngvol_CFLAGS = -g -DUNIT_TESTING $(foreach f,_test_malloc gzopen gzgets gzeof gzclose,-Wl,--wrap=$(f))
+tests_readngvol_CFLAGS = -DUNIT_TESTING
+tests_readngvol_LDFLAGS = $(foreach f,_test_malloc gzopen gzgets gzeof gzclose,-Wl,-wrap=$(f))
 tests_model_SOURCES = tests/model.c src/model.c tests/cmocka.c
 
 clean-local: clean-local-check

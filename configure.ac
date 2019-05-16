@@ -55,6 +55,7 @@ AC_CONFIG_FILES([Makefile])
 
 # Checks for programs.
 AC_PROG_CC
+AM_CONDITIONAL([CC_IS_CLANG], [test x"${CC}" == x"clang"])
 AM_PROG_CC_C_O
 AC_PROG_CC_STDC
 AC_C_INLINE
