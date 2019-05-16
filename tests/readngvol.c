@@ -13,11 +13,8 @@
 #include "cmocka.h"
 #include "readngvol.h"
 
-#define MAGIC_FILE 0xdeadbeef
-
 int test_malloc_enabled;
 void * __real__test_malloc(const size_t size, const char * file, const int line);
-
 void * __wrap__test_malloc(size_t size)
 {
     if(test_malloc_enabled && mock()) {
@@ -28,6 +25,7 @@ void * __wrap__test_malloc(size_t size)
     }
 }
 
+#define MAGIC_FILE 0xdeadbeef
 gzFile __real_gzopen(const char * path, const char * mode);
 gzFile __wrap_gzopen(const char * path, const char * mode)
 {
@@ -103,7 +101,7 @@ static void test_happy (void ** state)
     int ret = 0;
     mesh m = {0};
     mock_file_happy();
-    will_return_always(__wrap__test_malloc, 0);
+    will_return_count(__wrap__test_malloc, 0, 5);
     ret = readngvol("test", &m);
     assert_int_equal(ret, 0);
     mesh_free(&m);
