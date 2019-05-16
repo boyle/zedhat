@@ -33,7 +33,7 @@ addons:
    coverity_scan:
       project:
          name: "boyle/zedhat"
-         description: "<Your project description here>"
+         description: "Impedance Imaging (EIT and ERT)"
       notification_email: alistair.js.boyle@gmail.com
       build_command_prepend: "./autogen && ./configure"
       build_command: "make"
