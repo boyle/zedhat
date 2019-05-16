@@ -2,6 +2,7 @@
 #ifndef __MODEL_H__
 #define __MODEL_H__
 
+enum geomtype {DEFAULT};
 typedef struct mesh_type {
     int dim;
     double * nodes; /* n_nodes x dim */
@@ -12,6 +13,7 @@ typedef struct mesh_type {
     int * surfaceelems; /* n_se x dim */
     int * bc; /* n_se x 1 */
     int n_se;
+    enum geomtype type;
 } mesh;
 
 typedef enum enum_map_method_type {MAP_FWD, MAP_FWD_MATIDX, MAP_REC, MAP_REC_MATIDX} enum_map_method;

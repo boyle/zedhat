@@ -42,11 +42,7 @@ char * __wrap_gzgets(gzFile file, char * buf, int len)
         return __real_gzgets(file, buf, len);
     }
     const char * str = mock_type(char *);
-    int i = 0;
-    for(i = 0; (i < len) && (str[i] != '\0'); i += 1) {
-        buf[i] = str[i];
-    }
-    buf[i] = '\0';
+    strncpy(buf, str, len);
     return buf;
 }
 
@@ -71,12 +67,9 @@ int __wrap_gzeof(gzFile file)
 void mock_file_read(int n, int eof)
 {
     if(n <= 0) {
-        n = 14 + n;
+        n = 16 + n;
     }
-    if(eof <= 0) {
-        eof = 13 + eof;
-    }
-    if(n >= 0) {
+    if(n >= 3) {
         will_return(__wrap_gzopen, MAGIC_FILE);
         will_return(__wrap_gzgets, "mesh3d\n");
         will_return(__wrap_gzgets, "dimension\n");
@@ -86,28 +79,25 @@ void mock_file_read(int n, int eof)
         will_return(__wrap_gzgets, "volumeelements\n");
         will_return(__wrap_gzgets, "1\n");
     }
-    if(n > 7) {
+    if(n >= 4) {
         will_return(__wrap_gzgets, "1 4 4 2 6 8\n");
         will_return(__wrap_gzgets, "points\n");
         will_return(__wrap_gzgets, "1\n");
     }
-    if(n > 10) {
+    if(n >= 5) {
         will_return(__wrap_gzgets, "    0.0000000000000000      0.0000000000000000      0.0000000000000000\n");
         will_return(__wrap_gzgets, "surfaceelements\n");
         will_return(__wrap_gzgets, "1\n");
     }
-    if(n > 13) {
+    if(n >= 6) {
         will_return(__wrap_gzgets, " 1 1 1 0 3 1 4 7\n");
-        will_return(__wrap_gzgets, "\n");
     }
-    int i;
-    for(i = 0; i < eof - 1; i += 1) {
-        will_return(__wrap_gzeof, 0);
-    }
-    if(eof == 13) {
+    will_return(__wrap_gzgets, "");
+    will_return_count(__wrap_gzeof, 0, n);
+    if(eof) {
         will_return(__wrap_gzeof, 1);
     }
-    if(n <= 14) {
+    if(eof < 2) {
         will_return(__wrap_gzclose, Z_OK);
     }
     else {
@@ -119,7 +109,7 @@ static void test_happy (void ** state)
 {
     (void) state; /* unused */
     model m = {0};
-    mock_file_read(0, 0);
+    mock_file_read(6, 1);
     will_return_count(__wrap__test_malloc, 0, 5);
     int ret = readfile("test", &m);
     assert_int_equal(ret, 0);
@@ -133,7 +123,7 @@ static void test_malloc_fail1 (void ** state)
     model m = {0};
     will_return(__wrap__test_malloc, 1);
     will_return(__wrap__test_malloc, 0);
-    mock_file_read(7, 4);
+    mock_file_read(3, 0);
     ret = readfile("test", &m);
     assert_int_equal(ret, 1);
     model_free(&m);
@@ -146,7 +136,7 @@ static void test_malloc_fail2 (void ** state)
     model m = {0};
     will_return(__wrap__test_malloc, 0);
     will_return(__wrap__test_malloc, 1);
-    mock_file_read(7, 4);
+    mock_file_read(3, 0);
     ret = readfile("test", &m);
     assert_int_equal(ret, 1);
     model_free(&m);
@@ -160,7 +150,7 @@ static void test_malloc_fail3 (void ** state)
     will_return(__wrap__test_malloc, 0);
     will_return(__wrap__test_malloc, 0);
     will_return(__wrap__test_malloc, 1);
-    mock_file_read(10, 7);
+    mock_file_read(4, 0);
     ret = readfile("test", &m);
     assert_int_equal(ret, 1);
     model_free(&m);
@@ -176,7 +166,7 @@ static void test_malloc_fail4 (void ** state)
     will_return(__wrap__test_malloc, 0);
     will_return(__wrap__test_malloc, 1);
     will_return(__wrap__test_malloc, 0);
-    mock_file_read(13, 10);
+    mock_file_read(5, 0);
     ret = readfile("test", &m);
     assert_int_equal(ret, 1);
     model_free(&m);
@@ -192,7 +182,7 @@ static void test_malloc_fail5 (void ** state)
     will_return(__wrap__test_malloc, 0);
     will_return(__wrap__test_malloc, 0);
     will_return(__wrap__test_malloc, 1);
-    mock_file_read(13, 10);
+    mock_file_read(5, 0);
     ret = readfile("test", &m);
     assert_int_equal(ret, 1);
     model_free(&m);
@@ -204,10 +194,16 @@ static void test_gzclose_fail (void ** state)
     int ret;
     model m = {0};
     will_return_count(__wrap__test_malloc, 0, 5);
-    mock_file_read(100, 13);
+    mock_file_read(6, 2);
     ret = readfile("test", &m);
     assert_int_equal(ret, 1);
     model_free(&m);
+}
+
+static void test_null_fail (void ** state)
+{
+    (void) state; /* unused */
+    assert_int_equal(readfile("test", NULL), 1);
 }
 
 int main(int argc, char ** argv)
@@ -227,6 +223,7 @@ int main(int argc, char ** argv)
             cmocka_unit_test(test_malloc_fail4),
             cmocka_unit_test(test_malloc_fail5),
             cmocka_unit_test(test_gzclose_fail),
+            cmocka_unit_test(test_null_fail),
         };
         return cmocka_run_group_tests(tests, NULL, NULL);
     }
