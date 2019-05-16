@@ -40,5 +40,11 @@ else
   echo "opting to NOT rebuild ChangeLog"
 fi
 
+echo "get macros"
+[ -d m4 ] || mkdir m4
+for i in ax_blas ax_check_zlib ax_lapack; do
+  [ -f m4/$i.m4 ] || wget "http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/$i.m4" --output-document=m4/$i.m4
+done
+
 echo "update configure.ac, etc"
 cd "${distdir}" && autoreconf --install --warnings=all --include=m4 "$@"
