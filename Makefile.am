@@ -12,7 +12,7 @@ LIBS += $(MATIO_LIBS) $(UMFPACK_LIBS) $(CHOLMOD_LIBS) $(LAPACKE_LIBS) $(LAPACK_L
 AM_CFLAGS += -Werror -Wall #-Wextra
 
 # header files that need to be distributed but not installed
-noinst_HEADERS = src/argv.h src/matrix.h src/model.h src/readngvol.h
+noinst_HEADERS = src/argv.h src/matrix.h src/model.h src/file.h
 
 dist_man_MANS = man/zedhat.1
 
@@ -25,18 +25,21 @@ EXTRA_DIST = $(bin_SCRIPTS) \
 
 BUILT_TESTS = tests/libcblas_dgemm tests/liblapacke_dgels \
 			  tests/libumfpack tests/libcholmod tests/libmatio \
-			  tests/readngvol tests/model
+			  tests/file tests/model
 check_PROGRAMS = $(BUILT_TESTS)
 #tests_unit_perftimer_SOURCES = tests/unit-perftimer.c src/perftimer.c
 #tests_unit_perftimer_CPPFLAGS = -I$(srcdir)/src
 #readngvol_SOURCES = src/readngvol.c
-tests_readngvol_SOURCES = tests/readngvol.c src/readngvol.c src/model.c tests/cmocka.c
-tests_readngvol_CFLAGS = -DUNIT_TESTING
-tests_readngvol_LDFLAGS = $(foreach f,_test_malloc gzopen gzgets gzeof gzclose,-Wl,-wrap=$(f))
+tests_file_SOURCES = tests/file.c src/file.c src/model.c tests/cmocka.c
+tests_file_CFLAGS = -DUNIT_TESTING
+tests_file_LDFLAGS = $(foreach f,_test_malloc gzopen gzgets gzeof gzclose,-Wl,-wrap=$(f))
 tests_model_SOURCES = tests/model.c src/model.c tests/cmocka.c
+tests_model_CFLAGS = -DUNIT_TESTING
+#tests_model_LDFLAGS = $(foreach f,_test_malloc,-Wl,-wrap=$(f))
 
 clean-local: clean-local-check
 	  -rm -f src/*.lo
+	  rm -f {src,tests}/*.gcda {src,tests}/*.gcno
 
 maintainer-clean-local:
 	-rm -f aclocal.m4 configure ChangeLog Makefile.in src/config.h.in*

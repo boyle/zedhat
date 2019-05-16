@@ -17,6 +17,21 @@ extern void _test_free(void * const ptr, const char * file, const int line);
 #define free(ptr) _test_free(ptr, __FILE__, __LINE__)
 #endif
 
+void model_init(model * m)
+{
+    bzero(m, sizeof(model));
+}
+
+void model_free(model * m)
+{
+    if(m == NULL) {
+        return;
+    }
+    mesh_free(&(m->fwd));
+    mesh_free(&(m->rec));
+    model_init(m);
+}
+
 void mesh_init(mesh * m)
 {
     bzero(m, sizeof(mesh));

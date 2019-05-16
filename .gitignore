@@ -28,7 +28,7 @@ tests/libumfpack
 tests/libcholmod
 tests/libmatio
 tests/model
-tests/readngvol
+tests/file
 testsuite
 testsuite.dir/
 zedhat

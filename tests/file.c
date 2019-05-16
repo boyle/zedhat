@@ -11,7 +11,7 @@
 #include <zlib.h> /* cmocka: mocking zlib's gzopen, gzgets, gzclose, gzeof */
 
 #include "cmocka.h"
-#include "readngvol.h"
+#include "file.h"
 
 int test_malloc_enabled;
 void * __real__test_malloc(const size_t size, const char * file, const int line);
@@ -68,7 +68,7 @@ int __wrap_gzeof(gzFile file)
     return mock();
 }
 
-void mock_file(int n, int eof)
+void mock_file_read(int n, int eof)
 {
     if(n <= 0) {
         n = 14 + n;
@@ -118,96 +118,96 @@ void mock_file(int n, int eof)
 static void test_happy (void ** state)
 {
     (void) state; /* unused */
-    mesh m = {0};
-    mock_file(0, 0);
+    model m = {0};
+    mock_file_read(0, 0);
     will_return_count(__wrap__test_malloc, 0, 5);
-    int ret = readngvol("test", &m);
+    int ret = readfile("test", &m);
     assert_int_equal(ret, 0);
-    mesh_free(&m);
+    model_free(&m);
 }
 
 static void test_malloc_fail1 (void ** state)
 {
     (void) state; /* unused */
     int ret;
-    mesh m = {0};
+    model m = {0};
     will_return(__wrap__test_malloc, 1);
     will_return(__wrap__test_malloc, 0);
-    mock_file(7, 4);
-    ret = readngvol("test", &m);
+    mock_file_read(7, 4);
+    ret = readfile("test", &m);
     assert_int_equal(ret, 1);
-    mesh_free(&m);
+    model_free(&m);
 }
 
 static void test_malloc_fail2 (void ** state)
 {
     (void) state; /* unused */
     int ret;
-    mesh m = {0};
+    model m = {0};
     will_return(__wrap__test_malloc, 0);
     will_return(__wrap__test_malloc, 1);
-    mock_file(7, 4);
-    ret = readngvol("test", &m);
+    mock_file_read(7, 4);
+    ret = readfile("test", &m);
     assert_int_equal(ret, 1);
-    mesh_free(&m);
+    model_free(&m);
 }
 
 static void test_malloc_fail3 (void ** state)
 {
     (void) state; /* unused */
     int ret;
-    mesh m = {0};
+    model m = {0};
     will_return(__wrap__test_malloc, 0);
     will_return(__wrap__test_malloc, 0);
     will_return(__wrap__test_malloc, 1);
-    mock_file(10, 7);
-    ret = readngvol("test", &m);
+    mock_file_read(10, 7);
+    ret = readfile("test", &m);
     assert_int_equal(ret, 1);
-    mesh_free(&m);
+    model_free(&m);
 }
 
 static void test_malloc_fail4 (void ** state)
 {
     (void) state; /* unused */
     int ret;
-    mesh m = {0};
+    model m = {0};
     will_return(__wrap__test_malloc, 0);
     will_return(__wrap__test_malloc, 0);
     will_return(__wrap__test_malloc, 0);
     will_return(__wrap__test_malloc, 1);
     will_return(__wrap__test_malloc, 0);
-    mock_file(13, 10);
-    ret = readngvol("test", &m);
+    mock_file_read(13, 10);
+    ret = readfile("test", &m);
     assert_int_equal(ret, 1);
-    mesh_free(&m);
+    model_free(&m);
 }
 
 static void test_malloc_fail5 (void ** state)
 {
     (void) state; /* unused */
     int ret;
-    mesh m = {0};
+    model m = {0};
     will_return(__wrap__test_malloc, 0);
     will_return(__wrap__test_malloc, 0);
     will_return(__wrap__test_malloc, 0);
     will_return(__wrap__test_malloc, 0);
     will_return(__wrap__test_malloc, 1);
-    mock_file(13, 10);
-    ret = readngvol("test", &m);
+    mock_file_read(13, 10);
+    ret = readfile("test", &m);
     assert_int_equal(ret, 1);
-    mesh_free(&m);
+    model_free(&m);
 }
 
 static void test_gzclose_fail (void ** state)
 {
     (void) state; /* unused */
     int ret;
-    mesh m = {0};
+    model m = {0};
     will_return_count(__wrap__test_malloc, 0, 5);
-    mock_file(100, 13);
-    ret = readngvol("test", &m);
+    mock_file_read(100, 13);
+    ret = readfile("test", &m);
     assert_int_equal(ret, 1);
-    mesh_free(&m);
+    model_free(&m);
 }
 
 int main(int argc, char ** argv)
@@ -230,11 +230,11 @@ int main(int argc, char ** argv)
         };
         return cmocka_run_group_tests(tests, NULL, NULL);
     }
-    mesh m = {0};
-    int ret = readngvol(argv[1], &m);
+    model m = {0};
+    int ret = readfile(argv[1], &m);
     if(ret != 0) {
         fprintf(stderr, "error: failed to load %s\n", argv[1]);
     }
-    mesh_free(&m);
+    model_free(&m);
     return ret;
 }

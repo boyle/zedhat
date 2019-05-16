@@ -22,6 +22,22 @@
    }\
 } while(0)
 
+void test_mesh(void ** state)
+{
+    mesh m = {0};
+    mesh_free(&m);
+    mesh_init(&m);
+    mesh_free(NULL);
+}
+
+void test_model(void ** state)
+{
+    model m = {0};
+    model_free(&m);
+    model_init(&m);
+    model_free(NULL);
+}
+
 double simple_det3(int n, double A[3][3])
 {
     assert_int_equal(n, 3);
@@ -1050,6 +1066,8 @@ void test_3d_resistor (void ** state)
 int main(void)
 {
     const struct CMUnitTest tests[] = {
+        cmocka_unit_test(test_mesh),
+        cmocka_unit_test(test_model),
         cmocka_unit_test(test_det2),
         cmocka_unit_test(test_det3),
         cmocka_unit_test(test_det4),

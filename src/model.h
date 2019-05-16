@@ -14,6 +14,23 @@ typedef struct mesh_type {
     int n_se;
 } mesh;
 
+typedef enum enum_map_method_type {MAP_FWD, MAP_FWD_MATIDX, MAP_REC, MAP_REC_MATIDX} enum_map_method;
+
+typedef struct model_type {
+    mesh fwd; /* forward model */
+    mesh rec; /* reconstruction model (optional) */
+    enum_map_method map_method;
+    int p; /* number of parameters ~ fwd.n_elems or mapping from rec/matidx to fwd */
+    int m; /* number of data measurements */
+    int n; /* number of frames */
+    double * data; /* m x n */
+    double * param; /* p x n */
+    double hp; /* hyperparameter */
+} model;
+
+void model_init(model * m);
+void model_free(model * m);
+
 void mesh_init(mesh * m);
 void mesh_free(mesh * m);
 

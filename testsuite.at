@@ -197,7 +197,7 @@ AT_CLEANUP
 AT_BANNER([unit tests])
 AT_SETUP([netgen .vol])
 AT_KEYWORDS([netgen])
-AT_CHECK([readngvol test],0,ignore,[[[  PASSED  ] 7 test(s).]
+AT_CHECK([file test],0,ignore,[[[  PASSED  ] 7 test(s).]
 ])
 m4_define(ZH_DATA_FILE_NETGEN,
   [AT_DATA([ngcube.vol-xxd],m4_esyscmd(gzip -c tests/ngcube.vol | xxd -p))]
@@ -212,7 +212,7 @@ m4_define(ZH_DATA_FILE_NETGEN,
   echo -e "mesh3d\nvolumeelements\n5" > junk7.not_vol
 )
 ZH_DATA_FILE_NETGEN
-AT_CHECK([readngvol ngcube.vol],0,
+AT_CHECK([file ngcube.vol],0,
 [reading ngcube.vol
 dimension 3
 geomtype 0
@@ -220,7 +220,7 @@ geomtype 0
 6 volumeelements
 8 points
 ],)
-AT_CHECK([readngvol ngcube.vol.gz],0,
+AT_CHECK([file ngcube.vol.gz],0,
 [reading ngcube.vol.gz
 dimension 3
 geomtype 0
@@ -228,50 +228,50 @@ geomtype 0
 6 volumeelements
 8 points
 ],)
-AT_CHECK([readngvol nofile.vol],1,
+AT_CHECK([file nofile.vol],1,
 [err: failed to open nofile.vol
 ],
 [error: failed to load nofile.vol
 ])
-AT_CHECK([readngvol junk1.not_vol],1,
+AT_CHECK([file junk1.not_vol],1,
 [reading junk1.not_vol
 err: bad header
 ],
 [error: failed to load junk1.not_vol
 ])
-AT_CHECK([readngvol junk2.not_vol],2,
+AT_CHECK([file junk2.not_vol],2,
 [reading junk2.not_vol
 err: junk2.not_vol: empty mesh nodes = 0, elems = 0, surfs = 0
 ],
 [error: failed to load junk2.not_vol
 ])
-AT_CHECK([readngvol junk3.not_vol],1,
+AT_CHECK([file junk3.not_vol],1,
 [reading junk3.not_vol
 err: bad dimension
 ],
 [error: failed to load junk3.not_vol
 ])
-AT_CHECK([readngvol junk4.not_vol],1,
+AT_CHECK([file junk4.not_vol],1,
 [reading junk4.not_vol
 err: bad geomtype
 ],
 [error: failed to load junk4.not_vol
 ])
-AT_CHECK([readngvol junk5.not_vol],1,
+AT_CHECK([file junk5.not_vol],1,
 [reading junk5.not_vol
 5 surfaceelements
 err: bad surfaceelements
 ],
 [error: failed to load junk5.not_vol
 ])
-AT_CHECK([readngvol junk6.not_vol],1,
+AT_CHECK([file junk6.not_vol],1,
 [reading junk6.not_vol
 5 points
 err: bad points
 ],
 [error: failed to load junk6.not_vol
 ])
-AT_CHECK([readngvol junk7.not_vol],1,
+AT_CHECK([file junk7.not_vol],1,
 [reading junk7.not_vol
 5 volumeelements
 err: bad elems
@@ -281,6 +281,6 @@ err: bad elems
 AT_CLEANUP
 AT_SETUP([model - system matrix calculator])
 AT_KEYWORDS([mesh])
-AT_CHECK([model],0,ignore,[[[  PASSED  ] 16 test(s).
+AT_CHECK([model],0,ignore,[[[  PASSED  ] 18 test(s).
 ]])
 AT_CLEANUP
