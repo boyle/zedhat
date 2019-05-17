@@ -480,8 +480,7 @@ static int c_strreplace(char * src,
             *str_replaced = 1;
         }
         p = strstr(src, pattern);
-    }
-    while (p != NULL);
+    } while (p != NULL);
     return 0;
 }
 

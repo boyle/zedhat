@@ -22,9 +22,8 @@ int matrix_load(const char * file, matrix * M)
     do {
         Mat_VarFree(t);
         t = Mat_VarReadNextInfo(in);
-    }
-    while ( (t != NULL) &&
-            strncmp(t->name, M->name, strlen(M->name)) );
+    } while ( (t != NULL) &&
+              strncmp(t->name, M->name, strlen(M->name)) );
     if (t == NULL) {
         ret = 3;    /* end of list, M->name not found */
         goto _matrix_load_quit;
