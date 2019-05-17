@@ -1,3 +1,4 @@
+/* Copyright 2018, Alistair Boyle, 3-clause BSD License */
 #include <stdio.h>
 #include <unistd.h> /* for access() */
 #include <libgen.h> /* for basename() */

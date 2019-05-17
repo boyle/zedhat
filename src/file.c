@@ -1,4 +1,4 @@
-
+/* Copyright 2018, Alistair Boyle, 3-clause BSD License */
 #include <stdlib.h> /* malloc */
 #include <stdio.h> /* printf */
 #include <stddef.h> /* offsetof */

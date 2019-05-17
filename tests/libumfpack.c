@@ -1,3 +1,4 @@
+/* Copyright 2018, Alistair Boyle, 3-clause BSD License */
 /* Based on illustrative sample from UMFPACK's QuickStart.pdf
  * http://userpages.umbc.edu/~rostamia/2003-09-math625/umfpack.html
  * modified 2016, A. Boyle */
