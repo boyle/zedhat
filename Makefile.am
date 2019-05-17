@@ -7,7 +7,7 @@ bin_PROGRAMS = zedhat
 zedhat_SOURCES = src/zedhat.c src/argv.c src/matrix.c
 
 AM_CFLAGS = $(CFLAGS)
-AM_CFLAGS += $(MATIO_CFLAGS) $(UMFPACK_CFLAGS) $(LAPACKE_CFLAGS) $(LAPACK_CFLAGS) $(CBLAS_CFLAGS) $(BLAS_CFLAGS)
+AM_CFLAGS += $(MATIO_CFLAGS) $(UMFPACK_CFLAGS) $(CHOLMOD_CFLAGS) $(LAPACKE_CFLAGS) $(LAPACK_CFLAGS) $(CBLAS_CFLAGS) $(BLAS_CFLAGS)
 LIBS += $(MATIO_LIBS) $(UMFPACK_LIBS) $(CHOLMOD_LIBS) $(LAPACKE_LIBS) $(LAPACK_LIBS) $(CBLAS_LIBS) $(BLAS_LIBS) $(FLIBS)
 AM_CFLAGS += -Werror -Wall #-Wextra
 
@@ -31,10 +31,10 @@ check_PROGRAMS = $(BUILT_TESTS)
 #tests_unit_perftimer_CPPFLAGS = -I$(srcdir)/src
 #readngvol_SOURCES = src/readngvol.c
 tests_file_SOURCES = tests/file.c src/file.c src/model.c tests/cmocka.c
-tests_file_CFLAGS = -DUNIT_TESTING
+tests_file_CFLAGS = -DUNIT_TESTING  $(AM_CFLAGS)
 tests_file_LDFLAGS = $(foreach f,_test_malloc gzopen gzgets gzeof gzclose,-Wl,-wrap=$(f))
 tests_model_SOURCES = tests/model.c src/model.c tests/cmocka.c
-tests_model_CFLAGS = -DUNIT_TESTING
+tests_model_CFLAGS = -DUNIT_TESTING $(AM_CFLAGS)
 #tests_model_LDFLAGS = $(foreach f,_test_malloc,-Wl,-wrap=$(f))
 
 clean-local: clean-local-check

@@ -108,7 +108,7 @@ void mock_file_read(int n, int eof)
 static void test_happy (void ** state)
 {
     (void) state; /* unused */
-    model m = {0};
+    model m = {{0}};
     mock_file_read(6, 1);
     will_return_count(__wrap__test_malloc, 0, 5);
     int ret = readfile("test", &m);
@@ -120,7 +120,7 @@ static void test_malloc_fail1 (void ** state)
 {
     (void) state; /* unused */
     int ret;
-    model m = {0};
+    model m = {{0}};
     will_return(__wrap__test_malloc, 1);
     will_return(__wrap__test_malloc, 0);
     mock_file_read(3, 0);
@@ -133,7 +133,7 @@ static void test_malloc_fail2 (void ** state)
 {
     (void) state; /* unused */
     int ret;
-    model m = {0};
+    model m = {{0}};
     will_return(__wrap__test_malloc, 0);
     will_return(__wrap__test_malloc, 1);
     mock_file_read(3, 0);
@@ -146,7 +146,7 @@ static void test_malloc_fail3 (void ** state)
 {
     (void) state; /* unused */
     int ret;
-    model m = {0};
+    model m = {{0}};
     will_return(__wrap__test_malloc, 0);
     will_return(__wrap__test_malloc, 0);
     will_return(__wrap__test_malloc, 1);
@@ -160,7 +160,7 @@ static void test_malloc_fail4 (void ** state)
 {
     (void) state; /* unused */
     int ret;
-    model m = {0};
+    model m = {{0}};
     will_return(__wrap__test_malloc, 0);
     will_return(__wrap__test_malloc, 0);
     will_return(__wrap__test_malloc, 0);
@@ -176,7 +176,7 @@ static void test_malloc_fail5 (void ** state)
 {
     (void) state; /* unused */
     int ret;
-    model m = {0};
+    model m = {{0}};
     will_return(__wrap__test_malloc, 0);
     will_return(__wrap__test_malloc, 0);
     will_return(__wrap__test_malloc, 0);
@@ -192,7 +192,7 @@ static void test_gzclose_fail (void ** state)
 {
     (void) state; /* unused */
     int ret;
-    model m = {0};
+    model m = {{0}};
     will_return_count(__wrap__test_malloc, 0, 5);
     mock_file_read(6, 2);
     ret = readfile("test", &m);
@@ -227,7 +227,7 @@ int main(int argc, char ** argv)
         };
         return cmocka_run_group_tests(tests, NULL, NULL);
     }
-    model m = {0};
+    model m = {{0}};
     int ret = readfile(argv[1], &m);
     if(ret != 0) {
         fprintf(stderr, "error: failed to load %s\n", argv[1]);

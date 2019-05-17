@@ -32,7 +32,7 @@ void test_mesh(void ** state)
 
 void test_model(void ** state)
 {
-    model m = {0};
+    model m = {{0}};
     model_free(&m);
     model_init(&m);
     model_free(NULL);
