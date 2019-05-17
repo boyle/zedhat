@@ -203,15 +203,15 @@ m4_define(ZH_DATA_FILE_NETGEN,
   [AT_DATA([ngcube.vol-xxd],m4_esyscmd(gzip -c tests/ngcube.vol | xxd -p))]
   xxd -r -p ngcube.vol-xxd | gunzip -d > ngcube.vol
   gzip -k ngcube.vol
-  echo -e "gibberish file\r\nyup just junk some more" > junk1.not_vol
-  echo -e "mesh3d\r\nyup just junk some more" > junk2.not_vol
-  echo -e "mesh3d\ndimension\n2" > junk3.not_vol
-  echo -e "mesh3d\ngeomtype\n11" > junk4.not_vol
-  echo -e "mesh3d\nsurfaceelements\n5" > junk5.not_vol
-  echo -e "mesh3d\npoints\n5" > junk6.not_vol
-  echo -e "mesh3d\nvolumeelements\n5" > junk7.not_vol
-  echo -e "mesh3d\nvolumeelements\nXXX" > junk8.not_vol
-  echo -e "mesh3d\ndimension\n3\ngeomtype\n0\nvolumeelements\n0\npoints\n0\nsurfaceelements\n0\n" > junk9.not_vol
+  echo -e "gibberish file\r\nyup just junk some more" > junk1.not.vol
+  echo -e "mesh3d\r\nyup just junk some more" > junk2.not.vol
+  echo -e "mesh3d\ndimension\n2" > junk3.not.vol
+  echo -e "mesh3d\ngeomtype\n11" > junk4.not.vol
+  echo -e "mesh3d\nsurfaceelements\n5" > junk5.not.vol
+  echo -e "mesh3d\npoints\n5" > junk6.not.vol
+  echo -e "mesh3d\nvolumeelements\n5" > junk7.not.vol
+  echo -e "mesh3d\nvolumeelements\nXXX" > junk8.not.vol
+  echo -e "mesh3d\ndimension\n3\ngeomtype\n0\nvolumeelements\n0\npoints\n0\nsurfaceelements\n0\n" > junk9.not.vol
 )
 ZH_DATA_FILE_NETGEN
 AT_CHECK([file ngcube.vol],0,
@@ -237,77 +237,77 @@ AT_CHECK([file nofile.vol],1,
 ],
 [error: failed to load nofile.vol
 ])
-AT_CHECK([file junk1.not_vol],1,
-[reading junk1.not_vol
-err: junk1.not_vol: missing header mesh3d
+AT_CHECK([file junk1.not.vol],1,
+[reading junk1.not.vol
+err: junk1.not.vol: missing header mesh3d
 ],
-[error: failed to load junk1.not_vol
+[error: failed to load junk1.not.vol
 ])
-AT_CHECK([file junk2.not_vol],1,
-[reading junk2.not_vol
+AT_CHECK([file junk2.not.vol],1,
+[reading junk2.not.vol
 mesh3d
-err: junk2.not_vol: missing dimension
+err: junk2.not.vol: missing dimension
 ],
-[error: failed to load junk2.not_vol
+[error: failed to load junk2.not.vol
 ])
-AT_CHECK([file junk3.not_vol],1,
-[reading junk3.not_vol
+AT_CHECK([file junk3.not.vol],1,
+[reading junk3.not.vol
 mesh3d
 dimension 2
 err: bad dimension
 ],
-[error: failed to load junk3.not_vol
+[error: failed to load junk3.not.vol
 ])
-AT_CHECK([file junk4.not_vol],1,
-[reading junk4.not_vol
+AT_CHECK([file junk4.not.vol],1,
+[reading junk4.not.vol
 mesh3d
 geomtype 11
 err: bad geomtype
 ],
-[error: failed to load junk4.not_vol
+[error: failed to load junk4.not.vol
 ])
-AT_CHECK([file junk5.not_vol],1,
-[reading junk5.not_vol
+AT_CHECK([file junk5.not.vol],1,
+[reading junk5.not.vol
 mesh3d
 surfaceelements 5
 err: bad surfaceelements
 ],
-[error: failed to load junk5.not_vol
+[error: failed to load junk5.not.vol
 ])
-AT_CHECK([file junk6.not_vol],1,
-[reading junk6.not_vol
+AT_CHECK([file junk6.not.vol],1,
+[reading junk6.not.vol
 mesh3d
 points 5
 err: bad points
 ],
-[error: failed to load junk6.not_vol
+[error: failed to load junk6.not.vol
 ])
-AT_CHECK([file junk7.not_vol],1,
-[reading junk7.not_vol
+AT_CHECK([file junk7.not.vol],1,
+[reading junk7.not.vol
 mesh3d
 volumeelements 5
 err: bad volumeelements
 ],
-[error: failed to load junk7.not_vol
+[error: failed to load junk7.not.vol
 ])
-AT_CHECK([file junk8.not_vol],1,
-[reading junk8.not_vol
+AT_CHECK([file junk8.not.vol],1,
+[reading junk8.not.vol
 mesh3d
 err: bad volumeelements
 ],
-[error: failed to load junk8.not_vol
+[error: failed to load junk8.not.vol
 ])
-AT_CHECK([file junk9.not_vol],2,
-[reading junk9.not_vol
+AT_CHECK([file junk9.not.vol],2,
+[reading junk9.not.vol
 mesh3d
 dimension 3
 geomtype 0
 volumeelements 0
 points 0
 surfaceelements 0
-err: junk9.not_vol: empty mesh nodes = 0, elems = 0, surfs = 0
+err: junk9.not.vol: empty mesh nodes = 0, elems = 0, surfs = 0
 ],
-[error: failed to load junk9.not_vol
+[error: failed to load junk9.not.vol
 ])
 AT_CLEANUP
 AT_SETUP([model - system matrix calculator])

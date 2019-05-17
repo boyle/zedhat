@@ -14,7 +14,6 @@ extern void * _test_malloc(const size_t size, const char * file, const int line)
 #define malloc(size) _test_malloc(size, __FILE__, __LINE__)
 #endif
 
-
 #define MAXCHAR 1024
 void gzreadnext(gzFile F, char data[], int n)
 {
@@ -39,24 +38,11 @@ enum fileformat_req {OPTIONAL, REQUIRED, REQUIRED_FIRST};
 typedef struct {
     char section [LEN];
     size_t offset;
-    int (*sscanf_funcptr)(const char *, model *, mesh *, int i); /* int sscanf_func(const char * str, model* m, mesh* mm, int i) */
-    int (*test_funcptr)(model *, mesh *); /* int test_func(void *d) */
+    int (*sscanf_funcptr)(const char *, model *, mesh *, int i);
+    int (*test_funcptr)(model *, mesh *);
     enum fileformat_req req;
     int cnt;
 } fileformat;
-
-int readngvol_surfaceelements(const char * data, model * m, mesh * mm, const int se);
-int readngvol_volumeelements(const char * data, model * m, mesh * mm, const int elem);
-int readngvol_points(const char * data, model * m, mesh * mm, const int node);
-
-int readngvol_test_dimension(model * m, mesh * mm)
-{
-    return (mm->dim != 3);
-}
-int readngvol_test_geomtype(model * m, mesh * mm)
-{
-    return (mm->type != 0);
-}
 
 int check_req(const fileformat * f, enum fileformat_req needs)
 {
@@ -69,7 +55,7 @@ int check_req(const fileformat * f, enum fileformat_req needs)
     return 0;
 }
 
-int readfile(char filename[], model * m)
+int readfile_loop(char filename[], model * m, fileformat * f_list)
 {
     if(m == NULL) {
         return 1;
@@ -85,19 +71,6 @@ int readfile(char filename[], model * m)
     }
     printf("reading %s\n", filename);
     mesh * mm = &(m->fwd);
-    fileformat f_list [] = {
-        {"mesh3d", SIZE_MAX, NULL, NULL, REQUIRED_FIRST},
-        {"dimension", offsetof(mesh, dim), NULL, &readngvol_test_dimension, REQUIRED},
-        {"geomtype", offsetof(mesh, type), NULL, &readngvol_test_geomtype, REQUIRED},
-        /* GEOM_STL=11: surfaceelementsgi
-         * GEOM_OCC=12, GEOM_ACIS=13: surfaceelementsuv
-         * default: surfaceelements
-         */
-        {"surfaceelements", offsetof(mesh, n_se), &readngvol_surfaceelements, NULL, REQUIRED},
-        {"points", offsetof(mesh, n_nodes), &readngvol_points, NULL, REQUIRED},
-        {"volumeelements", offsetof(mesh, n_elems), &readngvol_volumeelements, NULL, REQUIRED},
-        {{0}}
-    };
     int first = 1;
     do {
         gzreadnext(F, data, MAXCHAR);
@@ -170,6 +143,16 @@ __quit:
     return ret;
 }
 
+int readngvol_test_dimension(model * m, mesh * mm)
+{
+    return (mm->dim != 3);
+}
+
+int readngvol_test_geomtype(model * m, mesh * mm)
+{
+    return (mm->type != 0);
+}
+
 int readngvol_surfaceelements(const char * data, model * m, mesh * mm, const int se)
 {
     if(!mm->surfaceelems) {
@@ -222,4 +205,43 @@ int readngvol_volumeelements(const char * data, model * m, mesh * mm, const int 
         return 1;
     }
     return 0;
+}
+
+int readzh_test_format1(model * m, mesh * mm)
+{
+    return (m->format != 1);
+}
+
+int readfile_ngvol(char filename[], model * m)
+{
+    fileformat ngvol [] = {
+        {"mesh3d", SIZE_MAX, NULL, NULL, REQUIRED_FIRST},
+        {"dimension", offsetof(model, fwd.dim), NULL, &readngvol_test_dimension, REQUIRED},
+        {"geomtype", offsetof(model, fwd.type), NULL, &readngvol_test_geomtype, REQUIRED},
+        /* GEOM_STL=11: surfaceelementsgi
+         * GEOM_OCC=12, GEOM_ACIS=13: surfaceelementsuv
+         * default: surfaceelements
+         */
+        {"surfaceelements", offsetof(model, fwd.n_se), &readngvol_surfaceelements, NULL, REQUIRED},
+        {"points", offsetof(model, fwd.n_nodes), &readngvol_points, NULL, REQUIRED},
+        {"volumeelements", offsetof(model, fwd.n_elems), &readngvol_volumeelements, NULL, REQUIRED},
+        {{0}}
+    };
+    return readfile_loop(filename, m, ngvol);
+}
+
+int readfile(char filename[], model * m)
+{
+    fileformat zh_format1 [] = {
+        {"zedhat", SIZE_MAX, NULL, NULL, REQUIRED_FIRST},
+        {"format", offsetof(model, format), NULL, &readzh_test_format1, REQUIRED},
+        /* netgen .vol format */
+        {"dimension", offsetof(model, fwd.dim), NULL, &readngvol_test_dimension, REQUIRED},
+        {"geomtype", offsetof(model, fwd.type), NULL, &readngvol_test_geomtype, REQUIRED},
+        {"surfaceelements", offsetof(model, fwd.n_se), &readngvol_surfaceelements, NULL, REQUIRED},
+        {"points", offsetof(model, fwd.n_nodes), &readngvol_points, NULL, REQUIRED},
+        {"volumeelements", offsetof(model, fwd.n_elems), &readngvol_volumeelements, NULL, REQUIRED},
+        {{0}}
+    };
+    return readfile_loop(filename, m, zh_format1);
 }

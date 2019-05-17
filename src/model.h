@@ -28,6 +28,7 @@ typedef struct model_type {
     double * data; /* m x n */
     double * param; /* p x n */
     double hp; /* hyperparameter */
+    int format; /* zedhat file format */
 } model;
 
 void model_init(model * m);

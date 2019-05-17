@@ -1,10 +1,9 @@
-/* Copyright 2018, Alistair Boyle, 3-clause BSD License */
 #include <stdarg.h> /* cmocka.h */
 #include <stddef.h> /* cmocka.h */
 #include <setjmp.h> /* cmocka.h */
 #include <stdint.h> /* cmocka.h */
 
-#include <string.h> /* strncmp */
+#include <string.h> /* strncmp, strlen */
 #include <stdlib.h> /* malloc, free */
 #include <stdio.h> /* printf, fprintf */
 #include <libgen.h> /* basename */
@@ -64,21 +63,18 @@ int __wrap_gzeof(gzFile file)
     return mock();
 }
 
-void mock_file_read(int n, int eof)
+void mock_read(int n, int eof)
 {
     if(n <= 0) {
         n = 16 + n;
     }
-    if(n >= 3) {
-        will_return(__wrap_gzopen, MAGIC_FILE);
-        will_return(__wrap_gzgets, "mesh3d\n");
-        will_return(__wrap_gzgets, "dimension\n");
-        will_return(__wrap_gzgets, "3\n");
-        will_return(__wrap_gzgets, "geomtype\n");
-        will_return(__wrap_gzgets, "0\n");
-        will_return(__wrap_gzgets, "volumeelements\n");
-        will_return(__wrap_gzgets, "1\n");
-    }
+    will_return(__wrap_gzopen, MAGIC_FILE);
+    will_return(__wrap_gzgets, "dimension\n");
+    will_return(__wrap_gzgets, "3\n");
+    will_return(__wrap_gzgets, "geomtype\n");
+    will_return(__wrap_gzgets, "0\n");
+    will_return(__wrap_gzgets, "volumeelements\n");
+    will_return(__wrap_gzgets, "1\n");
     if(n >= 4) {
         will_return(__wrap_gzgets, "1 4 4 2 6 8\n");
         will_return(__wrap_gzgets, "points\n");
@@ -105,13 +101,36 @@ void mock_file_read(int n, int eof)
     }
 }
 
+void mock_ngvol_read(int n, int eof)
+{
+    will_return(__wrap_gzgets, "mesh3d\n");
+    mock_read(n, eof);
+}
+
+void mock_zh_read(int n, int eof)
+{
+    will_return(__wrap_gzgets, "zedhat\n");
+    will_return(__wrap_gzgets, "format\n");
+    will_return(__wrap_gzgets, "1\n");
+    will_return(__wrap_gzeof, 0);
+    /* ng.vol file, excepting optional first line 'mesh3d'*/
+    mock_read(n, eof);
+}
+
 static void test_happy (void ** state)
 {
+    int ret;
     (void) state; /* unused */
     model m = {{0}};
-    mock_file_read(6, 1);
+    mock_ngvol_read(6, 1);
     will_return_count(__wrap__test_malloc, 0, 5);
-    int ret = readfile("test", &m);
+    ret = readfile_ngvol("test", &m);
+    assert_int_equal(ret, 0);
+    model_free(&m);
+    /* now repeat for a zedhat file */
+    mock_zh_read(6, 1);
+    will_return_count(__wrap__test_malloc, 0, 5);
+    ret = readfile("test", &m);
     assert_int_equal(ret, 0);
     model_free(&m);
 }
@@ -123,8 +142,8 @@ static void test_malloc_fail1 (void ** state)
     model m = {{0}};
     will_return(__wrap__test_malloc, 1);
     will_return(__wrap__test_malloc, 0);
-    mock_file_read(3, 0);
-    ret = readfile("test", &m);
+    mock_ngvol_read(3, 0);
+    ret = readfile_ngvol("test", &m);
     assert_int_equal(ret, 1);
     model_free(&m);
 }
@@ -136,8 +155,8 @@ static void test_malloc_fail2 (void ** state)
     model m = {{0}};
     will_return(__wrap__test_malloc, 0);
     will_return(__wrap__test_malloc, 1);
-    mock_file_read(3, 0);
-    ret = readfile("test", &m);
+    mock_ngvol_read(3, 0);
+    ret = readfile_ngvol("test", &m);
     assert_int_equal(ret, 1);
     model_free(&m);
 }
@@ -150,8 +169,8 @@ static void test_malloc_fail3 (void ** state)
     will_return(__wrap__test_malloc, 0);
     will_return(__wrap__test_malloc, 0);
     will_return(__wrap__test_malloc, 1);
-    mock_file_read(4, 0);
-    ret = readfile("test", &m);
+    mock_ngvol_read(4, 0);
+    ret = readfile_ngvol("test", &m);
     assert_int_equal(ret, 1);
     model_free(&m);
 }
@@ -166,8 +185,8 @@ static void test_malloc_fail4 (void ** state)
     will_return(__wrap__test_malloc, 0);
     will_return(__wrap__test_malloc, 1);
     will_return(__wrap__test_malloc, 0);
-    mock_file_read(5, 0);
-    ret = readfile("test", &m);
+    mock_ngvol_read(5, 0);
+    ret = readfile_ngvol("test", &m);
     assert_int_equal(ret, 1);
     model_free(&m);
 }
@@ -182,8 +201,8 @@ static void test_malloc_fail5 (void ** state)
     will_return(__wrap__test_malloc, 0);
     will_return(__wrap__test_malloc, 0);
     will_return(__wrap__test_malloc, 1);
-    mock_file_read(5, 0);
-    ret = readfile("test", &m);
+    mock_ngvol_read(5, 0);
+    ret = readfile_ngvol("test", &m);
     assert_int_equal(ret, 1);
     model_free(&m);
 }
@@ -194,8 +213,8 @@ static void test_gzclose_fail (void ** state)
     int ret;
     model m = {{0}};
     will_return_count(__wrap__test_malloc, 0, 5);
-    mock_file_read(6, 2);
-    ret = readfile("test", &m);
+    mock_ngvol_read(6, 2);
+    ret = readfile_ngvol("test", &m);
     assert_int_equal(ret, 1);
     model_free(&m);
 }
@@ -203,6 +222,7 @@ static void test_gzclose_fail (void ** state)
 static void test_null_fail (void ** state)
 {
     (void) state; /* unused */
+    assert_int_equal(readfile_ngvol("test", NULL), 1);
     assert_int_equal(readfile("test", NULL), 1);
 }
 
@@ -213,7 +233,8 @@ int main(int argc, char ** argv)
         fprintf(stderr, "usage: %s <netgen.vol|test>\n", basename(argv[0]));
         return 1;
     }
-    if(strncmp(argv[1], "test", 5) == 0) {
+    char * filename = argv[1];
+    if(strncmp(filename, "test", 5) == 0) {
         test_malloc_enabled = 1;
         const struct CMUnitTest tests[] = {
             cmocka_unit_test(test_happy),
@@ -228,7 +249,15 @@ int main(int argc, char ** argv)
         return cmocka_run_group_tests(tests, NULL, NULL);
     }
     model m = {{0}};
-    int ret = readfile(argv[1], &m);
+    int len = strlen(filename);
+    int ret;
+    if(((len > 4) && (strcmp(&(filename[len - 4]), ".vol") == 0)) ||
+          ((len>7) && (strcmp(&(filename[len - 7]), ".vol.gz") == 0))) {
+        ret = readfile_ngvol(filename, &m);
+    }
+    else {
+        ret = readfile(filename, &m);
+    }
     if(ret != 0) {
         fprintf(stderr, "error: failed to load %s\n", argv[1]);
     }
