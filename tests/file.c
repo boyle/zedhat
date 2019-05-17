@@ -63,30 +63,50 @@ int __wrap_gzeof(gzFile file)
     return mock();
 }
 
-void mock_read(int n, int eof)
+void mock_read(int n, int eof, int dim)
 {
     if(n <= 0) {
         n = 16 + n;
     }
     will_return(__wrap_gzopen, MAGIC_FILE);
     will_return(__wrap_gzgets, "dimension\n");
-    will_return(__wrap_gzgets, "3\n");
+    if(dim == 3) {
+        will_return(__wrap_gzgets, "3\n");
+    }
+    else {
+        will_return(__wrap_gzgets, "2\n");
+    }
     will_return(__wrap_gzgets, "geomtype\n");
     will_return(__wrap_gzgets, "0\n");
     will_return(__wrap_gzgets, "volumeelements\n");
     will_return(__wrap_gzgets, "1\n");
     if(n >= 4) {
-        will_return(__wrap_gzgets, "1 4 4 2 6 8\n");
+        if(dim == 3) {
+            will_return(__wrap_gzgets, "1 4 4 2 6 8\n");
+        }
+        else {
+            will_return(__wrap_gzgets, "1 3 4 2 6\n");
+        }
         will_return(__wrap_gzgets, "points\n");
         will_return(__wrap_gzgets, "1\n");
     }
     if(n >= 5) {
-        will_return(__wrap_gzgets, "    0.0000000000000000      0.0000000000000000      0.0000000000000000\n");
+        if(dim == 3) {
+            will_return(__wrap_gzgets, "    0.0000000000000000      0.0000000000000000      0.0000000000000000\n");
+        }
+        else {
+            will_return(__wrap_gzgets, "    0.0000000000000000      0.0000000000000000\n");
+        }
         will_return(__wrap_gzgets, "surfaceelements\n");
         will_return(__wrap_gzgets, "1\n");
     }
     if(n >= 6) {
-        will_return(__wrap_gzgets, " 1 1 1 0 3 1 4 7\n");
+        if(dim == 3) {
+            will_return(__wrap_gzgets, " 1 1 1 0 3 1 4 7\n");
+        }
+        else {
+            will_return(__wrap_gzgets, " 1 1 1 0 2 1 4\n");
+        }
     }
     will_return(__wrap_gzgets, "");
     will_return_count(__wrap_gzeof, 0, n);
@@ -101,20 +121,20 @@ void mock_read(int n, int eof)
     }
 }
 
-void mock_ngvol_read(int n, int eof)
+void mock_ngvol_read(int n, int eof, int dim)
 {
     will_return(__wrap_gzgets, "mesh3d\n");
-    mock_read(n, eof);
+    mock_read(n, eof, dim);
 }
 
-void mock_zh_read(int n, int eof)
+void mock_zh_read(int n, int eof, int dim)
 {
     will_return(__wrap_gzgets, "zedhat\n");
     will_return(__wrap_gzgets, "format\n");
     will_return(__wrap_gzgets, "1\n");
     will_return(__wrap_gzeof, 0);
     /* ng.vol file, excepting optional first line 'mesh3d'*/
-    mock_read(n, eof);
+    mock_read(n, eof, dim);
 }
 
 static void test_happy (void ** state)
@@ -122,17 +142,23 @@ static void test_happy (void ** state)
     int ret;
     (void) state; /* unused */
     model m = {{0}};
-    mock_ngvol_read(6, 1);
-    will_return_count(__wrap__test_malloc, 0, 5);
-    ret = readfile_ngvol("test", &m);
-    assert_int_equal(ret, 0);
-    model_free(&m);
-    /* now repeat for a zedhat file */
-    mock_zh_read(6, 1);
-    will_return_count(__wrap__test_malloc, 0, 5);
-    ret = readfile("test", &m);
-    assert_int_equal(ret, 0);
-    model_free(&m);
+    int dim;
+    for( dim = 2; dim <= 3; dim  += 1) {
+        /* for a netgen file */
+        printf("-- netgen %dd --\n", dim);
+        mock_ngvol_read(6, 1, 3);
+        will_return_count(__wrap__test_malloc, 0, 5);
+        ret = readfile_ngvol("test", &m);
+        assert_int_equal(ret, 0);
+        model_free(&m);
+        /* now repeat for a zedhat file */
+        printf("-- zedhat %dd --\n", dim);
+        mock_zh_read(6, 1, 3);
+        will_return_count(__wrap__test_malloc, 0, 5);
+        ret = readfile("test", &m);
+        assert_int_equal(ret, 0);
+        model_free(&m);
+    }
 }
 
 static void test_malloc_fail1 (void ** state)
@@ -142,7 +168,7 @@ static void test_malloc_fail1 (void ** state)
     model m = {{0}};
     will_return(__wrap__test_malloc, 1);
     will_return(__wrap__test_malloc, 0);
-    mock_ngvol_read(3, 0);
+    mock_ngvol_read(3, 0, 3);
     ret = readfile_ngvol("test", &m);
     assert_int_equal(ret, 1);
     model_free(&m);
@@ -155,7 +181,7 @@ static void test_malloc_fail2 (void ** state)
     model m = {{0}};
     will_return(__wrap__test_malloc, 0);
     will_return(__wrap__test_malloc, 1);
-    mock_ngvol_read(3, 0);
+    mock_ngvol_read(3, 0, 3);
     ret = readfile_ngvol("test", &m);
     assert_int_equal(ret, 1);
     model_free(&m);
@@ -169,7 +195,7 @@ static void test_malloc_fail3 (void ** state)
     will_return(__wrap__test_malloc, 0);
     will_return(__wrap__test_malloc, 0);
     will_return(__wrap__test_malloc, 1);
-    mock_ngvol_read(4, 0);
+    mock_ngvol_read(4, 0, 3);
     ret = readfile_ngvol("test", &m);
     assert_int_equal(ret, 1);
     model_free(&m);
@@ -185,7 +211,7 @@ static void test_malloc_fail4 (void ** state)
     will_return(__wrap__test_malloc, 0);
     will_return(__wrap__test_malloc, 1);
     will_return(__wrap__test_malloc, 0);
-    mock_ngvol_read(5, 0);
+    mock_ngvol_read(5, 0, 3);
     ret = readfile_ngvol("test", &m);
     assert_int_equal(ret, 1);
     model_free(&m);
@@ -201,7 +227,7 @@ static void test_malloc_fail5 (void ** state)
     will_return(__wrap__test_malloc, 0);
     will_return(__wrap__test_malloc, 0);
     will_return(__wrap__test_malloc, 1);
-    mock_ngvol_read(5, 0);
+    mock_ngvol_read(5, 0, 3);
     ret = readfile_ngvol("test", &m);
     assert_int_equal(ret, 1);
     model_free(&m);
@@ -213,7 +239,7 @@ static void test_gzclose_fail (void ** state)
     int ret;
     model m = {{0}};
     will_return_count(__wrap__test_malloc, 0, 5);
-    mock_ngvol_read(6, 2);
+    mock_ngvol_read(6, 2, 3);
     ret = readfile_ngvol("test", &m);
     assert_int_equal(ret, 1);
     model_free(&m);
@@ -252,7 +278,7 @@ int main(int argc, char ** argv)
     int len = strlen(filename);
     int ret;
     if(((len > 4) && (strcmp(&(filename[len - 4]), ".vol") == 0)) ||
-          ((len>7) && (strcmp(&(filename[len - 7]), ".vol.gz") == 0))) {
+       ((len > 7) && (strcmp(&(filename[len - 7]), ".vol.gz") == 0))) {
         ret = readfile_ngvol(filename, &m);
     }
     else {

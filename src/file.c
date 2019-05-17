@@ -22,9 +22,9 @@ void gzreadnext(gzFile F, char data[], int n)
         data[0] = '\0';
         return;
     }
-    /* DANGER: inconsistent use of \r and \n by netgen */
     int cnt;
     for(cnt = 0; (data[cnt] != '\0') && (data[cnt] != '\n') && (cnt < n - 1); cnt++) {
+    /* netgen is inconsistent in its use of \r and \n */
         if (data[cnt] == '\r') {
             data[cnt] = '\n';
             break;
@@ -145,7 +145,7 @@ __quit:
 
 int readngvol_test_dimension(model * m, mesh * mm)
 {
-    return (mm->dim != 3);
+    return !((mm->dim == 3) || (mm->dim == 2));
 }
 
 int readngvol_test_geomtype(model * m, mesh * mm)
@@ -156,7 +156,7 @@ int readngvol_test_geomtype(model * m, mesh * mm)
 int readngvol_surfaceelements(const char * data, model * m, mesh * mm, const int se)
 {
     if(!mm->surfaceelems) {
-        mm->surfaceelems = malloc(sizeof(int) * mm->n_se * 3);
+        mm->surfaceelems = malloc(sizeof(int) * mm->n_se * mm->dim);
     }
     if(!mm->bc) {
         mm->bc = malloc(sizeof(int) * mm->n_se * 1);
@@ -164,8 +164,14 @@ int readngvol_surfaceelements(const char * data, model * m, mesh * mm, const int
     if(!mm->surfaceelems || !mm->bc) {
         return 2;
     }
-    int cnt = sscanf(data, "%*d %d %*d %*d 3 %d %d %d\n", &mm->bc[se], &mm->surfaceelems[3 * se + 0], &mm->surfaceelems[3 * se + 1], &mm->surfaceelems[3 * se + 2]);
-    if(cnt != 4) {
+    int cnt;
+    if(mm->dim == 3) {
+        cnt = sscanf(data, "%*d %d %*d %*d 3 %d %d %d\n", &mm->bc[se], &mm->surfaceelems[3 * se + 0], &mm->surfaceelems[3 * se + 1], &mm->surfaceelems[3 * se + 2]);
+    }
+    else {
+        cnt = sscanf(data, "%*d %d %*d %*d 2 %d %d\n", &mm->bc[se], &mm->surfaceelems[2 * se + 0], &mm->surfaceelems[2 * se + 1]);
+    }
+    if(cnt != mm->dim + 1) {
         printf("err: bad surfaceelements\n");
         return 1;
     }
@@ -175,13 +181,19 @@ int readngvol_surfaceelements(const char * data, model * m, mesh * mm, const int
 int readngvol_points(const char * data, model * m, mesh * mm, const int node)
 {
     if(!mm->nodes) {
-        mm->nodes = malloc(sizeof(double) * mm->n_nodes * 3);
+        mm->nodes = malloc(sizeof(double) * mm->n_nodes * mm->dim);
     }
     if(!mm->nodes) {
         return 2;
     }
-    int cnt = sscanf(data, " %lf %lf %lf\n", &mm->nodes[3 * node + 0], &mm->nodes[3 * node + 1], &mm->nodes[3 * node + 2]);
-    if(cnt != 3) {
+    int cnt;
+    if(mm->dim == 3) {
+     cnt = sscanf(data, " %lf %lf %lf\n", &mm->nodes[3 * node + 0], &mm->nodes[3 * node + 1], &mm->nodes[3 * node + 2]);
+    }
+    else {
+     cnt = sscanf(data, " %lf %lf\n", &mm->nodes[2 * node + 0], &mm->nodes[2 * node + 1]);
+    }
+    if(cnt != mm->dim) {
         printf("err: bad points\n");
         return 1;
     }
@@ -191,7 +203,7 @@ int readngvol_points(const char * data, model * m, mesh * mm, const int node)
 int readngvol_volumeelements(const char * data, model * m, mesh * mm, const int elem)
 {
     if(!mm->elems) {
-        mm->elems = malloc(sizeof(int) * mm->n_elems * 4);
+        mm->elems = malloc(sizeof(int) * mm->n_elems * (mm->dim+1));
     }
     if(!mm->matidx) {
         mm->matidx = malloc(sizeof(int) * mm->n_elems * 1);
@@ -199,8 +211,14 @@ int readngvol_volumeelements(const char * data, model * m, mesh * mm, const int 
     if(!mm->elems || !mm->matidx) {
         return 2;
     }
-    int cnt = sscanf(data, "%d 4 %d %d %d %d\n", &mm->matidx[elem], &mm->elems[4 * elem + 0], &mm->elems[4 * elem + 1], &mm->elems[4 * elem + 2], &mm->elems[4 * elem + 3]);
-    if(cnt != 5) {
+    int cnt;
+    if(mm->dim == 3) {
+    cnt = sscanf(data, "%d 4 %d %d %d %d\n", &mm->matidx[elem], &mm->elems[4 * elem + 0], &mm->elems[4 * elem + 1], &mm->elems[4 * elem + 2], &mm->elems[4 * elem + 3]);
+    }
+    else {
+    cnt = sscanf(data, "%d 3 %d %d %d\n", &mm->matidx[elem], &mm->elems[3 * elem + 0], &mm->elems[3 * elem + 1], &mm->elems[3 * elem + 2]);
+    }
+    if(cnt != mm->dim+2) {
         printf("err: bad volumeelements\n");
         return 1;
     }
