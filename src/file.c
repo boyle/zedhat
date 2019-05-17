@@ -39,11 +39,24 @@ enum fileformat_req {OPTIONAL, REQUIRED, REQUIRED_FIRST};
 typedef struct {
     char section [LEN];
     size_t offset;
-    int (*sscanf)(const char *, void *, int i); /* int cnt = sscanf(const char * str, void* d) */
-    int (*test)(void *); /* int fail = test(void *d) */
+    int (*sscanf_funcptr)(const char *, model *, mesh *, int i); /* int sscanf_func(const char * str, model* m, mesh* mm, int i) */
+    int (*test_funcptr)(model *, mesh *); /* int test_func(void *d) */
     enum fileformat_req req;
     int cnt;
 } fileformat;
+
+int readngvol_surfaceelements(const char * data, model * m, mesh * mm, const int se);
+int readngvol_volumeelements(const char * data, model * m, mesh * mm, const int elem);
+int readngvol_points(const char * data, model * m, mesh * mm, const int node);
+
+int readngvol_test_dimension(model * m, mesh * mm)
+{
+    return (mm->dim != 3);
+}
+int readngvol_test_geomtype(model * m, mesh * mm)
+{
+    return (mm->type != 0);
+}
 
 int check_req(const fileformat * f, enum fileformat_req needs)
 {
@@ -54,21 +67,6 @@ int check_req(const fileformat * f, enum fileformat_req needs)
         }
     }
     return 0;
-}
-
-int readngvol_surfaceelements(const char * data, void * ptr, const int se);
-int readngvol_volumeelements(const char * data, void * ptr, const int elem);
-int readngvol_points(const char * data, void * ptr, const int node);
-
-int readngvol_test_dimension(void * ptr)
-{
-    const mesh * m = ptr;
-    return (m->dim != 3);
-}
-int readngvol_test_geomtype(void * ptr)
-{
-    const mesh * m = ptr;
-    return (m->type != 0);
 }
 
 int readfile(char filename[], model * m)
@@ -131,16 +129,16 @@ int readfile(char filename[], model * m)
                 goto __quit;
             }
             printf("%s %d\n", f->section, *n);
-            if(f->sscanf) {
+            if(f->sscanf_funcptr) {
                 int i;
                 for(i = 0; i < *n; i += 1) {
                     gzreadnext(F, data, MAXCHAR);
-                    if( (*f->sscanf)(data, mm, i) ) { /* sscanf(data, mm); err=1 */
+                    if( (*f->sscanf_funcptr)(data, m, mm, i) ) { /* sscanf(data, mm); err=1 */
                         goto __quit;
                     }
                 }
             }
-            if(f->test && (*f->test)(mm)) { /* test(mm); err=1 */
+            if(f->test_funcptr && (*f->test_funcptr)(m, mm)) { /* test(mm); err=1 */
                 printf("err: bad %s\n", f->section);
                 goto __quit;
             }
@@ -172,9 +170,8 @@ __quit:
     return ret;
 }
 
-int readngvol_surfaceelements(const char * data, void * ptr, const int se)
+int readngvol_surfaceelements(const char * data, model * m, mesh * mm, const int se)
 {
-    mesh * mm = ptr;
     if(!mm->surfaceelems) {
         mm->surfaceelems = malloc(sizeof(int) * mm->n_se * 3);
     }
@@ -192,9 +189,8 @@ int readngvol_surfaceelements(const char * data, void * ptr, const int se)
     return 0;
 }
 
-int readngvol_points(const char * data, void * ptr, const int node)
+int readngvol_points(const char * data, model * m, mesh * mm, const int node)
 {
-    mesh * mm = ptr;
     if(!mm->nodes) {
         mm->nodes = malloc(sizeof(double) * mm->n_nodes * 3);
     }
@@ -209,9 +205,8 @@ int readngvol_points(const char * data, void * ptr, const int node)
     return 0;
 }
 
-int readngvol_volumeelements(const char * data, void * ptr, const int elem)
+int readngvol_volumeelements(const char * data, model * m, mesh * mm, const int elem)
 {
-    mesh * mm = ptr;
     if(!mm->elems) {
         mm->elems = malloc(sizeof(int) * mm->n_elems * 4);
     }
