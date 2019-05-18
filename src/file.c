@@ -37,7 +37,7 @@ void gzreadnext(gzFile F, char data[], int n)
 enum fileformat_req {OPTIONAL, REQUIRED, REQUIRED_FIRST};
 typedef struct {
     char section [LEN];
-    int len;
+    int n_size;
     size_t offset;
     int (*sscanf_funcptr)(const char *, model *, mesh *, int i);
     int (*test_funcptr)(model *, mesh *);
@@ -90,21 +90,27 @@ int readfile_loop(char filename[], model * m, fileformat * f_list)
             }
             first = 0;
             f->cnt += 1;
-            if(!f->len) {
+            if(!f->n_size) {
                 printf("%s\n", f->section);
                 f++;
                 break;
             }
             gzreadnext(F, data, MAXCHAR);
             int * n = (int *) ((char *)mm + f->offset);
-            cnt = sscanf(data, "%d\n", n);
-            if(cnt != 1) {
+            cnt = 0;
+            int idx = 0;
+            int j;
+            for(j = 0; j < f->n_size; j++) {
+                cnt += sscanf(&(data[idx]), "%d %n", &(n[j]), &idx);
+            }
+            if(cnt != f->n_size) {
                 printf("err: bad %s\n", f->section);
                 goto __quit;
             }
             printf("%s %d\n", f->section, *n);
             if(f->sscanf_funcptr) {
                 int i;
+                int * n = (int *) ((char *)mm + f->offset);
                 for(i = 0; i < *n; i += 1) {
                     gzreadnext(F, data, MAXCHAR);
                     int ret = (*f->sscanf_funcptr)(data, m, mm, i);
@@ -229,7 +235,7 @@ int readzh_test_format1(model * m, mesh * mm)
 int readzh_stimmeas(const char * data, model * m, mesh * mm, const int i)
 {
     if(!m->stimmeas) {
-        m->stimmeas = malloc(sizeof(int) * m->s * 4);
+        m->stimmeas = malloc(sizeof(int) * m->n_stimmeas * 4);
     }
     if(!m->stimmeas) {
         return 2;
@@ -238,6 +244,44 @@ int readzh_stimmeas(const char * data, model * m, mesh * mm, const int i)
                      &m->stimmeas[4 * i + 0], &m->stimmeas[4 * i + 1],
                      &m->stimmeas[4 * i + 2], &m->stimmeas[4 * i + 3]);
     return (cnt != 4);
+}
+
+int readzh_data(const char * data, model * m, mesh * mm, const int i)
+{
+    const int rows = m->n_data[0];
+    const int cols = m->n_data[1];
+    if(!m->data) {
+        m->data = malloc(sizeof(double) * rows * cols);
+    }
+    if(!m->data) {
+        return 2;
+    }
+    int cnt = 0;
+    int idx = 0;
+    int j;
+    for(j = 0; j < cols; j++) {
+        cnt += sscanf(&(data[idx]), " %lf %n", &(m->data[cols * i + j]), &idx);
+    }
+    return (cnt != cols);
+}
+
+int readzh_params(const char * data, model * m, mesh * mm, const int i)
+{
+    const int rows = m->n_params[0];
+    const int cols = m->n_params[1];
+    if(!m->params) {
+        m->params = malloc(sizeof(double) * rows * cols);
+    }
+    if(!m->params) {
+        return 2;
+    }
+    int cnt = 0;
+    int idx = 0;
+    int j;
+    for(j = 0; j < cols; j++) {
+        cnt += sscanf(&(data[idx]), " %lf %n", &(m->params[cols * i + j]), &idx);
+    }
+    return (cnt != cols);
 }
 
 int readfile_ngvol(char filename[], model * m)
@@ -269,7 +313,9 @@ int readfile(char filename[], model * m)
         {"surfaceelements", 1, offsetof(model, fwd.n_se), &readngvol_surfaceelements, NULL, REQUIRED},
         {"points", 1, offsetof(model, fwd.n_nodes), &readngvol_points, NULL, REQUIRED},
         {"volumeelements", 1, offsetof(model, fwd.n_elems), &readngvol_volumeelements, NULL, REQUIRED},
-        {"stimmeas", 1, offsetof(model, s), &readzh_stimmeas, NULL, OPTIONAL},
+        {"stimmeas", 1, offsetof(model, n_stimmeas), &readzh_stimmeas, NULL, OPTIONAL},
+        {"data", 2, offsetof(model, n_data), &readzh_data, NULL, OPTIONAL},
+        {"parameters", 2, offsetof(model, n_params), &readzh_params, NULL, OPTIONAL},
         {{0}}
     };
     return readfile_loop(filename, m, zh_format1);

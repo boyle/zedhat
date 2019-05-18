@@ -19,15 +19,13 @@ typedef struct mesh_type {
 
 typedef struct model_type {
     mesh fwd; /* forward model */
-    int p; /* number of parameters ~ fwd.n_elems or mapping from rec/matidx to fwd */
-    int k; /* number of image frames */
-    int m; /* number of data measurements */
-    int n; /* number of measurement frames */
-    int s; /* number of data measurements for stimmeas */
+    int n_data [2]; /* number of data measurements */
+    int n_params [2]; /* number of image frames */
+    int n_stimmeas; /* number of stimmeas measurements*/
     double * data; /* m x n */
-    double * param; /* p x k */
+    double * params; /* p x k */
+    int * stimmeas; /* n_stimmeas x 4: sp sn mp mn */
     double hp; /* hyperparameter */
-    int * stimmeas; /* s x 4: sp sn mp mn */
     int format; /* zedhat file format */
 } model;
 

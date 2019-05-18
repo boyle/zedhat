@@ -160,12 +160,18 @@ static void test_happy (void ** state)
         model_free(&m);
         /* now repeat for a zedhat file with optional fields: stimmeas */
         printf("-- zedhat %dd (optional fields) --\n", dim);
-        will_return(__wrap_gzeof, 0);
+        will_return_count(__wrap_gzeof, 0, 3);
         mock_zh_read(6, 1, 3);
         will_return(__wrap_gzgets, "stimmeas\n");
         will_return(__wrap_gzgets, "1\n");
         will_return(__wrap_gzgets, "1 2 3 4\n");
-        will_return_count(__wrap__test_malloc, 0, 6);
+        will_return(__wrap_gzgets, "data\n");
+        will_return(__wrap_gzgets, "1 2\n");
+        will_return(__wrap_gzgets, " 1.1 -2.2\n");
+        will_return(__wrap_gzgets, "parameters\n");
+        will_return(__wrap_gzgets, "1 3\n");
+        will_return(__wrap_gzgets, "-1.1 2.2 +3.3 4.4\n");
+        will_return_count(__wrap__test_malloc, 0, 5+3);
         ret = readfile("test", &m);
         assert_int_equal(ret, 0);
         model_free(&m);
@@ -261,6 +267,40 @@ static void test_malloc_fail6 (void ** state)
     model_free(&m);
 }
 
+static void test_malloc_fail7 (void ** state)
+{
+    (void) state; /* unused */
+    int ret;
+    model m = {{0}};
+    will_return(__wrap_gzeof, 0);
+    mock_zh_read(6, 0, 3);
+    will_return(__wrap_gzgets, "data\n");
+    will_return(__wrap_gzgets, "2 6\n");
+    will_return(__wrap_gzgets, "\n");
+    will_return_count(__wrap__test_malloc, 0, 5);
+    will_return(__wrap__test_malloc, 1);
+    ret = readfile("test", &m);
+    assert_int_equal(ret, 1);
+    model_free(&m);
+}
+
+static void test_malloc_fail8 (void ** state)
+{
+    (void) state; /* unused */
+    int ret;
+    model m = {{0}};
+    will_return(__wrap_gzeof, 0);
+    mock_zh_read(6, 0, 3);
+    will_return(__wrap_gzgets, "parameters\n");
+    will_return(__wrap_gzgets, "2 6\n");
+    will_return(__wrap_gzgets, "\n");
+    will_return_count(__wrap__test_malloc, 0, 5);
+    will_return(__wrap__test_malloc, 1);
+    ret = readfile("test", &m);
+    assert_int_equal(ret, 1);
+    model_free(&m);
+}
+
 static void test_gzclose_fail (void ** state)
 {
     (void) state; /* unused */
@@ -298,6 +338,8 @@ int main(int argc, char ** argv)
             cmocka_unit_test(test_malloc_fail4),
             cmocka_unit_test(test_malloc_fail5),
             cmocka_unit_test(test_malloc_fail6),
+            cmocka_unit_test(test_malloc_fail7),
+            cmocka_unit_test(test_malloc_fail8),
             cmocka_unit_test(test_gzclose_fail),
             cmocka_unit_test(test_null_fail),
         };

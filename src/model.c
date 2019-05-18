@@ -28,7 +28,7 @@ void model_free(model * m)
         return;
     }
     free(m->data);
-    free(m->param);
+    free(m->params);
     free(m->stimmeas);
     mesh_free(&(m->fwd));
     model_init(m);
