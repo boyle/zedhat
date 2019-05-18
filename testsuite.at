@@ -197,7 +197,7 @@ AT_CLEANUP
 AT_BANNER([unit tests])
 AT_SETUP([netgen .vol])
 AT_KEYWORDS([netgen])
-AT_CHECK([file test],0,ignore,[[[  PASSED  ] 11 test(s).]
+AT_CHECK([file test],0,ignore,[[[  PASSED  ] 12 test(s).]
 ])
 m4_define(ZH_DATA_FILE_NETGEN,
   [AT_DATA([ngcube.vol-xxd],m4_esyscmd(gzip -c tests/ngcube.vol | xxd -p))]

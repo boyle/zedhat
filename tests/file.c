@@ -160,7 +160,7 @@ static void test_happy (void ** state)
         model_free(&m);
         /* now repeat for a zedhat file with optional fields: stimmeas */
         printf("-- zedhat %dd (optional fields) --\n", dim);
-        will_return_count(__wrap_gzeof, 0, 3);
+        will_return_count(__wrap_gzeof, 0, 4);
         mock_zh_read(6, 1, 3);
         will_return(__wrap_gzgets, "stimmeas\n");
         will_return(__wrap_gzgets, "1\n");
@@ -170,12 +170,29 @@ static void test_happy (void ** state)
         will_return(__wrap_gzgets, " 1.1 -2.2\n");
         will_return(__wrap_gzgets, "parameters\n");
         will_return(__wrap_gzgets, "1 3\n");
-        will_return(__wrap_gzgets, "-1.1 2.2 +3.3 4.4\n");
-        will_return_count(__wrap__test_malloc, 0, 5+3);
+        will_return(__wrap_gzgets, "-1.1 2.2 +3.3 4.4e-2\n");
+        will_return(__wrap_gzgets, "hyperparameter\n");
+        will_return(__wrap_gzgets, " 1.1\n");
+        will_return_count(__wrap__test_malloc, 0, 5 + 3);
         ret = readfile("test", &m);
         assert_int_equal(ret, 0);
         model_free(&m);
     }
+}
+
+static void test_mangle_fail1 (void ** state)
+{
+    (void) state; /* unused */
+    int ret;
+    model m = {{0}};
+        will_return_count(__wrap_gzeof, 0, 1);
+        mock_zh_read(6, 0, 3);
+        will_return(__wrap_gzgets, "hyperparameter\n");
+        will_return(__wrap_gzgets, " asdf\n");
+        will_return_count(__wrap__test_malloc, 0, 5);
+        ret = readfile("test", &m);
+        assert_int_equal(ret, 1);
+        model_free(&m);
 }
 
 static void test_malloc_fail1 (void ** state)
@@ -332,6 +349,7 @@ int main(int argc, char ** argv)
         test_malloc_enabled = 1;
         const struct CMUnitTest tests[] = {
             cmocka_unit_test(test_happy),
+            cmocka_unit_test(test_mangle_fail1),
             cmocka_unit_test(test_malloc_fail1),
             cmocka_unit_test(test_malloc_fail2),
             cmocka_unit_test(test_malloc_fail3),

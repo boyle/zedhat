@@ -96,8 +96,19 @@ int readfile_loop(char filename[], model * m, fileformat * f_list)
                 break;
             }
             gzreadnext(F, data, MAXCHAR);
-            int * n = (int *) ((char *)mm + f->offset);
             cnt = 0;
+            if(f->n_size < 0) {
+                double * d = (double *) ((char *)mm + f->offset);
+                cnt = sscanf(data, " %lf\n", d);
+                if(cnt != 1) {
+                    printf("err: bad %s\n", f->section);
+                    goto __quit;
+                }
+                printf("%s %lg\n", f->section, *d);
+                f++;
+                break;
+            }
+            int * n = (int *) ((char *)mm + f->offset);
             int idx = 0;
             int j;
             for(j = 0; j < f->n_size; j++) {
@@ -316,6 +327,7 @@ int readfile(char filename[], model * m)
         {"stimmeas", 1, offsetof(model, n_stimmeas), &readzh_stimmeas, NULL, OPTIONAL},
         {"data", 2, offsetof(model, n_data), &readzh_data, NULL, OPTIONAL},
         {"parameters", 2, offsetof(model, n_params), &readzh_params, NULL, OPTIONAL},
+        {"hyperparameter", -1, offsetof(model, hp), NULL, NULL, OPTIONAL},
         {{0}}
     };
     return readfile_loop(filename, m, zh_format1);
