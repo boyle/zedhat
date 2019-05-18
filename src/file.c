@@ -24,7 +24,7 @@ void gzreadnext(gzFile F, char data[], int n)
     }
     int cnt;
     for(cnt = 0; (data[cnt] != '\0') && (data[cnt] != '\n') && (cnt < n - 1); cnt++) {
-    /* netgen is inconsistent in its use of \r and \n */
+        /* netgen is inconsistent in its use of \r and \n */
         if (data[cnt] == '\r') {
             data[cnt] = '\n';
             break;
@@ -33,10 +33,11 @@ void gzreadnext(gzFile F, char data[], int n)
     data[cnt + 1] = '\0';
 }
 
-#define LEN 256
+#define LEN 32
 enum fileformat_req {OPTIONAL, REQUIRED, REQUIRED_FIRST};
 typedef struct {
     char section [LEN];
+    int len;
     size_t offset;
     int (*sscanf_funcptr)(const char *, model *, mesh *, int i);
     int (*test_funcptr)(model *, mesh *);
@@ -89,7 +90,7 @@ int readfile_loop(char filename[], model * m, fileformat * f_list)
             }
             first = 0;
             f->cnt += 1;
-            if(f->offset == SIZE_MAX) {
+            if(!f->len) {
                 printf("%s\n", f->section);
                 f++;
                 break;
@@ -106,12 +107,19 @@ int readfile_loop(char filename[], model * m, fileformat * f_list)
                 int i;
                 for(i = 0; i < *n; i += 1) {
                     gzreadnext(F, data, MAXCHAR);
-                    if( (*f->sscanf_funcptr)(data, m, mm, i) ) { /* sscanf(data, mm); err=1 */
+                    int ret = (*f->sscanf_funcptr)(data, m, mm, i);
+                    if( ret ) {
+                        if(ret == 1) {
+                            printf("err: bad %s\n", f->section);
+                        }
+                        else {
+                            printf("err: out of memory %s\n", f->section);
+                        }
                         goto __quit;
                     }
                 }
             }
-            if(f->test_funcptr && (*f->test_funcptr)(m, mm)) { /* test(mm); err=1 */
+            if(f->test_funcptr && (*f->test_funcptr)(m, mm)) {
                 printf("err: bad %s\n", f->section);
                 goto __quit;
             }
@@ -171,11 +179,7 @@ int readngvol_surfaceelements(const char * data, model * m, mesh * mm, const int
     else {
         cnt = sscanf(data, "%*d %d %*d %*d 2 %d %d\n", &mm->bc[se], &mm->surfaceelems[2 * se + 0], &mm->surfaceelems[2 * se + 1]);
     }
-    if(cnt != mm->dim + 1) {
-        printf("err: bad surfaceelements\n");
-        return 1;
-    }
-    return 0;
+    return (cnt != mm->dim + 1);
 }
 
 int readngvol_points(const char * data, model * m, mesh * mm, const int node)
@@ -188,22 +192,18 @@ int readngvol_points(const char * data, model * m, mesh * mm, const int node)
     }
     int cnt;
     if(mm->dim == 3) {
-     cnt = sscanf(data, " %lf %lf %lf\n", &mm->nodes[3 * node + 0], &mm->nodes[3 * node + 1], &mm->nodes[3 * node + 2]);
+        cnt = sscanf(data, " %lf %lf %lf\n", &mm->nodes[3 * node + 0], &mm->nodes[3 * node + 1], &mm->nodes[3 * node + 2]);
     }
     else {
-     cnt = sscanf(data, " %lf %lf\n", &mm->nodes[2 * node + 0], &mm->nodes[2 * node + 1]);
+        cnt = sscanf(data, " %lf %lf\n", &mm->nodes[2 * node + 0], &mm->nodes[2 * node + 1]);
     }
-    if(cnt != mm->dim) {
-        printf("err: bad points\n");
-        return 1;
-    }
-    return 0;
+    return (cnt != mm->dim);
 }
 
 int readngvol_volumeelements(const char * data, model * m, mesh * mm, const int elem)
 {
     if(!mm->elems) {
-        mm->elems = malloc(sizeof(int) * mm->n_elems * (mm->dim+1));
+        mm->elems = malloc(sizeof(int) * mm->n_elems * (mm->dim + 1));
     }
     if(!mm->matidx) {
         mm->matidx = malloc(sizeof(int) * mm->n_elems * 1);
@@ -213,16 +213,12 @@ int readngvol_volumeelements(const char * data, model * m, mesh * mm, const int 
     }
     int cnt;
     if(mm->dim == 3) {
-    cnt = sscanf(data, "%d 4 %d %d %d %d\n", &mm->matidx[elem], &mm->elems[4 * elem + 0], &mm->elems[4 * elem + 1], &mm->elems[4 * elem + 2], &mm->elems[4 * elem + 3]);
+        cnt = sscanf(data, "%d 4 %d %d %d %d\n", &mm->matidx[elem], &mm->elems[4 * elem + 0], &mm->elems[4 * elem + 1], &mm->elems[4 * elem + 2], &mm->elems[4 * elem + 3]);
     }
     else {
-    cnt = sscanf(data, "%d 3 %d %d %d\n", &mm->matidx[elem], &mm->elems[3 * elem + 0], &mm->elems[3 * elem + 1], &mm->elems[3 * elem + 2]);
+        cnt = sscanf(data, "%d 3 %d %d %d\n", &mm->matidx[elem], &mm->elems[3 * elem + 0], &mm->elems[3 * elem + 1], &mm->elems[3 * elem + 2]);
     }
-    if(cnt != mm->dim+2) {
-        printf("err: bad volumeelements\n");
-        return 1;
-    }
-    return 0;
+    return (cnt != mm->dim + 2);
 }
 
 int readzh_test_format1(model * m, mesh * mm)
@@ -230,19 +226,33 @@ int readzh_test_format1(model * m, mesh * mm)
     return (m->format != 1);
 }
 
+int readzh_stimmeas(const char * data, model * m, mesh * mm, const int i)
+{
+    if(!m->stimmeas) {
+        m->stimmeas = malloc(sizeof(int) * m->s * 4);
+    }
+    if(!m->stimmeas) {
+        return 2;
+    }
+    int cnt = sscanf(data, "%d %d %d %d\n",
+                     &m->stimmeas[4 * i + 0], &m->stimmeas[4 * i + 1],
+                     &m->stimmeas[4 * i + 2], &m->stimmeas[4 * i + 3]);
+    return (cnt != 4);
+}
+
 int readfile_ngvol(char filename[], model * m)
 {
     fileformat ngvol [] = {
-        {"mesh3d", SIZE_MAX, NULL, NULL, REQUIRED_FIRST},
-        {"dimension", offsetof(model, fwd.dim), NULL, &readngvol_test_dimension, REQUIRED},
-        {"geomtype", offsetof(model, fwd.type), NULL, &readngvol_test_geomtype, REQUIRED},
+        {"mesh3d", 0, 0, NULL, NULL, REQUIRED_FIRST},
+        {"dimension", 1, offsetof(model, fwd.dim), NULL, &readngvol_test_dimension, REQUIRED},
+        {"geomtype", 1, offsetof(model, fwd.type), NULL, &readngvol_test_geomtype, REQUIRED},
         /* GEOM_STL=11: surfaceelementsgi
          * GEOM_OCC=12, GEOM_ACIS=13: surfaceelementsuv
          * default: surfaceelements
          */
-        {"surfaceelements", offsetof(model, fwd.n_se), &readngvol_surfaceelements, NULL, REQUIRED},
-        {"points", offsetof(model, fwd.n_nodes), &readngvol_points, NULL, REQUIRED},
-        {"volumeelements", offsetof(model, fwd.n_elems), &readngvol_volumeelements, NULL, REQUIRED},
+        {"surfaceelements", 1, offsetof(model, fwd.n_se), &readngvol_surfaceelements, NULL, REQUIRED},
+        {"points", 1, offsetof(model, fwd.n_nodes), &readngvol_points, NULL, REQUIRED},
+        {"volumeelements", 1, offsetof(model, fwd.n_elems), &readngvol_volumeelements, NULL, REQUIRED},
         {{0}}
     };
     return readfile_loop(filename, m, ngvol);
@@ -251,14 +261,15 @@ int readfile_ngvol(char filename[], model * m)
 int readfile(char filename[], model * m)
 {
     fileformat zh_format1 [] = {
-        {"zedhat", SIZE_MAX, NULL, NULL, REQUIRED_FIRST},
-        {"format", offsetof(model, format), NULL, &readzh_test_format1, REQUIRED},
+        {"zedhat", 0, 0, NULL, NULL, REQUIRED_FIRST},
+        {"format", 1, offsetof(model, format), NULL, &readzh_test_format1, REQUIRED},
         /* netgen .vol format */
-        {"dimension", offsetof(model, fwd.dim), NULL, &readngvol_test_dimension, REQUIRED},
-        {"geomtype", offsetof(model, fwd.type), NULL, &readngvol_test_geomtype, REQUIRED},
-        {"surfaceelements", offsetof(model, fwd.n_se), &readngvol_surfaceelements, NULL, REQUIRED},
-        {"points", offsetof(model, fwd.n_nodes), &readngvol_points, NULL, REQUIRED},
-        {"volumeelements", offsetof(model, fwd.n_elems), &readngvol_volumeelements, NULL, REQUIRED},
+        {"dimension", 1, offsetof(model, fwd.dim), NULL, &readngvol_test_dimension, REQUIRED},
+        {"geomtype", 1, offsetof(model, fwd.type), NULL, &readngvol_test_geomtype, REQUIRED},
+        {"surfaceelements", 1, offsetof(model, fwd.n_se), &readngvol_surfaceelements, NULL, REQUIRED},
+        {"points", 1, offsetof(model, fwd.n_nodes), &readngvol_points, NULL, REQUIRED},
+        {"volumeelements", 1, offsetof(model, fwd.n_elems), &readngvol_volumeelements, NULL, REQUIRED},
+        {"stimmeas", 1, offsetof(model, s), &readzh_stimmeas, NULL, OPTIONAL},
         {{0}}
     };
     return readfile_loop(filename, m, zh_format1);

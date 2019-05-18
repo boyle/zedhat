@@ -16,18 +16,18 @@ typedef struct mesh_type {
     enum geomtype type;
 } mesh;
 
-typedef enum enum_map_method_type {MAP_FWD, MAP_FWD_MATIDX, MAP_REC, MAP_REC_MATIDX} enum_map_method;
 
 typedef struct model_type {
     mesh fwd; /* forward model */
-    mesh rec; /* reconstruction model (optional) */
-    enum_map_method map_method;
     int p; /* number of parameters ~ fwd.n_elems or mapping from rec/matidx to fwd */
+    int k; /* number of image frames */
     int m; /* number of data measurements */
-    int n; /* number of frames */
+    int n; /* number of measurement frames */
+    int s; /* number of data measurements for stimmeas */
     double * data; /* m x n */
-    double * param; /* p x n */
+    double * param; /* p x k */
     double hp; /* hyperparameter */
+    int * stimmeas; /* s x 4: sp sn mp mn */
     int format; /* zedhat file format */
 } model;
 
