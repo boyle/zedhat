@@ -8,16 +8,15 @@ From the measured voltages, we reconstruct an estimate of the conductivity ẑ o
 For Ubuntu 16.04, the following packages need to be installed to compile zedhat:
 
  - pkg-config
+ - gfortran
+ - libblas-dev
  - libopenblas-dev
- - liblapacke-dev
+ - libopenblas-base
  - libsuitesparse-dev
- - libmatio-dev
+ - liblapacke
+ - liblapacke-dev
 
 and for developers
 
  - lcov
  - astyle
-
-```sudo apt install pkg-config libopenblas-dev liblapacke-dev libsuitesparse-dev libmatio-dev```
-
-```sudo apt install lcov astyle```

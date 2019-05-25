@@ -15,7 +15,7 @@ matrix * get_fwd_matrix(const args_t args, const char * name, const char * symbo
         printf("fwd %s: ret = malloc failed (%s)\n", name, args.file[0]);
         return NULL;
     }
-    int ret = matrix_load(args.file[0], A);
+    int ret = 1; // FIXME matrix_load(args.file[0], A);
     if(ret) {
         printf("fwd %s: ret = %d (%s)\n", name, ret, args.file[0]);
         matrix_free(A);

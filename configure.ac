@@ -103,15 +103,6 @@ AC_SEARCH_LIBS([cholmod_analyze], [cholmod], , AC_MSG_ERROR([missing cholmod lib
 CHOLMOD_LIBS="$LIBS"
 LIBS="$save_LIBS"
 
-PKG_CHECK_MODULES([MATIO],[matio])
-AC_CHECK_HEADERS([matio.h],[matio_h_ok=yes;break;])
-AS_IF([test "x$matio_h_ok" == "xyes"],,AC_MSG_ERROR([missing matio.h]))
-save_LIBS="$LIBS"; LIBS="$MATIO_LIBS $LIBS"
-AC_SEARCH_LIBS([Mat_Open],[matio],matio_ok=yes,matio_ok=no)
-MATIO_LIBS="$LIBS"
-LIBS="$save_LIBS"
-AS_IF([test "x$matio_ok" == "xyes"],,AC_MSG_ERROR([missing matio library]))
-
 AX_CHECK_ZLIB
 
 dnl  dnl Definitions at top of <config.h>.
@@ -189,8 +180,5 @@ AS_IF([test "x$umfpack_h_ok" = xyes -a "x$UMFPACK_LIBS" != "x"],
 AS_IF([test "x$cholmod_h_ok" = xyes -a "x$CHOLMOD_LIBS" != "x"],
       AC_MSG_RESULT([    CHOLMOD: $CHOLMOD_LIBS ; $CHOLMOD_CFLAGS]),
       AC_MSG_RESULT([    CHOLMOD: $cholmod_h_ok]))
-AS_IF([test "x$matio_ok" = xyes -a "x$MATIO_LIBS" != "x"],
-      AC_MSG_RESULT([      MATIO: $MATIO_LIBS]),
-      AC_MSG_RESULT([      MATIO: $matio_ok]))
 
 AC_MSG_RESULT([])

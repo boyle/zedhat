@@ -66,8 +66,8 @@ _help:
     printf(" --version -V  version info\n");
     printf(" --tolerance --tol -t <#.##e#>\n");
     printf("               for checking --fwd\n");
-    printf(" --forward-solver --fwd -f <file.mat>\n");
+    printf(" --forward-solver --fwd -f <file.zh>\n");
     printf("               solves X=A\\B and A X = B\n");
-    printf("               with A B and X from file.mat\n");
+    printf("               with A B and X from file.zh\n");
     return err;
 }

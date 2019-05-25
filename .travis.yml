@@ -27,8 +27,6 @@ addons:
          - libsuitesparse-dev
          - liblapacke
          - liblapacke-dev
-         - libmatio-dev
-         - libmatio2
          - lcov
    coverity_scan:
       project:

@@ -1,5 +1,5 @@
 AT_INIT()
-AT_COPYRIGHT([Copyright 2016-2017, Alistair Boyle, 3-clause BSD License])
+AT_COPYRIGHT([Copyright 2016-2019, Alistair Boyle, 3-clause BSD License])
 AT_COLOR_TESTS
 
 AT_TESTED(AT_PACKAGE_NAME)
@@ -56,9 +56,9 @@ m4_define(ZH_HELP_LONG,
  --version -V  version info
  --tolerance --tol -t <#.##e#>
                for checking --fwd
- --forward-solver --fwd -f <file.mat>
+ --forward-solver --fwd -f <file.zh>
                solves X=A\B and A X = B
-               with A B and X from file.mat
+               with A B and X from file.zh
 ])
 
 AT_BANNER([libs])
@@ -80,45 +80,6 @@ AT_CLEANUP
 AT_SETUP([cholmod])
 AT_KEYWORDS([cholmod libs])
 AT_CHECK([libcholmod],0,ignore)
-AT_CLEANUP
-
-AT_SETUP([matio])
-AT_KEYWORDS([matio libs])
-
-dnl TODO we *should* be able to reproduce the matlab .mat exactly but it
-dnl currently comes out differently... so we just check that the output is
-dnl stable and we didn't lose any data
-ZH_DATA_FILE_TESTA_MAT
-AT_CHECK([libmatio testa.mat out.mat | sed 's/ $//'],0,[hello]
-ZH_DATA_FILE_MATA
-goodbye
-)
-AT_CHECK([libmatio out.mat out2.mat | sed 's/ $//' && diff out.mat out2.mat],0,[hello]
-ZH_DATA_FILE_MATA
-goodbye
-)
-
-ZH_DATA_FILE_TESTB_MAT
-AT_CHECK([libmatio testb.mat out.mat | sed 's/ $//'],0,[hello]
-ZH_DATA_FILE_MATB
-goodbye
-)
-AT_CHECK([libmatio out.mat out2.mat | sed 's/ $//' && diff out.mat out2.mat],0,[hello]
-ZH_DATA_FILE_MATB
-goodbye
-)
-
-ZH_DATA_FILE_TESTAB_MAT
-AT_CHECK([libmatio testab.mat out.mat | sed 's/ $//'],0,[hello]
-ZH_DATA_FILE_MATA
-ZH_DATA_FILE_MATB
-goodbye
-)
-AT_CHECK([libmatio out.mat out2.mat | sed 's/ $//' && diff out.mat out2.mat],0,[hello]
-ZH_DATA_FILE_MATA
-ZH_DATA_FILE_MATB
-goodbye
-)
 AT_CLEANUP
 
 AT_BANNER([args])
@@ -165,6 +126,7 @@ AT_CLEANUP
 
 AT_SETUP(--forward-solver)
 AT_KEYWORDS([fwd args install])
+AT_XFAIL_IF([test 1])
 m4_define(ZH_FWD_OUTPUT,[fwd: || A\B - X ||_2 == || A X - B ||_2
 m4_if($2,0,[pass],[fwd A: ret = $2 ($1)
 fwd B: ret = $2 ($1)
@@ -184,8 +146,6 @@ AT_CHECK(AT_PACKAGE_NAME -f testab.mat,1,[ZH_FWD_OUTPUT(testab.mat,3)],)
 AT_CHECK(AT_PACKAGE_NAME --tol 1e-11 -f testAXB-v73.mat,0,[ZH_FWD_AXB_PASS([v73])],)
 AT_CHECK(AT_PACKAGE_NAME -t 1e-11 -f testAXB-v7.mat,0,[ZH_FWD_AXB_PASS([v7])],)
 AT_CHECK(AT_PACKAGE_NAME -t 1e-11 -f testAXB-v6.mat,0,[ZH_FWD_AXB_PASS([v6])],)
-dnl BROKEN libmatio on ubuntu 16.04
-dnl AT_CHECK(AT_PACKAGE_NAME -t 1e-11 -f testAXB-v4.mat,0,[ZH_FWD_AXB_PASS([v4])],)
 AT_CHECK(AT_PACKAGE_NAME[[ --tol 5e-12 -f testAXB-v73.mat | sed 's/^\(fail.*=\).*/\1/'; test ${PIPESTATUS[0]} -eq 0]],1,[fwd: || A\B - X ||_2 == || A X - B ||_2
 fail: || A\B - X ||_2 =
 ],)

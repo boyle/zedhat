@@ -24,7 +24,7 @@ EXTRA_DIST = $(bin_SCRIPTS) \
 				 ChangeLog README.md NEWS LICENSE
 
 BUILT_TESTS = tests/libcblas_dgemm tests/liblapacke_dgels \
-			  tests/libumfpack tests/libcholmod tests/libmatio \
+			  tests/libumfpack tests/libcholmod \
 			  tests/file tests/model
 check_PROGRAMS = $(BUILT_TESTS)
 #tests_unit_perftimer_SOURCES = tests/unit-perftimer.c src/perftimer.c
