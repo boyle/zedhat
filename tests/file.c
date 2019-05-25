@@ -185,14 +185,14 @@ static void test_mangle_fail1 (void ** state)
     (void) state; /* unused */
     int ret;
     model m = {{0}};
-        will_return_count(__wrap_gzeof, 0, 1);
-        mock_zh_read(6, 0, 3);
-        will_return(__wrap_gzgets, "hyperparameter\n");
-        will_return(__wrap_gzgets, " asdf\n");
-        will_return_count(__wrap__test_malloc, 0, 5);
-        ret = readfile("test", &m);
-        assert_int_equal(ret, 1);
-        model_free(&m);
+    will_return_count(__wrap_gzeof, 0, 1);
+    mock_zh_read(6, 0, 3);
+    will_return(__wrap_gzgets, "hyperparameter\n");
+    will_return(__wrap_gzgets, " asdf\n");
+    will_return_count(__wrap__test_malloc, 0, 5);
+    ret = readfile("test", &m);
+    assert_int_equal(ret, 1);
+    model_free(&m);
 }
 
 static void test_malloc_fail1 (void ** state)
