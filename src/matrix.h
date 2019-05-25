@@ -2,7 +2,6 @@
 #ifndef __MATRIX_H__
 #define __MATRIX_H__
 
-#include <stdint.h> /* uint32_t */
 #include <stdbool.h> /* bool */
 #include "config.h"
 /* testa.mat <- a
@@ -14,7 +13,8 @@
  *     (1,2)        2
  *     (2,2)        5 */
 
-typedef enum matrix_type {IDENTITY, DENSE, CSR, CSC, COO} matrix_type_t;
+enum matrix_type {IDENTITY, DIAGONAL, DENSE, CSR, CSC, COO, DENSE_SYMMETRIC, CSR_SYMMETRIC, CSC_SYMMETRIC, COO_SYMMETRIC, MAX_MATRIX_TYPE};
+/* NOTE: *_SYMMETRIC values are immediately converted to their base type and set/check the bool symmetric flag */
 
 typedef struct matrix_sparse_type {
     double * a;   /* data */
@@ -27,7 +27,7 @@ typedef struct matrix_sparse_type {
 
 typedef struct matrix_t {
     double scale;
-    matrix_type_t type;
+    enum matrix_type type;
     size_t m; /* rows */
     size_t n; /* cols */
     bool transposed;
@@ -37,11 +37,14 @@ typedef struct matrix_t {
     char * units;
     union {
         double * dense;    /* dense array, vector or matrix */
-        matrix_sparse * sparse; /* sparse matrix (CSR, CSC, COO) */
+        matrix_sparse sparse; /* sparse matrix (CSR, CSC, COO) */
     };
 } matrix;
 
-matrix * matrix_malloc(const char * name, const char * symbol, const char * units);
-void matrix_free(matrix * matrix);
+matrix * matrix_malloc(enum matrix_type type, const size_t rows, const size_t cols, const size_t nnz);
+matrix * matrix_remalloc(enum matrix_type type, const size_t rows, const size_t cols, const size_t nnz);
+int matrix_name(matrix * M, const char * name, const char * symbol, const char * units);
+void matrix_free(matrix * M);
+void matrix_transpose(matrix * M);
 
 #endif

@@ -10,7 +10,7 @@
 
 matrix * get_fwd_matrix(const args_t args, const char * name, const char * symbol, const char * units)
 {
-    matrix * A = matrix_malloc(name, symbol, units);
+    matrix * A = NULL; // FIXME matrix_malloc(name, symbol, units);
     if (A == NULL) {
         printf("fwd %s: ret = malloc failed (%s)\n", name, args.file[0]);
         return NULL;
