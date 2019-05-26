@@ -123,7 +123,7 @@ int malloc_matrix_data(matrix * M, enum matrix_type type, const size_t rows, con
         break;
 //    case MAX_MATRIX_TYPE: /* LCOV_EXCL_LINE */
 //        break; /* LCOV_EXCL_LINE */
-      default:
+    default:
         assert(false); // TODO rm
     }
     /* handle any malloc failures */

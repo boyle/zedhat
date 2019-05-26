@@ -10,7 +10,6 @@
 
 #include "matrix.h"
 
-
 void * __real__test_malloc(const size_t size, const char * file, const int line);
 void * __wrap__test_malloc(size_t size)
 {
@@ -24,17 +23,13 @@ void * __wrap__test_malloc(size_t size)
 
 char * __wrap_strdup(const char * str)
 {
-    if(mock()) {
-        return NULL;
+    size_t size = strlen(str) + 1;
+//        char * n = __real__test_malloc(size, __FILE__, __LINE__);
+    char * n = malloc(size);
+    if(n != NULL) {
+        strcpy(n, str);
     }
-    else {
-        size_t size = strlen(str) + 1;
-        char * n = __real__test_malloc(size, __FILE__, __LINE__);
-        if(n != NULL) {
-            strcpy(n, str);
-        }
-        return n;
-    }
+    return n;
 }
 
 typedef struct {
@@ -48,8 +43,9 @@ static int group_setup( void ** state)
 }
 static int group_teardown(void ** state)
 {
-   if(state == NULL)
-      return 1;
+    if(state == NULL) {
+        return 1;
+    }
     free(*state);
     *state = NULL;
     return 0;
@@ -57,7 +53,9 @@ static int group_teardown(void ** state)
 
 static int test_teardown(void ** state)
 {
-   if(state == NULL) return 1;
+    if(state == NULL) {
+        return 1;
+    }
     mystate * s = *state;
     free_matrix(s->M);
     s->M = NULL;
@@ -66,7 +64,9 @@ static int test_teardown(void ** state)
 
 static int test_setup(void ** state)
 {
-   if(state == NULL) return 1;
+    if(state == NULL) {
+        return 1;
+    }
     mystate * s = *state;
     will_return(__wrap__test_malloc, 0);
     s->M = malloc_matrix();
@@ -95,37 +95,54 @@ void printf_matrix(const matrix * M)
            M->name ? M->name : "?");
 }
 
-void test_malloc_matrix_name(void ** state)
+void test_malloc_matrix_name_null(void ** state)
 {
-    matrix * M = NULL;
-    will_return(__wrap__test_malloc, 0);
-    M = malloc_matrix();
-    assert_non_null(M); /* success */
-    int ret;
-    ret = malloc_matrix_name(NULL, "A", "B", "C");
+    int ret = malloc_matrix_name(NULL, "A", "B", "C");
     assert_int_equal(ret, 0);
-    int i;
-    for(i = 0; i < 4; i++) { /* success */
-        printf("i=%d ", i);
-        if(i > 0) {
-            will_return_count(__wrap_strdup, 0, i);
-        }
-        ret = malloc_matrix_name(M, i > 0 ? "A" : NULL, i > 1 ? "B" : NULL, i > 2 ? "C" : NULL);
-        printf_matrix(M);
-        assert_int_equal(ret, 1);
-        if(i > 1) {
-            will_return_count(__wrap_strdup, 0, i - 1);
-        }
-        if(i > 0) {
-            will_return(__wrap_strdup, 1);
-        }
-        ret = malloc_matrix_name(M, i > 0 ? "A" : NULL, i > 1 ? "B" : NULL, i > 2 ? "C" : NULL);
-        assert_int_equal(ret, i < 1);
-    }
-    assert_int_equal(ret, 0);
-    free_matrix(M);
 }
 
+int bitcnt(int x)
+{
+    int sum = 0;
+    while(x != 0) {
+        sum += x & 1;
+        x = x >> 1;
+    }
+    return sum;
+}
+
+void test_malloc_matrix_name_happy(void ** state)
+{
+    mystate * s = *state;
+    assert_non_null(s->M);
+    int i;
+    for(i = 0; i < 8; i++) {
+        if(bitcnt(i) > 0) {
+            will_return_count(__wrap__test_malloc, 0, bitcnt(i));
+        }
+        int ret = malloc_matrix_name(s->M, i & 1 ? "A" : NULL, i & 2 ? "B" : NULL, i & 4 ? "C" : NULL);
+        printf("%d='b%d%d%d ", i, (i >> 0) & 1, (i >> 1) & 1, (i >> 2) & 1);
+        printf_matrix(s->M);
+        assert_int_equal(ret, 1);
+    }
+    test_teardown(state);
+}
+
+void test_malloc_matrix_name_sad(void ** state)
+{
+    mystate * s = *state;
+    assert_non_null(s->M);
+    int i;
+    for(i = 1; i < 8; i++) {
+        if(bitcnt(i) > 1) {
+            will_return_count(__wrap__test_malloc, 0, bitcnt(i) - 1);
+        }
+        will_return(__wrap__test_malloc, 1);
+        int ret = malloc_matrix_name(s->M, i & 1 ? "A" : NULL, i & 2 ? "B" : NULL, i & 4 ? "C" : NULL);
+        assert_int_equal(ret, 0);
+    }
+    test_teardown(state);
+}
 
 void test_malloc_matrix_data_null(void ** state)
 {
@@ -172,12 +189,14 @@ int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_malloc_matrix),
-        cmocka_unit_test(test_malloc_matrix_name),
+        cmocka_unit_test_setup_teardown(test_malloc_matrix_name_null, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_malloc_matrix_name_happy, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_malloc_matrix_name_sad, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_malloc_matrix_data_null, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_malloc_matrix_data_identity, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_malloc_matrix_data_dense, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_malloc_matrix_data_coo, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_malloc_matrix_data_coo_symmetric, test_setup, test_teardown),
+        //cmocka_unit_test_setup_teardown(test_malloc_matrix_data_coo, test_setup, test_teardown),
+        //cmocka_unit_test_setup_teardown(test_malloc_matrix_data_coo_symmetric, test_setup, test_teardown),
     };
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
 }
