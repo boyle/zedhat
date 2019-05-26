@@ -4,8 +4,6 @@
 #include <string.h> /* strncmp, strdup, bzero */
 #include <assert.h> /* assert */
 
-#include <stdio.h> /* printf */
-
 #include "config.h"
 #include "matrix.h"
 
@@ -92,7 +90,6 @@ int malloc_matrix_data(matrix * M, enum matrix_type type, const size_t rows, con
     case DENSE:
         assert(nnz == rows * cols);
         M->dense = malloc(sizeof(double) * nnz);
-        printf("M=%p dense=%p type=%d malloc\n", M, M->dense, M->type);
         break;
 //  case CSR_SYMMETRIC:
 //      M->symmetric = true;
@@ -121,10 +118,8 @@ int malloc_matrix_data(matrix * M, enum matrix_type type, const size_t rows, con
         M->sparse.nia = nnz;
         M->sparse.nja = nnz;
         break;
-//    case MAX_MATRIX_TYPE: /* LCOV_EXCL_LINE */
-//        break; /* LCOV_EXCL_LINE */
-    default:
-        assert(false); // TODO rm
+    case MAX_MATRIX_TYPE: /* LCOV_EXCL_LINE */
+        break; /* LCOV_EXCL_LINE */
     }
     /* handle any malloc failures */
     if(/*(*/M->type == DENSE/*) || (M->type == DIAGONAL)*/) {
@@ -146,7 +141,6 @@ void free_matrix(matrix * M)
     if(M == NULL) {
         return;
     }
-    printf("M=%p dense=%p type=%d free\n", M, M->dense, M->type);
     assert(M->type < MAX_MATRIX_TYPE);
     switch (M->type) {
     // TODO case CSR_SYMMETRIC:

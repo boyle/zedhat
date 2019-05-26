@@ -160,19 +160,32 @@ void test_malloc_matrix_data_identity(void ** state)
 
 void test_malloc_matrix_data_dense(void ** state)
 {
+    int ret;
     mystate * s = *state;
-    will_return_count(__wrap__test_malloc, 0, 1);
-    int ret = malloc_matrix_data(s->M, DENSE, 2, 2, 4);
+    will_return(__wrap__test_malloc, 0);
+    ret = malloc_matrix_data(s->M, DENSE, 2, 2, 4);
     assert_int_equal(ret, 1);
+    test_teardown(state);
+    test_setup(state);
+    will_return(__wrap__test_malloc, 1);
+    ret = malloc_matrix_data(s->M, DENSE, 2, 2, 4);
+    assert_int_equal(ret, 0);
     test_teardown(state);
 }
 
 void test_malloc_matrix_data_coo(void ** state)
 {
     mystate * s = *state;
-    will_return_count(__wrap__test_malloc, 0, 3);
-    int ret = malloc_matrix_data(s->M, COO, 1, 1, 1);
-    assert_int_equal(ret, 1);
+    int i;
+    for(i = 0; i < 8; i++) {
+        will_return(__wrap__test_malloc, (i >> 0) & 1);
+        will_return(__wrap__test_malloc, (i >> 1) & 1);
+        will_return(__wrap__test_malloc, (i >> 2) & 1);
+        int ret = malloc_matrix_data(s->M, COO, 1, 1, 1);
+        assert_int_equal(ret, bitcnt(i) > 0 ? 0 : 1);
+        test_teardown(state);
+        test_setup(state);
+    }
     test_teardown(state);
 }
 
@@ -182,6 +195,7 @@ void test_malloc_matrix_data_coo_symmetric(void ** state)
     will_return_count(__wrap__test_malloc, 0, 3);
     int ret = malloc_matrix_data(s->M, COO_SYMMETRIC, 1, 1, 1);
     assert_int_equal(ret, 1);
+    s->M->type = COO_SYMMETRIC;
     test_teardown(state);
 }
 
@@ -195,8 +209,8 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_malloc_matrix_data_null, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_malloc_matrix_data_identity, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_malloc_matrix_data_dense, test_setup, test_teardown),
-        //cmocka_unit_test_setup_teardown(test_malloc_matrix_data_coo, test_setup, test_teardown),
-        //cmocka_unit_test_setup_teardown(test_malloc_matrix_data_coo_symmetric, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_malloc_matrix_data_coo, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_malloc_matrix_data_coo_symmetric, test_setup, test_teardown),
     };
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
 }
