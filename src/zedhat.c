@@ -5,21 +5,27 @@
 #include <cblas.h>
 #include <lapacke.h>
 #include "config.h"
+
 #include "argv.h"
+#include "file.h"
+#include "model.h"
 #include "matrix.h"
 
 matrix * get_fwd_matrix(const args_t args, const char * name, const char * symbol, const char * units)
 {
     matrix * A = malloc_matrix();
-    malloc_matrix_name(A, name, symbol, units);
-    if (A == NULL) {
-        printf("fwd %s: ret = malloc failed (%s)\n", name, args.file[0]);
+    int nret = malloc_matrix_name(A, name, symbol, units);
+    if ((A == NULL) || nret) {
+        printf("fwd %s: malloc failed (%s)\n", name, args.file[0]);
+        free_matrix(A);
         return NULL;
     }
-    int ret = 1; // FIXME matrix_load(args.file[0], A);
+    model M = {{0}};
+    int ret = readfile(args.file[0], &M);
     if(ret) {
         printf("fwd %s: ret = %d (%s)\n", name, ret, args.file[0]);
         free_matrix(A);
+        model_free(&M);
         return NULL;
     }
     else {

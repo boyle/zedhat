@@ -56,7 +56,7 @@ int check_req(const fileformat * f, enum fileformat_req needs)
     return 0;
 }
 
-int readfile_loop(char filename[], model * m, fileformat * f_list)
+int readfile_loop(const char filename[], model * m, fileformat * f_list)
 {
     if(m == NULL) {
         return 1;
@@ -295,7 +295,7 @@ int readzh_params(const char * data, model * m, mesh * mm, const int i)
     return (cnt != cols);
 }
 
-int readfile_ngvol(char filename[], model * m)
+int readfile_ngvol(const char filename[], model * m)
 {
     fileformat ngvol [] = {
         {"mesh3d", 0, 0, NULL, NULL, REQUIRED_FIRST},
@@ -313,7 +313,7 @@ int readfile_ngvol(char filename[], model * m)
     return readfile_loop(filename, m, ngvol);
 }
 
-int readfile(char filename[], model * m)
+int readfile(const char filename[], model * m)
 {
     fileformat zh_format1 [] = {
         {"zedhat", 0, 0, NULL, NULL, REQUIRED_FIRST},

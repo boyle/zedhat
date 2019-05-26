@@ -4,7 +4,7 @@ AUTOMAKE_OPTIONS = foreign
 
 # the actual program to be installed at the end
 bin_PROGRAMS = zedhat
-zedhat_SOURCES = src/zedhat.c src/argv.c src/matrix.c
+zedhat_SOURCES = src/zedhat.c src/argv.c src/file.c src/model.c src/matrix.c
 
 AM_CFLAGS = $(CFLAGS)
 AM_CFLAGS += $(MATIO_CFLAGS) $(UMFPACK_CFLAGS) $(CHOLMOD_CFLAGS) $(LAPACKE_CFLAGS) $(LAPACK_CFLAGS) $(CBLAS_CFLAGS) $(BLAS_CFLAGS)

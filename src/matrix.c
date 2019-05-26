@@ -1,4 +1,4 @@
-/* Copyright 2017--2018, Alistair Boyle, 3-clause BSD License */
+/* Copyright 2017--2019, Alistair Boyle, 3-clause BSD License */
 
 #include <stdlib.h> /* malloc, free */
 #include <string.h> /* strncmp, strdup, bzero */
