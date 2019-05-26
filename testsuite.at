@@ -38,7 +38,7 @@ ZH_LIB_TEST(cholmod,solve)
 
 AT_BANNER([unit tests])
 ZH_UNIT_TEST(file, zedhat file format I/O, 12)
-ZH_UNIT_TEST(matrix, dense and sparse matrices, 1)
+ZH_UNIT_TEST(matrix, dense and sparse matrices, 7)
 ZH_UNIT_TEST(model, system matrix calculator, 18)
 
 AT_BANNER([args])

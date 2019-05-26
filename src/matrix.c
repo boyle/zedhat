@@ -4,11 +4,13 @@
 #include <string.h> /* strncmp, strdup, bzero */
 #include <assert.h> /* assert */
 
+#include <stdio.h> /* printf */
+
 #include "config.h"
 #include "matrix.h"
 
 #ifdef UNIT_TESTING
-extern void* _test_malloc(const size_t size, const char* file, const int line);
+extern void * _test_malloc(const size_t size, const char * file, const int line);
 extern void _test_free(void * const ptr, const char * file, const int line);
 #define malloc(size) _test_malloc(size, __FILE__, __LINE__)
 #define free(ptr) _test_free(ptr, __FILE__, __LINE__)
@@ -22,7 +24,8 @@ void matrix_init(matrix * m)
     bzero(m, sizeof(matrix));
 }
 
-matrix* malloc_matrix() {
+matrix * malloc_matrix()
+{
     matrix * M = malloc(sizeof(matrix));
     if ( M == NULL ) {
         return NULL;
@@ -56,15 +59,20 @@ int malloc_matrix_name(matrix * M, const char * name, const char * symbol, const
     return ret1 && ret2 && ret3;
 }
 
-int malloc_matrix_data(matrix*M, enum matrix_type type, const size_t rows, const size_t cols, const size_t nnz)
+int malloc_matrix_data(matrix * M, enum matrix_type type, const size_t rows, const size_t cols, const size_t nnz)
 {
-   if(M== NULL)
-      return FAILURE;
+    if(M == NULL) {
+        return FAILURE;
+    }
     M->scale = 1.0;
     M->type = type;
     M->m = rows;
     M->n = cols;
+    assert(rows > 0);
+    assert(cols > 0);
+    assert(nnz <= cols * rows);
     /* malloc data */
+    assert(type < MAX_MATRIX_TYPE);
     switch(type) {
     case IDENTITY:
         assert(nnz == 0);
@@ -78,16 +86,17 @@ int malloc_matrix_data(matrix*M, enum matrix_type type, const size_t rows, const
 //      assert(cols == rows);
 //      assert(nnz == ((rows * (rows - 1)) / 2 + rows));
 //      M->symmetric = true;
-//      M->type -= 4; /* strip _SYMMETRIC */
+//      M->type--; /* strip _SYMMETRIC */
 //      M->dense = malloc(sizeof(double) * nnz);
 //      break;
     case DENSE:
         assert(nnz == rows * cols);
         M->dense = malloc(sizeof(double) * nnz);
+        printf("M=%p dense=%p type=%d malloc\n", M, M->dense, M->type);
         break;
 //  case CSR_SYMMETRIC:
 //      M->symmetric = true;
-//      M->type -= 4; /* strip _SYMMETRIC */
+//      M->type--; /* strip _SYMMETRIC */
 //  case CSR:
 //      M->sparse.a = malloc(sizeof(double) * nnz);
 //      M->sparse.ia = malloc(sizeof(unsigned int) * (rows + 1));
@@ -95,7 +104,7 @@ int malloc_matrix_data(matrix*M, enum matrix_type type, const size_t rows, const
 //      break;
 //  case CSC_SYMMETRIC:
 //      M->symmetric = true;
-//      M->type -= 4; /* strip _SYMMETRIC */
+//      M->type--; /* strip _SYMMETRIC */
 //  case CSC:
 //      M->sparse.a = malloc(sizeof(double) * nnz);
 //      M->sparse.ia = malloc(sizeof(unsigned int) * nnz);
@@ -103,7 +112,7 @@ int malloc_matrix_data(matrix*M, enum matrix_type type, const size_t rows, const
 //      break;
     case COO_SYMMETRIC:
         M->symmetric = true;
-        M->type -= 4; /* strip _SYMMETRIC */
+        M->type--; /* strip _SYMMETRIC */
     case COO:
         M->sparse.a = malloc(sizeof(double) * nnz);
         M->sparse.ia = malloc(sizeof(unsigned int) * nnz);
@@ -112,17 +121,18 @@ int malloc_matrix_data(matrix*M, enum matrix_type type, const size_t rows, const
         M->sparse.nia = nnz;
         M->sparse.nja = nnz;
         break;
-    case MAX_MATRIX_TYPE:
-        assert(false); /* LCOV_EXCL_LINE */
-        break;
+//    case MAX_MATRIX_TYPE: /* LCOV_EXCL_LINE */
+//        break; /* LCOV_EXCL_LINE */
+      default:
+        assert(false); // TODO rm
     }
     /* handle any malloc failures */
-    if((M->type == DENSE) /*|| (M->type == DIAGONAL)*/) {
+    if(/*(*/M->type == DENSE/*) || (M->type == DIAGONAL)*/) {
         if (M->dense == NULL) {
             return FAILURE;
         }
     }
-    else { /* COO, CSC, CSR */
+    else if (M->type != IDENTITY) { /* COO, CSC, CSR */
         if ((M->sparse.a == NULL) || (M->sparse.ia == NULL) || (M->sparse.ja == NULL)) {
             return FAILURE;
         }
@@ -136,6 +146,7 @@ void free_matrix(matrix * M)
     if(M == NULL) {
         return;
     }
+    printf("M=%p dense=%p type=%d free\n", M, M->dense, M->type);
     assert(M->type < MAX_MATRIX_TYPE);
     switch (M->type) {
     // TODO case CSR_SYMMETRIC:
