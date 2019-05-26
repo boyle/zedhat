@@ -10,7 +10,8 @@
 
 matrix * get_fwd_matrix(const args_t args, const char * name, const char * symbol, const char * units)
 {
-    matrix * A = NULL; // FIXME matrix_malloc(name, symbol, units);
+    matrix * A = malloc_matrix();
+    malloc_matrix_name(A, name, symbol, units);
     if (A == NULL) {
         printf("fwd %s: ret = malloc failed (%s)\n", name, args.file[0]);
         return NULL;
@@ -18,7 +19,7 @@ matrix * get_fwd_matrix(const args_t args, const char * name, const char * symbo
     int ret = 1; // FIXME matrix_load(args.file[0], A);
     if(ret) {
         printf("fwd %s: ret = %d (%s)\n", name, ret, args.file[0]);
-        matrix_free(A);
+        free_matrix(A);
         return NULL;
     }
     else {
@@ -110,9 +111,9 @@ int main(int argc, char ** argv)
         }
         printf("pass\n");
 fwd_quit:
-        matrix_free(A);
-        matrix_free(B);
-        matrix_free(X);
+        free_matrix(A);
+        free_matrix(B);
+        free_matrix(X);
         free(AA);
         free(BB);
     }

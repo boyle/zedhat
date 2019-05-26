@@ -24,8 +24,8 @@ EXTRA_DIST = $(bin_SCRIPTS) \
 				 ChangeLog README.md NEWS LICENSE
 
 BUILT_TESTS = tests/libcblas_dgemm tests/liblapacke_dgels \
-			  tests/libumfpack tests/libcholmod \
-			  tests/file tests/model
+			  tests/libumfpack_solve tests/libcholmod_solve \
+			  tests/file tests/model tests/matrix
 check_PROGRAMS = $(BUILT_TESTS)
 #tests_unit_perftimer_SOURCES = tests/unit-perftimer.c src/perftimer.c
 #tests_unit_perftimer_CPPFLAGS = -I$(srcdir)/src
@@ -36,6 +36,9 @@ tests_file_LDFLAGS = $(foreach f,_test_malloc gzopen gzgets gzeof gzclose,-Wl,-w
 tests_model_SOURCES = tests/model.c src/model.c tests/cmocka.c
 tests_model_CFLAGS = -DUNIT_TESTING $(AM_CFLAGS)
 #tests_model_LDFLAGS = $(foreach f,_test_malloc,-Wl,-wrap=$(f))
+tests_matrix_SOURCES = tests/matrix.c src/matrix.c tests/cmocka.c
+tests_matrix_CFLAGS = -DUNIT_TESTING $(AM_CFLAGS)
+tests_matrix_LDFLAGS = $(foreach f,_test_malloc,-Wl,-wrap=$(f))
 
 clean-local: clean-local-check
 	  -rm -f src/*.lo

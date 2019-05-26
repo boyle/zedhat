@@ -1,53 +1,22 @@
 AT_INIT()
 AT_COPYRIGHT([Copyright 2016-2019, Alistair Boyle, 3-clause BSD License])
 AT_COLOR_TESTS
-
 AT_TESTED(AT_PACKAGE_NAME)
-m4_define(ZH_DATA_FILE_TESTA_MAT,
-  [AT_DATA([testa.mat-xxd],m4_esyscmd(xxd -p tests/testa.mat))]
-  xxd -r -p testa.mat-xxd > testa.mat
-dnl  diff testa.mat ../../../tests/testa.mat
-)
-m4_define(ZH_DATA_FILE_TESTB_MAT,
-  [AT_DATA([testb.mat-xxd],m4_esyscmd(xxd -p tests/testb.mat))]
-  xxd -r -p testb.mat-xxd > testb.mat
-dnl  diff testb.mat ../../../tests/testb.mat
-)
-m4_define(ZH_DATA_FILE_TESTAB_MAT,
-  [AT_DATA([testab.mat-xxd],m4_esyscmd(xxd -p tests/testab.mat))]
-  xxd -r -p testab.mat-xxd > testab.mat
-dnl  diff testab.mat ../../../tests/testab.mat
-)
-m4_define(ZH_DATA_FILE_MATA,[      Name: a
-      Rank: 2
-Dimensions: 2 x 3
-Class Type: Double Precision Array
- Data Type: IEEE 754 double-precision
-{
-1 2 3
-4 5 6
-}])
-m4_define(ZH_DATA_FILE_MATB,[      Name: b
-      Rank: 2
-Dimensions: 2 x 3
-Class Type: Sparse Array
- Data Type: IEEE 754 double-precision
-{
-    (1,1)  1
-    (1,2)  2
-    (2,2)  5
-}])
 
-m4_define(ZH_DATA_FILE_TESTAXB_MAT,
-  [AT_DATA([testAXB-v73.mat-xxd],m4_esyscmd(xxd -p tests/testAXB-v73.mat))]
-  [AT_DATA([testAXB-v7.mat-xxd],m4_esyscmd(xxd -p tests/testAXB-v7.mat))]
-  [AT_DATA([testAXB-v6.mat-xxd],m4_esyscmd(xxd -p tests/testAXB-v6.mat))]
-  [AT_DATA([testAXB-v4.mat-xxd],m4_esyscmd(xxd -p tests/testAXB-v4.mat))]
-  xxd -r -p testAXB-v73.mat-xxd >testAXB-v73.mat
-  xxd -r -p testAXB-v7.mat-xxd > testAXB-v7.mat
-  xxd -r -p testAXB-v6.mat-xxd > testAXB-v6.mat
-  xxd -r -p testAXB-v4.mat-xxd > testAXB-v4.mat
-)
+m4_define(ZH_UNIT_TEST,[
+AT_SETUP([$1 - $2])
+AT_KEYWORDS([unittest $1])
+AT_CHECK([$1 unittest],0,ignore,[[[  PASSED  ] $3 test(s).
+]])
+AT_CLEANUP
+])
+
+m4_define(ZH_LIB_TEST,[
+AT_SETUP([$1 - $2])
+AT_KEYWORDS([libs $1])
+AT_CHECK(lib[$1]_[$2],0,ignore)
+AT_CLEANUP
+])
 
 m4_define(ZH_HELP_SHORT, [AT_PACKAGE_NAME @<:@options@:>@])
 m4_define(ZH_HELP_LONG,
@@ -62,25 +31,15 @@ m4_define(ZH_HELP_LONG,
 ])
 
 AT_BANNER([libs])
-AT_SETUP([cblas])
-AT_KEYWORDS([cblas libs])
-AT_CHECK([libcblas_dgemm],0,ignore)
-AT_CLEANUP
+ZH_LIB_TEST(cblas,dgemm)
+ZH_LIB_TEST(lapacke,dgels)
+ZH_LIB_TEST(umfpack,solve)
+ZH_LIB_TEST(cholmod,solve)
 
-AT_SETUP([lapacke])
-AT_KEYWORDS([lapacke libs])
-AT_CHECK([liblapacke_dgels],0,ignore)
-AT_CLEANUP
-
-AT_SETUP([umfpack])
-AT_KEYWORDS([umfpack libs])
-AT_CHECK([libumfpack],0,ignore)
-AT_CLEANUP
-
-AT_SETUP([cholmod])
-AT_KEYWORDS([cholmod libs])
-AT_CHECK([libcholmod],0,ignore)
-AT_CLEANUP
+AT_BANNER([unit tests])
+ZH_UNIT_TEST(file, zedhat file format I/O, 12)
+ZH_UNIT_TEST(matrix, dense and sparse matrices, 1)
+ZH_UNIT_TEST(model, system matrix calculator, 18)
 
 AT_BANNER([args])
 AT_SETUP([badargs])
@@ -154,11 +113,9 @@ fail: || A X - B ||_2 =
 ],)
 AT_CLEANUP
 
-AT_BANNER([unit tests])
+AT_BANNER([mesh loading])
 AT_SETUP([netgen .vol])
 AT_KEYWORDS([netgen])
-AT_CHECK([file test],0,ignore,[[[  PASSED  ] 12 test(s).]
-])
 m4_define(ZH_DATA_FILE_NETGEN,
   [AT_DATA([ngcube.vol-xxd],m4_esyscmd(gzip -c tests/ngcube.vol | xxd -p))]
   xxd -r -p ngcube.vol-xxd | gunzip -d > ngcube.vol
@@ -270,8 +227,5 @@ err: junk9.not.vol: empty mesh nodes = 0, elems = 0, surfs = 0
 [error: failed to load junk9.not.vol
 ])
 AT_CLEANUP
-AT_SETUP([model - system matrix calculator])
-AT_KEYWORDS([mesh])
-AT_CHECK([model],0,ignore,[[[  PASSED  ] 18 test(s).
-]])
-AT_CLEANUP
+
+

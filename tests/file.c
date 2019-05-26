@@ -345,7 +345,7 @@ int main(int argc, char ** argv)
         return 1;
     }
     char * filename = argv[1];
-    if(strncmp(filename, "test", 5) == 0) {
+    if(strncmp(filename, "unittest", 9) == 0) {
         test_malloc_enabled = 1;
         const struct CMUnitTest tests[] = {
             cmocka_unit_test(test_happy),
