@@ -1,4 +1,5 @@
 /* Copyright 2016, Alistair Boyle, 3-clause BSD License */
+#include "config.h"
 #include <stdio.h>
 #include <stdlib.h> /* for exit */
 #include <math.h>  /* for fabs */

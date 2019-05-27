@@ -1,6 +1,7 @@
 /* from lapack-netlib, 3-clause BSD licensed */
-/* modified 2016, A. Boyle */
+/* modified (C) 2016, A. Boyle */
 
+#include "config.h"
 #include <stdio.h>
 #include <math.h> /* for fabs */
 #include <lapacke.h>

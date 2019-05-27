@@ -1,4 +1,5 @@
 /* Copyright 2018, Alistair Boyle, 3-clause BSD License */
+#include "config.h"
 #include <string.h> /* bzero */
 #include <stdlib.h> /* free, qsort */
 #include <lapacke.h> /* inv: dgetrf, dgetri */

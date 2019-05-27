@@ -1,13 +1,14 @@
 /* Copyright 2019, Alistair Boyle, 3-clause BSD License */
+#include "config.h"
 #include <stdarg.h> /* cmocka.h */
 #include <stddef.h> /* cmocka.h */
 #include <setjmp.h> /* cmocka.h */
 #include <stdint.h> /* cmocka.h */
-#include "cmocka.h"
 
 #include <string.h> /* strlen + strcpy = mock strdup*/
 #include <stdio.h> /* printf */
 
+#include "cmocka.h"
 #include "matrix.h"
 
 void * __real__test_malloc(const size_t size, const char * file, const int line);

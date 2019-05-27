@@ -1,9 +1,9 @@
 /* Copyright 2016, 2018, Alistair Boyle, 3-clause BSD License */
+#include "config.h"
 #include <stdio.h> /* for printf */
 #include <stdlib.h> /* strtof */
 #include <errno.h> /* strtof -> errno */
 #include <getopt.h>
-#include "config.h"
 #include "argv.h"
 
 int parse_argv(int argc, char ** argv, args_t * args)

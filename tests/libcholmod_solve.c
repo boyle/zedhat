@@ -17,7 +17,11 @@
 /* Read in a real symmetric or complex Hermitian matrix from stdin in
  * MatrixMarket format, solve Ax=b where b=[1 1 ... 1]', and print the residual.
  * Usage: cholmod_simple < matrixfile
+ *
+ * modified: (C) 2019, A. Boyle
  */
+
+#include "config.h"
 
 #include <cholmod.h>
 

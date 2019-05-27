@@ -1,10 +1,10 @@
 /* Copyright 2016, Alistair Boyle, 3-clause BSD License */
+#include "config.h"
 #include <stdio.h>
 #include <stdlib.h> /* malloc, free */
 #include <string.h> /* memcpy */
 #include <cblas.h>
 #include <lapacke.h>
-#include "config.h"
 
 #include "argv.h"
 #include "file.h"

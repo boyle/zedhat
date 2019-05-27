@@ -1,10 +1,9 @@
-/* Copyright 2017--2019, Alistair Boyle, 3-clause BSD License */
-
+/* Copyright 2017-2019, Alistair Boyle, 3-clause BSD License */
+#include "config.h"
 #include <stdlib.h> /* malloc, free */
 #include <string.h> /* strncmp, strdup, bzero */
 #include <assert.h> /* assert */
 
-#include "config.h"
 #include "matrix.h"
 
 #ifdef UNIT_TESTING

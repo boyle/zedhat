@@ -1,4 +1,5 @@
-/* Copyright 2018, Alistair Boyle, 3-clause BSD License */
+/* Copyright 2018-2019, Alistair Boyle, 3-clause BSD License */
+#include "config.h"
 #include <stdarg.h> /* cmocka.h */
 #include <stddef.h> /* cmocka.h */
 #include <setjmp.h> /* cmocka.h */
