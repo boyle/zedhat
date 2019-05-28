@@ -39,6 +39,7 @@ RUN sudo rm /etc/apt/sources.list.d/hhvm-repository.list
 #RUN sudo add-apt-repository --remove ppa:PPA_Name/ppa
 RUN sudo apt-get update -q
 RUN sudo apt-get  install  gcc-6 gfortran libblas-dev libopenblas-dev libopenblas-base libsuitesparse-dev liblapacke liblapacke-dev lcov tree
+RUN sudo apt-get install gdb valgrind
 # change to the branch or commit you want to investigate
 # compile travis script into bash script
 RUN bash -lc '~/.travis/travis-build/bin/travis compile > ci.sh'
