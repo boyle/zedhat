@@ -21,7 +21,7 @@ LCOV="lcov --rc lcov_branch_coverage=1"
 [ "x$GCOV" != "x" ] && LCOV="${LCOV} --gcov-tool $(which ${GCOV})"
 
 # Generate gcov output
-CFLAGS="-g -O1 --coverage" ./configure
+CFLAGS="-g -O0 --coverage" ./configure
 make clean
 make
 $LCOV --base-directory . --directory . --zerocounters -q

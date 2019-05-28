@@ -36,7 +36,7 @@ typedef struct matrix_t {
 matrix * malloc_matrix();
 int malloc_matrix_name(matrix * M, const char * name, const char * symbol, const char * units);
 int malloc_matrix_data(matrix * M, enum matrix_type type, const size_t rows, const size_t cols, const size_t nnz);
-void free_matrix(matrix * M);
+matrix * free_matrix(matrix * M);
 //void matrix_transpose(matrix * M);
 
 #endif

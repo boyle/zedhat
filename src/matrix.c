@@ -135,10 +135,10 @@ int malloc_matrix_data(matrix * M, enum matrix_type type, const size_t rows, con
 }
 
 
-void free_matrix(matrix * M)
+matrix * free_matrix(matrix * M)
 {
     if(M == NULL) {
-        return;
+        return NULL;
     }
     assert(M->type < MAX_MATRIX_TYPE);
     switch (M->type) {
@@ -170,6 +170,7 @@ void free_matrix(matrix * M)
     free(M->units);
     matrix_init(M);
     free(M);
+    return NULL;
 }
 
 /*
