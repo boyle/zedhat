@@ -80,10 +80,10 @@ int main(int argc, char ** argv)
         }
         /* Find: || A X - B ||_2 */
         /* Compute  C = a A B + c C */
-        memcpy(BB, B->dense, Bmn * sizeof(double));
+        memcpy(BB, B->x.dense, Bmn * sizeof(double));
         cblas_dgemm (CblasColMajor, CblasNoTrans, CblasNoTrans,
                      A->m, X->n, A->n, /* m, n, k, */
-                     +1.0, A->dense, A->m, X->dense, X->m, /* a, A, m, B, n, */
+                     +1.0, A->x.dense, A->m, X->x.dense, X->m, /* a, A, m, B, n, */
                      -1.0, BB, B->m); /* c, C, k */
         /* Compute  || B ||_2 */
         const double err_mul = cblas_dnrm2( Bmn, BB, 1); /* n, X, incX */
@@ -93,8 +93,8 @@ int main(int argc, char ** argv)
             goto fwd_quit;
         }
         /* Find BB = A\B; || BB - X ||_2 */
-        memcpy(AA, A->dense, Amn * sizeof(double));
-        memcpy(BB, B->dense, Bmn * sizeof(double));
+        memcpy(AA, A->x.dense, Amn * sizeof(double));
+        memcpy(BB, B->x.dense, Bmn * sizeof(double));
         // memset(&BB[Bmn], 0, (Xmn-Bmn)*sizeof(double));
         lapack_int err = LAPACKE_dgels( LAPACK_COL_MAJOR, 'N', /* row/col major, trans, */
                                         A->m, A->n, B->n, /* m, n, n_rhs, */
@@ -107,7 +107,7 @@ int main(int argc, char ** argv)
         /* Compute  || BB - X ||_2 */
         int i;
         for(i = 0; i < Xmn; i++) {
-            BB[i] -= X->dense[i];
+            BB[i] -= X->x.dense[i];
         }
         const double err_div = cblas_dnrm2( Xmn, BB, 1); /* n, X, incX */
         if (err_div > args.tol) {

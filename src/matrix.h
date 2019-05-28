@@ -30,7 +30,7 @@ typedef struct matrix_t {
     union {
         double * dense;    /* dense array, vector or matrix */
         matrix_sparse sparse; /* sparse matrix (CSR, CSC, COO) */
-    };
+    } x;
 } matrix;
 
 matrix * malloc_matrix();

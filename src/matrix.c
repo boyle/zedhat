@@ -77,57 +77,57 @@ int malloc_matrix_data(matrix * M, enum matrix_type type, const size_t rows, con
         break;
 //  case DIAGONAL:
 //      assert(nnz == (rows < cols ? rows : cols));
-//      M->dense = malloc(sizeof(double) * nnz);
+//      M->x.dense = malloc(sizeof(double) * nnz);
 //      break;
 //  case DENSE_SYMMETRIC:
 //      assert(cols == rows);
 //      assert(nnz == ((rows * (rows - 1)) / 2 + rows));
 //      M->symmetric = true;
 //      M->type--; /* strip _SYMMETRIC */
-//      M->dense = malloc(sizeof(double) * nnz);
+//      M->x.dense = malloc(sizeof(double) * nnz);
 //      break;
     case DENSE:
         assert(nnz == rows * cols);
-        M->dense = malloc(sizeof(double) * nnz);
+        M->x.dense = malloc(sizeof(double) * nnz);
         break;
 //  case CSR_SYMMETRIC:
 //      M->symmetric = true;
 //      M->type--; /* strip _SYMMETRIC */
 //  case CSR:
-//      M->sparse.a = malloc(sizeof(double) * nnz);
-//      M->sparse.ia = malloc(sizeof(unsigned int) * (rows + 1));
-//      M->sparse.ja = malloc(sizeof(unsigned int) * nnz);
+//      M->x.sparse.a = malloc(sizeof(double) * nnz);
+//      M->x.sparse.ia = malloc(sizeof(unsigned int) * (rows + 1));
+//      M->x.sparse.ja = malloc(sizeof(unsigned int) * nnz);
 //      break;
 //  case CSC_SYMMETRIC:
 //      M->symmetric = true;
 //      M->type--; /* strip _SYMMETRIC */
 //  case CSC:
-//      M->sparse.a = malloc(sizeof(double) * nnz);
-//      M->sparse.ia = malloc(sizeof(unsigned int) * nnz);
-//      M->sparse.ja = malloc(sizeof(unsigned int) * (cols + 1));
+//      M->x.sparse.a = malloc(sizeof(double) * nnz);
+//      M->x.sparse.ia = malloc(sizeof(unsigned int) * nnz);
+//      M->x.sparse.ja = malloc(sizeof(unsigned int) * (cols + 1));
 //      break;
     case COO_SYMMETRIC:
         M->symmetric = true;
         M->type--; /* strip _SYMMETRIC */
     case COO:
-        M->sparse.a = malloc(sizeof(double) * nnz);
-        M->sparse.ia = malloc(sizeof(unsigned int) * nnz);
-        M->sparse.ja = malloc(sizeof(unsigned int) * nnz);
-        M->sparse.na = nnz;
-        M->sparse.nia = nnz;
-        M->sparse.nja = nnz;
+        M->x.sparse.a = malloc(sizeof(double) * nnz);
+        M->x.sparse.ia = malloc(sizeof(unsigned int) * nnz);
+        M->x.sparse.ja = malloc(sizeof(unsigned int) * nnz);
+        M->x.sparse.na = nnz;
+        M->x.sparse.nia = nnz;
+        M->x.sparse.nja = nnz;
         break;
     case MAX_MATRIX_TYPE: /* LCOV_EXCL_LINE */
         break; /* LCOV_EXCL_LINE */
     }
     /* handle any malloc failures */
     if(/*(*/M->type == DENSE/*) || (M->type == DIAGONAL)*/) {
-        if (M->dense == NULL) {
+        if (M->x.dense == NULL) {
             return FAILURE;
         }
     }
     else if (M->type != IDENTITY) { /* COO, CSC, CSR */
-        if ((M->sparse.a == NULL) || (M->sparse.ia == NULL) || (M->sparse.ja == NULL)) {
+        if ((M->x.sparse.a == NULL) || (M->x.sparse.ia == NULL) || (M->x.sparse.ja == NULL)) {
             return FAILURE;
         }
     }
@@ -153,14 +153,14 @@ matrix * free_matrix(matrix * M)
     switch (M->type) {
     // TODO case DIAGONAL:
     case DENSE:
-        free(M->dense);
+        free(M->x.dense);
         break;
     // TODO case CSR:
     // TODO case CSC:
     case COO:
-        free(M->sparse.a);
-        free(M->sparse.ia);
-        free(M->sparse.ja);
+        free(M->x.sparse.a);
+        free(M->x.sparse.ia);
+        free(M->x.sparse.ja);
         break;
     default: /* NOP */
         break;
