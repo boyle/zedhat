@@ -15,18 +15,20 @@ void * __real__test_malloc(const size_t size, const char * file, const int line)
 void * __wrap__test_malloc(size_t size)
 {
     if(mock()) {
+        printf("  malloc x\n");
         return NULL;
     }
     else {
+        printf("  malloc ✓\n");
         return __real__test_malloc(size, __FILE__, __LINE__);
     }
 }
 
-char * __wrap_strdup(const char * str)
+char * __real__test_strdup(const char * str, const char * file, const int line);
+char * __wrap__test_strdup(const char * str)
 {
     size_t size = strlen(str) + 1;
-//        char * n = __real__test_malloc(size, __FILE__, __LINE__);
-    char * n = malloc(size);
+    char * n = __wrap__test_malloc(size);
     if(n != NULL) {
         strcpy(n, str);
     }
@@ -83,7 +85,7 @@ void test_malloc_matrix_name_happy(void ** state)
             will_return_count(__wrap__test_malloc, 0, bitcnt(i));
         }
         int ret = malloc_matrix_name(M, i & 1 ? "A" : NULL, i & 2 ? "B" : NULL, i & 4 ? "C" : NULL);
-        printf("%d='b%d%d%d ", i, (i >> 0) & 1, (i >> 1) & 1, (i >> 2) & 1);
+        printf("%d='b%d%d%d (%d)", i, (i >> 0) & 1, (i >> 1) & 1, (i >> 2) & 1, bitcnt(i));
         printf_matrix(M);
         assert_int_equal(ret, 1);
     }
