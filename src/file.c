@@ -48,8 +48,7 @@ typedef struct {
 
 int check_req(const fileformat * f, enum fileformat_req needs)
 {
-    int i;
-    for(i = 0; f[i].section[0]; i++) {
+    for(int i = 0; f[i].section[0]; i++) {
         if((f[i].req >= needs) && (!f[i].cnt)) {
             return i + 1;
         }
@@ -111,8 +110,7 @@ int readfile_loop(const char filename[], model * m, fileformat * f_list)
             }
             int * n = (int *) ((char *)mm + f->offset);
             int idx = 0;
-            int j;
-            for(j = 0; j < f->n_size; j++) {
+            for(int j = 0; j < f->n_size; j++) {
                 cnt += sscanf(&(data[idx]), "%d %n", &(n[j]), &idx);
             }
             if(cnt != f->n_size) {
@@ -121,9 +119,8 @@ int readfile_loop(const char filename[], model * m, fileformat * f_list)
             }
             printf("%s %d\n", f->section, *n);
             if(f->sscanf_funcptr) {
-                int i;
                 int * n = (int *) ((char *)mm + f->offset);
-                for(i = 0; i < *n; i += 1) {
+                for(int i = 0; i < *n; i += 1) {
                     gzreadnext(F, data, MAXCHAR);
                     int ret = (*f->sscanf_funcptr)(data, m, mm, i);
                     if( ret ) {
@@ -270,8 +267,7 @@ int readzh_data(const char * data, model * m, mesh * mm, const int i)
     }
     int cnt = 0;
     int idx = 0;
-    int j;
-    for(j = 0; j < cols; j++) {
+    for(int j = 0; j < cols; j++) {
         cnt += sscanf(&(data[idx]), " %lf %n", &(m->data[cols * i + j]), &idx);
     }
     return (cnt != cols);
@@ -289,8 +285,7 @@ int readzh_params(const char * data, model * m, mesh * mm, const int i)
     }
     int cnt = 0;
     int idx = 0;
-    int j;
-    for(j = 0; j < cols; j++) {
+    for(int j = 0; j < cols; j++) {
         cnt += sscanf(&(data[idx]), " %lf %n", &(m->params[cols * i + j]), &idx);
     }
     return (cnt != cols);

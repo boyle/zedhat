@@ -72,12 +72,11 @@ double det(int n, double A[n][n])
     }
     double d = 0;
     double sign = 1.0;
-    int i, j, k, s;
-    for(i = 0; i < n; i++, sign *= -1.0) {
+    for(int i = 0; i < n; i++, sign *= -1.0) {
         /* construct sub-matrix B */
         double B[n - 1][n - 1];
-        for(j = 1; j < n; j++) {
-            for(k = s = 0; k < n; k++) {
+        for(int j = 1; j < n; j++) {
+            for(int k=0, s=0; k < n; k++) {
                 if(k != i) {
                     B[j - 1][s] = A[j][k];
                     s++;
@@ -104,11 +103,10 @@ double det(int n, double A[n][n])
 double * calc_Se_v(const int nd, double const * const * const nodes, double * Se)
 {
     const int n = nd + 1;
-    int i, j, k, m;
     double E[n][n]; /* from [1] eq (C.33) */
-    for(i = 0; i < n; i++) {
+    for(int i = 0; i < n; i++) {
         E[i][0] = 1;
-        for(j = 1; j < n; j++) {
+        for(int j = 1; j < n; j++) {
             E[i][j] = nodes[i][j - 1];
         }
     }
@@ -117,16 +115,16 @@ double * calc_Se_v(const int nd, double const * const * const nodes, double * Se
     }
     const double detE = fabs(det(n, E));
     int ndf = 1; /* = !nd = factorial(number of dimensions) */
-    for( i = n - 1; i > 0; i-- ) {
+    for(int i = n - 1; i > 0; i-- ) {
         ndf *= i;
     }
     const double c = 1 / (ndf * detE);
     /* Se = c * E1^T E1, where E1 is E without the top row */
-    m = 0;
-    for( i = 0; i < n; i++ ) {
-        for( j = i; j < n; j++ ) {
+    int m = 0;
+    for(int i = 0; i < n; i++ ) {
+        for(int j = i; j < n; j++ ) {
             Se[m] = 0;
-            for( k = 1; k < n; k++) {
+            for(int k = 1; k < n; k++) {
                 Se[m] += E[k][i] * E[k][j];
             }
             /* TODO pull this out and multiply by conductivity D, to save some multiply operations */
@@ -141,9 +139,8 @@ void calc_Se_ij(const int nd, int const * const elem, int * ii, int * jj)
 {
     const int n = nd + 1;
     int idx = 0;
-    int i, j;
-    for( i = 0; i < n; i++ ) {
-        for( j = i; j < n; j++ ) {
+    for(int i = 0; i < n; i++ ) {
+        for(int j = i; j < n; j++ ) {
             ii[idx] = elem[i] - 1;
             jj[idx] = elem[j] - 1;
             idx++;
@@ -164,12 +161,11 @@ int calc_Se(mesh const * const m, int * ii, int * jj, double * Se)
     const int n_elems = m->n_elems;
     const int * elems = m->elems;
     const double * nodes = m->nodes;
-    int i, j;
     const int n = calc_Se_n(nd);
-    for( i = 0; i < n_elems; i++) {
+    for(int i = 0; i < n_elems; i++) {
         calc_Se_ij(nd, elems, ii, jj);
         double const * node_list [4];
-        for( j = 0; j < nd + 1; j ++) {
+        for(int j = 0; j < nd + 1; j ++) {
             int idx = elems[j] - 1;
             if ( idx < 0 ) {
                 idx = 0;
@@ -197,9 +193,8 @@ int calc_gnd(const int gnd, int * nnz, int * ii, int * jj, double * Se)
 {
     const int gndidx = gnd - 1;
     int ret = 0;
-    int i;
     int idx [*nnz];
-    for ( i = 0; i < *nnz; i++ ) {
+    for (int i = 0; i < *nnz; i++ ) {
         if ( ii[i] == gndidx || jj[i] == gndidx) {
             if (ret == 0) { /* replace with (gndidx,gndidx)=1.0 */
                 idx[i] = i;
@@ -223,7 +218,7 @@ int calc_gnd(const int gnd, int * nnz, int * ii, int * jj, double * Se)
     *nnz -= ret - 1;
     /* we only shift entries down in the indices, so
      * its safe to do straight copy without swap */
-    for(i = 0 ; i < *nnz; i++) {
+    for(int i = 0 ; i < *nnz; i++) {
         const int x = idx[i];
         ii[i] = ii[x];
         jj[i] = jj[x];
@@ -239,8 +234,7 @@ int calc_stim_neumann(mesh const * const m, double amp, int bc, int gnd, double 
 {
     const int dim = m->dim;
     int cnt_bc_local_nodes = 0;
-    int i, j;
-    for(i = 0; i < m->n_se; i ++ ) {
+    for(int i = 0; i < m->n_se; i ++ ) {
         const int bci = m->bc[i];
         if (bci == bc) {
             cnt_bc_local_nodes += dim;
@@ -248,12 +242,12 @@ int calc_stim_neumann(mesh const * const m, double amp, int bc, int gnd, double 
     }
     const double amp_nodal = +amp / (double) cnt_bc_local_nodes;
     const int gndidx = gnd - 1; /* convert node number to index in 'b' */
-    for(i = 0; i < m->n_se; i ++ ) {
+    for(int i = 0; i < m->n_se; i ++ ) {
         const int bci = m->bc[i];
         if (bci != bc) {
             continue;
         }
-        for( j = 0; j < dim; j++) {
+        for(int j = 0; j < dim; j++) {
             int idx = m->surfaceelems[i * dim + j] - 1;
             if ( idx == gndidx ) {
                 /* ground node: do not apply current */

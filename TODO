@@ -1,7 +1,6 @@
 Immediate Work
 2016-07-29 consume matrices from EIDORS, solve 1-step GN inv
 
-2017-04-10 use -std=c11 C-2011 standard
 2017-04-10 use utf-8 for equations, so we can use nice symbols for pretty equations
 2017-04-10 pass an equation to the handler and a list of matrices
            "x_{n+1} = (J^T W J + \lambda^2 R^T R)^{-1} (J^T W b + \lambda^2 R^T R ( x_* - x_n ))"

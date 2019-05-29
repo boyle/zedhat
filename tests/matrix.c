@@ -79,8 +79,7 @@ void test_malloc_matrix_name_happy(void ** state)
     will_return(__wrap__test_malloc, 0);
     matrix * M = malloc_matrix();
     assert_non_null(M);
-    int i;
-    for(i = 0; i < 8; i++) {
+    for(int i = 0; i < 8; i++) {
         if(bitcnt(i) > 0) {
             will_return_count(__wrap__test_malloc, 0, bitcnt(i));
         }
@@ -97,8 +96,7 @@ void test_malloc_matrix_name_sad(void ** state)
     will_return(__wrap__test_malloc, 0);
     matrix * M = malloc_matrix();
     assert_non_null(M);
-    int i;
-    for(i = 1; i < 8; i++) {
+    for(int i = 1; i < 8; i++) {
         if(bitcnt(i) > 1) {
             will_return_count(__wrap__test_malloc, 0, bitcnt(i) - 1);
         }
@@ -144,8 +142,7 @@ void test_malloc_matrix_data_dense(void ** state)
 
 void test_malloc_matrix_data_coo(void ** state)
 {
-    int i;
-    for(i = 0; i < 8; i++) {
+    for(int i = 0; i < 8; i++) {
         will_return(__wrap__test_malloc, 0);
         matrix * M = malloc_matrix();
         will_return(__wrap__test_malloc, (i >> 0) & 1);

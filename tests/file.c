@@ -144,8 +144,7 @@ static void test_happy (void ** state)
     int ret;
     (void) state; /* unused */
     model m = {{0}};
-    int dim;
-    for( dim = 2; dim <= 3; dim  += 1) {
+    for(int dim = 2; dim <= 3; dim  += 1) {
         /* for a netgen file */
         printf("-- netgen %dd --\n", dim);
         mock_ngvol_read(6, 1, 3);

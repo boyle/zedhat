@@ -17,8 +17,7 @@
 #include "model.h"
 
 #define assert_mat_equal(m, n, a, b, delta) do { \
-   int i; \
-   for (i=0; i < m*n; i++) { \
+   for (int i=0; i < m*n; i++) { \
          assert_float_equal(a[i],b[i],delta); \
    }\
 } while(0)
@@ -42,9 +41,8 @@ void test_model(void ** state)
 double simple_det3(int n, double A[3][3])
 {
     assert_int_equal(n, 3);
-    int i;
     double d = 0;
-    for (i = 0; i < 3; i++) {
+    for (int i = 0; i < 3; i++) {
         d += A[0][i] * (A[1][(i + 1) % 3] * A[2][(i + 2) % 3] - A[2][(i + 1) % 3] * A[1][(i + 2) % 3]);
     }
     return d;
@@ -69,10 +67,9 @@ void test_det2(void ** state)
         {1.1, 2.1},
     };
     double AB[2][2] = {{0}};
-    int i, j, k;
-    for (i = 0; i < 2; i++) {
-        for (j = 0; j < 2; j++) {
-            for (k = 0; k < 2; k++) {
+    for (int i = 0; i < 2; i++) {
+        for (int j = 0; j < 2; j++) {
+            for (int k = 0; k < 2; k++) {
                 AB[i][j] += A[i][k] * B[k][j];
             }
         }
@@ -111,10 +108,9 @@ void test_det3(void ** state)
         {4.1, 0.8, 9.1},
     };
     double AB[3][3] = {{0}};
-    int i, j, k;
-    for (i = 0; i < 3; i++) {
-        for (j = 0; j < 3; j++) {
-            for (k = 0; k < 3; k++) {
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            for (int k = 0; k < 3; k++) {
                 AB[i][j] += A[i][k] * B[k][j];
             }
         }
@@ -163,10 +159,9 @@ void test_det4(void ** state)
         {2.2, 2.5, 0.6, 0.7},
     };
     double AB[4][4] = {{0}};
-    int i, j, k;
-    for (i = 0; i < 4; i++) {
-        for (j = 0; j < 4; j++) {
-            for (k = 0; k < 4; k++) {
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            for (int k = 0; k < 4; k++) {
                 AB[i][j] += A[i][k] * B[k][j];
             }
         }
@@ -186,13 +181,12 @@ void printf_mat_double(char * varname, int n, int m, double * mat)
 {
     printf("%s =\n", varname);
     const int space = 3;
-    int i, j;
-    for (i = 0; i < n; i++) {
-        for (j = 0; j < space; j++) {
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < space; j++) {
             printf(" ");
         }
         printf("[");
-        for (j = 0; j < m; j++) {
+        for (int j = 0; j < m; j++) {
             printf(" % 20.15g", mat[i * m + j]);
         }
         printf(" ]\n");
@@ -203,13 +197,12 @@ void printf_mat_int(char * varname, int n, int m, int * mat)
 {
     printf("%s =\n", varname);
     const int space = 3;
-    int i, j;
-    for (i = 0; i < n; i++) {
-        for (j = 0; j < space; j++) {
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < space; j++) {
             printf(" ");
         }
         printf("[");
-        for (j = 0; j < m; j++) {
+        for (int j = 0; j < m; j++) {
             printf(" % 10d", mat[i * m + j]);
         }
         printf(" ]\n");
@@ -225,9 +218,8 @@ double * __simple_inv2(int n, double A[n][n])
     const double d = A[1][1];
     const double detA = a * d - b * c;
     const double B[2][2] = {{+d, -b}, {-c, +a}};
-    int i, j;
-    for(i = 0; i < n; i++)
-        for(j = 0; j < n; j++) {
+    for(int i = 0; i < n; i++)
+        for(int j = 0; j < n; j++) {
             A[i][j] = B[i][j] / detA;
         }
     return &(A[0][0]);
@@ -251,9 +243,8 @@ double * __simple_inv3(int n, double A[n][n])
         {d * h - e * g, -(a * h - b * g), a * e - b * d},
     };
     const double detA = a * B[0][0] + b * B[1][0] + c * B[2][0];
-    int k, j;
-    for(k = 0; k < n; k++)
-        for(j = 0; j < n; j++) {
+    for(int k = 0; k < n; k++)
+        for(int j = 0; j < n; j++) {
             A[k][j] = B[k][j] / detA;
         }
     return &(A[0][0]);
@@ -306,10 +297,9 @@ void test_inv2(void ** state)
     double Bi[2][2] = {{0}};
     double BiB[2][2] = {{0}};
     simple_inv2(2, B, Bi);
-    int i, j, k;
-    for (i = 0; i < 2; i++) {
-        for (j = 0; j < 2; j++) {
-            for (k = 0; k < 2; k++) {
+    for (int i = 0; i < 2; i++) {
+        for (int j = 0; j < 2; j++) {
+            for (int k = 0; k < 2; k++) {
                 BiB[i][j] += Bi[i][k] * B[k][j];
             }
         }
@@ -360,10 +350,9 @@ void test_inv3(void ** state)
     double Bi[3][3] = {{0}};
     double BiB[3][3] = {{0}};
     simple_inv3(3, B, Bi);
-    int i, j, k;
-    for (i = 0; i < 3; i++) {
-        for (j = 0; j < 3; j++) {
-            for (k = 0; k < 3; k++) {
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            for (int k = 0; k < 3; k++) {
                 BiB[i][j] += Bi[i][k] * B[k][j];
             }
         }
@@ -419,10 +408,9 @@ void test_inv4(void ** state)
     double Bi[4][4] = {{0}};
     double BiB[4][4] = {{0}};
     mat_wrap(4, B, Bi, inv);
-    int i, j, k;
-    for (i = 0; i < 4; i++) {
-        for (j = 0; j < 4; j++) {
-            for (k = 0; k < 4; k++) {
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            for (int k = 0; k < 4; k++) {
                 BiB[i][j] += Bi[i][k] * B[k][j];
             }
         }
@@ -445,12 +433,11 @@ void test_bad_inv(void ** state)
 
 double * sym_to_full(int n, double * As, double * Bf)
 {
-    int i, j;
     memset(Bf, 0, sizeof(double)*n * n);
     int m = 0;
     printf("sym = ");
-    for ( i = 0; i < n; i++ ) { /* row-major */
-        for ( j = i; j < n; j++ ) {
+    for (int i = 0; i < n; i++ ) { /* row-major */
+        for (int j = i; j < n; j++ ) {
             Bf[i + j * n] = As[m];
             Bf[i * n + j] = As[m];
             printf(" %0.2f", As[m]);
@@ -544,9 +531,8 @@ void test_shape_Se_n(void ** state)
 
 void printf_ii(const char * name, int n, int * ii)
 {
-    int j;
     printf("%5s = %d", name, ii[0]);
-    for(j = 1; j < n; j++) {
+    for(int j = 1; j < n; j++) {
         printf(", %d", ii[j]);
     }
     printf("\n");
@@ -570,9 +556,7 @@ void test_shape_Se_ij(void ** state)
     m.nodes = &(nodes[0][0]);
     m.n_elems = 1;
     m.n_nodes = 4;
-    int i, j, k;
-    int nd;
-    for( nd = 2; nd <= 3; nd++) {
+    for(int nd = 2; nd <= 3; nd++) {
         m.dim = nd;
         const int n = calc_Se_n(nd);
         ii[n] = -1;
@@ -581,9 +565,9 @@ void test_shape_Se_ij(void ** state)
         calc_Se(&m, ii, jj, ss);
         printf_ii("ii", n, ii);
         printf_ii("jj", n, jj);
-        k = 0;
-        for( i = 0; i < nd + 1; i++ ) {
-            for( j = i; j < nd + 1; j++ ) {
+        int k = 0;
+        for(int i = 0; i < nd + 1; i++ ) {
+            for(int j = i; j < nd + 1; j++ ) {
                 assert_int_equal(ii[k], i);
                 assert_int_equal(jj[k], j);
                 k++;
@@ -602,7 +586,6 @@ int cmp_int_tests( const void * a, const void * b )
 
 void test_shape_2d(void ** state)
 {
-    int i;
     /* 2D square:
      *    first four nodes at z=0
      *    first two elems */
@@ -625,7 +608,7 @@ void test_shape_2d(void ** state)
     };
     int * e = &(elems[1][0]);
     printf_mat_int("elems", 2, 3, e);
-    for( i = 0; i < 2; i++) {
+    for(int i = 0; i < 2; i++) {
         qsort(&(e[i * 3]), 3, sizeof(int), &cmp_int_tests);
     }
     printf_mat_int("elems (sorted)", 2, 3, e);
@@ -639,8 +622,7 @@ void test_shape_2d(void ** state)
     m.nodes = &(nodes[0][0]);
     m.n_elems = 2;
     m.n_nodes = 4;
-    int gnd;
-    for( gnd = 0; gnd < 7; gnd++ ) {
+    for(int gnd = 0; gnd < 7; gnd++ ) {
         int ret = calc_Se(&m, ii, jj, ss);
         assert_int_equal(ret, 0);
         int nnz_local = nnz;
@@ -672,7 +654,6 @@ void test_shape_2d(void ** state)
 
 void test_shape_3d(void ** state)
 {
-    int i;
     /* 3D cube:
      *    all nodes used as in elems */
     double nodes[9][3] = {
@@ -702,7 +683,7 @@ void test_shape_3d(void ** state)
     };
     int * e = &(elems[1][0]);
     printf_mat_int("elems", 6, 4, e);
-    for( i = 0; i < 6; i++) {
+    for(int i = 0; i < 6; i++) {
         qsort(&(e[i * 4]), 4, sizeof(int), &cmp_int_tests);
     }
     printf_mat_int("elems (sorted)", 6, 4, e);
@@ -716,8 +697,7 @@ void test_shape_3d(void ** state)
     m.nodes = &(nodes[0][0]);
     m.n_elems = 6;
     m.n_nodes = 8;
-    int gnd;
-    for( gnd = 0; gnd < 11; gnd++ ) {
+    for(int gnd = 0; gnd < 11; gnd++ ) {
         int ret = calc_Se(&m, ii, jj, ss);
         assert_int_equal(ret, 0);
         int nnz_local = nnz;
@@ -762,8 +742,7 @@ void test_bc_2d_neumann (void ** state)
     m.surfaceelems = &(se[0][0]);
     m.n_se = 4;
     m.n_nodes = 4;
-    int gnd;
-    for (gnd = 0; gnd <= 4; gnd++) {
+    for (int gnd = 0; gnd <= 4; gnd++) {
         double b[4] = {0}; /* nodes */
         int ret = calc_stim_neumann(&m, +1, 1, gnd, &(b[0]));
         ret += calc_stim_neumann(&m, -1, 2, gnd, &(b[0]));
@@ -808,8 +787,7 @@ void test_bc_3d_neumann (void ** state)
     m.surfaceelems = &(se[0][0]);
     m.n_se = 12;
     m.n_nodes = 8;
-    int gnd;
-    for (gnd = 0; gnd <= 8; gnd++) {
+    for (int gnd = 0; gnd <= 8; gnd++) {
         double b[8] = {0}; /* nodes */
         int ret = calc_stim_neumann(&m, +1, 1, gnd, &(b[0]));
         ret += calc_stim_neumann(&m, -1, 2, gnd, &(b[0]));
@@ -912,8 +890,7 @@ void test_2d_resistor (void ** state)
     assert_int_not_equal(A->stype, 0); /* A must be symmetric */
     b = cholmod_ones (A->nrow, 1, A->xtype, &c) ;   /* b = ones(n,1) */
     /* set b->x = bb */
-    int i;
-    for ( i = 0; i < m.n_nodes; i++) {
+    for (int i = 0; i < m.n_nodes; i++) {
         ((double *) b->x)[i] = bb[i];
     }
     L = cholmod_analyze (A, &c) ;           /* analyze */
@@ -945,7 +922,6 @@ void test_2d_resistor (void ** state)
 
 void test_3d_resistor (void ** state)
 {
-    int i;
     /* 3D cube:
      *    all nodes used as in elems */
     double nodes[9][3] = {
@@ -975,7 +951,7 @@ void test_3d_resistor (void ** state)
     };
     int * e = &(elems[1][0]);
     printf_mat_int("elems", 6, 4, e);
-    for( i = 0; i < 6; i++) {
+    for(int i = 0; i < 6; i++) {
         qsort(&(e[i * 4]), 4, sizeof(int), &cmp_int_tests);
     }
     printf_mat_int("elems (sorted)", 6, 4, e);
@@ -1034,7 +1010,7 @@ void test_3d_resistor (void ** state)
     assert_int_not_equal(A->stype, 0); /* A must be symmetric */
     b = cholmod_ones (A->nrow, 1, A->xtype, &c) ;   /* b = ones(n,1) */
     /* set b->x = bb */
-    for ( i = 0; i < m.n_nodes; i++) {
+    for (int i = 0; i < m.n_nodes; i++) {
         ((double *) b->x)[i] = bb[i];
     }
     L = cholmod_analyze (A, &c) ;           /* analyze */
