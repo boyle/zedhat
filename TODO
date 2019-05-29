@@ -1,6 +1,5 @@
 Immediate Work
 2016-07-29 consume matrices from EIDORS, solve 1-step GN inv
-2017-04-05 out of tree build check fails: "mkdir tmp && cd tmp && ../configure && make check"
 
 2017-04-10 use -std=c11 C-2011 standard
 2017-04-10 use utf-8 for equations, so we can use nice symbols for pretty equations

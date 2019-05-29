@@ -116,21 +116,18 @@ AT_CLEANUP
 AT_BANNER([mesh loading])
 AT_SETUP([netgen .vol])
 AT_KEYWORDS([netgen])
-m4_define(ZH_DATA_FILE_NETGEN,
-  [AT_DATA([ngcube.vol-xxd],m4_esyscmd(gzip -c tests/ngcube.vol | xxd -p))]
-  xxd -r -p ngcube.vol-xxd | gunzip -d > ngcube.vol
-  gzip -k ngcube.vol
-  echo -e "gibberish file\r\nyup just junk some more" > junk1.not.vol
-  echo -e "mesh3d\r\nyup just junk some more" > junk2.not.vol
-  echo -e "mesh3d\ndimension\n1" > junk3.not.vol
-  echo -e "mesh3d\ngeomtype\n11" > junk4.not.vol
-  echo -e "mesh3d\nsurfaceelements\n5" > junk5.not.vol
-  echo -e "mesh3d\npoints\n5" > junk6.not.vol
-  echo -e "mesh3d\nvolumeelements\n5" > junk7.not.vol
-  echo -e "mesh3d\nvolumeelements\nXXX" > junk8.not.vol
-  echo -e "mesh3d\ndimension\n3\ngeomtype\n0\nvolumeelements\n0\npoints\n0\nsurfaceelements\n0\n" > junk9.not.vol
-)
-ZH_DATA_FILE_NETGEN
+
+AT_DATA([ngcube.vol],m4_include(tests/ngcube.vol))
+gzip -k ngcube.vol
+echo -e "gibberish file\r\nyup just junk some more" > junk1.not.vol
+echo -e "mesh3d\r\nyup just junk some more" > junk2.not.vol
+echo -e "mesh3d\ndimension\n1" > junk3.not.vol
+echo -e "mesh3d\ngeomtype\n11" > junk4.not.vol
+echo -e "mesh3d\nsurfaceelements\n5" > junk5.not.vol
+echo -e "mesh3d\npoints\n5" > junk6.not.vol
+echo -e "mesh3d\nvolumeelements\n5" > junk7.not.vol
+echo -e "mesh3d\nvolumeelements\nXXX" > junk8.not.vol
+echo -e "mesh3d\ndimension\n3\ngeomtype\n0\nvolumeelements\n0\npoints\n0\nsurfaceelements\n0\n" > junk9.not.vol
 AT_CHECK([file ngcube.vol],0,
 [reading ngcube.vol
 mesh3d

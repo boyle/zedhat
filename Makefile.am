@@ -7,6 +7,7 @@ bin_PROGRAMS = zedhat
 zedhat_SOURCES = src/zedhat.c src/argv.c src/file.c src/model.c src/matrix.c
 
 AM_CFLAGS = $(CFLAGS) $(CODE_COVERAGE_CFLAGS) $(WARN_CFLAGS)
+AM_CFLAGS += -I$(top_srcdir)/src
 AM_CFLAGS += $(UMFPACK_CFLAGS) $(CHOLMOD_CFLAGS) $(LAPACKE_CFLAGS) $(LAPACK_CFLAGS) $(CBLAS_CFLAGS) $(BLAS_CFLAGS)
 LIBS += $(CODE_COVERAGE_LIBS) $(UMFPACK_LIBS) $(CHOLMOD_LIBS) $(LAPACKE_LIBS) $(LAPACK_LIBS) $(CBLAS_LIBS) $(BLAS_LIBS) $(FLIBS)
 #AM_CFLAGS += -Werror -Wall #-Wextra
@@ -115,7 +116,7 @@ $(srcdir)/package.m4: $(top_srcdir)/configure.ac
 EXTRA_DIST += $(TESTSUITE_AT) $(srcdir)/package.m4 $(TESTSUITE) atlocal atconfig
 DISTCLEANFILES = atlocal atconfig
 TESTSUITE_AT = testsuite.at
-TESTSUITE = $(srcdir)/testsuite
+TESTSUITE = $(top_builddir)/testsuite
 test: check
 
 check-local: atconfig atlocal $(TESTSUITE)
