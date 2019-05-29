@@ -56,7 +56,7 @@ AC_CONFIG_FILES([Makefile])
 AC_PROG_CC
 AX_COMPILER_VENDOR
 AX_COMPILER_VERSION
-CFLAGS+=" -std=c11 -Wall -Werror -pedantic"
+CFLAGS+=" -std=c11 -Wall -Werror" # -pedantic
 #AX_COMPILER_FLAGS
 #AX_CODE_COVERAGE
 AM_PROG_CC_C_O
