@@ -42,7 +42,7 @@ fi
 
 echo "get macros"
 [ -d m4 ] || mkdir m4
-for i in ax_blas ax_check_zlib ax_lapack; do
+for i in ax_blas ax_check_zlib ax_lapack ax_compiler_vendor ax_compiler_version ; do # ax_prepend_flag ax_compiler_flags; do # ax_gnu_autotest; do
   [ -f m4/$i.m4 ] || wget "http://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/$i.m4" --output-document=m4/$i.m4
 done
 

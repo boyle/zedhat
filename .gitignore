@@ -11,9 +11,6 @@ config.status
 configure
 configure.scan
 package.m4
-m4/ax_blas.m4
-m4/ax_lapack.m4
-m4/ax_check_zlib.m4
 */config.h
 */config.h.in
 *.o

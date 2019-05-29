@@ -3,5 +3,6 @@ set -ex
 TAG=${1:-latest}
 BUILDID="build-$RANDOM"
 INSTANCE="travisci/zedhat:$TAG"
-docker run --name $BUILDID -dit $INSTANCE /sbin/init
+ARGS="--cap-add=SYS_PTRACE --security-opt seccomp=unconfined"
+docker run --name $BUILDID $ARGS -dit $INSTANCE /sbin/init
 exec docker exec -it $BUILDID bash -l

@@ -15,37 +15,36 @@ AC_USE_SYSTEM_EXTENSIONS
 PKG_PROG_PKG_CONFIG
 
 # debugging
-CFLAGS="$CFLAGS -Wall -Werror"
-AC_MSG_CHECKING(whether to enable debugging)
-default="no"
-DEBUG=
-AC_ARG_ENABLE(debug, [  --enable-debug=[no/yes] turn on debugging
-                       [default=$default]],, enable_debug=$default)
-if test "x$enable_debug" = "xyes"; then
-  CFLAGS="$CFLAGS -g -DDEBUG"
-  DEBUG="${DEBUG} -g";
-  AC_MSG_RESULT(yes)
-else
-  AC_MSG_RESULT(no)
-fi
-# profiling
-AC_MSG_CHECKING(whether to enable profiling)
-default="no"
-AC_ARG_ENABLE(debug, [  --enable-profile=[no/yes] turn on profiling
-                       [default=$default]],, enable_profile=$default)
-if test "x$enable_profile" = "xyes"; then
-  CFLAGS="${CFLAGS} -g -DDEBUG -pg"
-  CXXFLAGS="${CXXFLAGS} -g -DDEBUG -pg"
-  DEBUG="${DEBUG} -pg";
-  AC_MSG_RESULT(yes)
-else
-  AC_MSG_RESULT(no)
-fi
-# .. and export so Makefile will use them
-AC_SUBST(CFLAGS)
-AC_SUBST(CXXFLAGS)
-AC_SUBST(LDFLAGS)
-AC_SUBST(DEBUG)
+#AC_MSG_CHECKING(whether to enable debugging)
+#default="no"
+#DEBUG=
+#AC_ARG_ENABLE(debug, [  --enable-debug=[no/yes] turn on debugging
+#                       [default=$default]],, enable_debug=$default)
+#if test "x$enable_debug" = "xyes"; then
+#  CFLAGS="$CFLAGS -g -DDEBUG"
+#  DEBUG="${DEBUG} -g";
+#  AC_MSG_RESULT(yes)
+#else
+#  AC_MSG_RESULT(no)
+#fi
+## profiling
+#AC_MSG_CHECKING(whether to enable profiling)
+#default="no"
+#AC_ARG_ENABLE(debug, [  --enable-profile=[no/yes] turn on profiling
+#                       [default=$default]],, enable_profile=$default)
+#if test "x$enable_profile" = "xyes"; then
+#  CFLAGS="${CFLAGS} -g -DDEBUG -pg"
+#  CXXFLAGS="${CXXFLAGS} -g -DDEBUG -pg"
+#  DEBUG="${DEBUG} -pg";
+#  AC_MSG_RESULT(yes)
+#else
+#  AC_MSG_RESULT(no)
+#fi
+## .. and export so Makefile will use them
+#AC_SUBST(CFLAGS)
+#AC_SUBST(CXXFLAGS)
+#AC_SUBST(LDFLAGS)
+#AC_SUBST(DEBUG)
 
 
 # makefile
@@ -55,9 +54,13 @@ AC_CONFIG_FILES([Makefile])
 
 # Checks for programs.
 AC_PROG_CC
-AM_CONDITIONAL([CC_IS_CLANG], [test x"${CC}" == x"clang"])
+AX_COMPILER_VENDOR
+AX_COMPILER_VERSION
+CFLAGS+=" -std=c11 -Wall -Werror -pedantic"
+#AX_COMPILER_FLAGS
+#AX_CODE_COVERAGE
 AM_PROG_CC_C_O
-AC_PROG_CC_STDC
+
 AC_C_INLINE
 AC_TYPE_SIZE_T
 AC_FUNC_MALLOC
@@ -66,12 +69,13 @@ AC_TYPE_UINT32_T
 AC_FUNC_ERROR_AT_LINE
 AC_FUNC_STRNLEN
 AC_CHECK_HEADER_STDBOOL # matrix.h
-AC_CHECK_HEADERS([float.h stdlib.h string.h sys/time.h malloc.h stddef.h signal.h],,AC_MSG_ERROR([missing header]))
+AC_CHECK_HEADERS([float.h stdlib.h string.h sys/time.h malloc.h stddef.h signal.h limits.h],,AC_MSG_ERROR([missing header]))
 AC_CHECK_FUNCS([gettimeofday strndup memset strcasecmp strchr strdup strerror signal])
 AC_HEADER_ASSERT
 AC_CHECK_FUNCS([memmove strstr]) # cmocka.c
 AC_FUNC_STRTOD # argv.c
-
+AC_CHECK_FUNCS([bzero pow])
+#AX_GNU_AUTOTEST
 
 # Checks for libraries.
 PKG_CHECK_MODULES([BLAS],[blas],,true)
@@ -156,9 +160,13 @@ AC_OUTPUT
 AC_MSG_RESULT([])
 AC_MSG_RESULT([   zedhat Configuration Summary       ])
 AC_MSG_RESULT([======================================])
-AC_MSG_RESULT([ C Compiler: $CC])
-AC_MSG_RESULT([     CFLAGS: $CFLAGS])
-AC_MSG_RESULT([       LIBS: $LIBS])
+AC_MSG_RESULT([  C Compiler: $CC ($ax_cv_c_compiler_vendor) ($ax_cv_c_compiler_version)])
+AC_MSG_RESULT([      CFLAGS: $CFLAGS])
+#AC_MSG_RESULT([ WARN_CFLAGS: $WARN_CFLAGS])
+AC_MSG_RESULT([     LDFLAGS: $LDFLAGS])
+#AC_MSG_RESULT([WARN_LDFLAGS: $WARN_LDFLAGS])
+AC_MSG_RESULT([        LIBS: $LIBS])
+#AC_MSG_RESULT([   WARN_LIBS: $WARN_LIBS])
 dnl AC_MSG_RESULT([     Shared Libraries: $enable_shared])
 dnl AC_MSG_RESULT([     Static Libraries: $enable_static])
 AC_MSG_RESULT([Solvers  -----------------------------])
