@@ -39,7 +39,7 @@ ZH_LIB_TEST(cholmod,solve)
 AT_BANNER([unit tests])
 ZH_UNIT_TEST(file, zedhat file format I/O, 12)
 ZH_UNIT_TEST(matrix, dense and sparse matrices, 9)
-ZH_UNIT_TEST(model, system matrix calculator, 18)
+ZH_UNIT_TEST(model, system matrix calculator, 17)
 
 AT_BANNER([args])
 AT_SETUP([badargs])
@@ -123,11 +123,19 @@ echo -e "gibberish file\r\nyup just junk some more" > junk1.not.vol
 echo -e "mesh3d\r\nyup just junk some more" > junk2.not.vol
 echo -e "mesh3d\ndimension\n1" > junk3.not.vol
 echo -e "mesh3d\ngeomtype\n11" > junk4.not.vol
-echo -e "mesh3d\nsurfaceelements\n5" > junk5.not.vol
-echo -e "mesh3d\npoints\n5" > junk6.not.vol
-echo -e "mesh3d\nvolumeelements\n5" > junk7.not.vol
-echo -e "mesh3d\nvolumeelements\nXXX" > junk8.not.vol
-echo -e "mesh3d\ndimension\n3\ngeomtype\n0\nvolumeelements\n0\npoints\n0\nsurfaceelements\n0\n" > junk9.not.vol
+echo -e "mesh3d\ndimension\n2\nsurfaceelements\n5" > junk5.not.vol
+echo -e "mesh3d\ndimension\n2\npoints\n5" > junk6.not.vol
+echo -e "mesh3d\ndimension\n2\nvolumeelements\n5" > junk7.not.vol
+echo -e "mesh3d\ndimension\n2\nvolumeelements\nXXX" > junk8.not.vol
+echo -e "mesh3d\n\nsurfaceelements\n5" > junk5nd.not.vol
+echo -e "mesh3d\n\npoints\n5" > junk6nd.not.vol
+echo -e "mesh3d\n\nvolumeelements\n5" > junk7nd.not.vol
+echo -e "mesh3d\n\nvolumeelements\nXXX" > junk8nd.not.vol
+echo -e "mesh3d\ndimension\n3\ngeomtype\n0\nvolumeelements\n0\n" > junk9a.not.vol
+echo -e "mesh3d\ndimension\n3\ngeomtype\n0\nsurfaceelements\n0\n" > junk9b.not.vol
+echo -e "mesh3d\ndimension\n3\ngeomtype\n0\npoints\n0\n" > junk9c.not.vol
+echo -e "asdf\n" > junk1.not.zh
+echo -e "zedhat\nformat\n10\n" > junk2.not.zh
 AT_CHECK([file ngcube.vol],0,
 [reading ngcube.vol
 mesh3d
@@ -183,6 +191,7 @@ err: bad geomtype
 AT_CHECK([file junk5.not.vol],1,
 [reading junk5.not.vol
 mesh3d
+dimension 2
 surfaceelements 5
 err: bad surfaceelements
 ],
@@ -191,6 +200,7 @@ err: bad surfaceelements
 AT_CHECK([file junk6.not.vol],1,
 [reading junk6.not.vol
 mesh3d
+dimension 2
 points 5
 err: bad points
 ],
@@ -199,6 +209,7 @@ err: bad points
 AT_CHECK([file junk7.not.vol],1,
 [reading junk7.not.vol
 mesh3d
+dimension 2
 volumeelements 5
 err: bad volumeelements
 ],
@@ -207,21 +218,85 @@ err: bad volumeelements
 AT_CHECK([file junk8.not.vol],1,
 [reading junk8.not.vol
 mesh3d
+dimension 2
 err: bad volumeelements
 ],
 [error: failed to load junk8.not.vol
 ])
-AT_CHECK([file junk9.not.vol],2,
-[reading junk9.not.vol
+AT_CHECK([file junk5nd.not.vol],1,
+[reading junk5nd.not.vol
+mesh3d
+surfaceelements 5
+err: expect dimension before surfaceelements
+],
+[error: failed to load junk5nd.not.vol
+])
+AT_CHECK([file junk6nd.not.vol],1,
+[reading junk6nd.not.vol
+mesh3d
+points 5
+err: expect dimension before points
+],
+[error: failed to load junk6nd.not.vol
+])
+AT_CHECK([file junk7nd.not.vol],1,
+[reading junk7nd.not.vol
+mesh3d
+volumeelements 5
+err: expect dimension before volumeelements
+],
+[error: failed to load junk7nd.not.vol
+])
+AT_CHECK([file junk8nd.not.vol],1,
+[reading junk8nd.not.vol
+mesh3d
+err: bad volumeelements
+],
+[error: failed to load junk8nd.not.vol
+])
+AT_CHECK([file junk9a.not.vol],1,
+[reading junk9a.not.vol
 mesh3d
 dimension 3
 geomtype 0
 volumeelements 0
-points 0
-surfaceelements 0
-err: junk9.not.vol: empty mesh nodes = 0, elems = 0, surfs = 0
+err: bad volumeelements
 ],
-[error: failed to load junk9.not.vol
+[error: failed to load junk9a.not.vol
+])
+AT_CHECK([file junk9b.not.vol],1,
+[reading junk9b.not.vol
+mesh3d
+dimension 3
+geomtype 0
+surfaceelements 0
+err: bad surfaceelements
+],
+[error: failed to load junk9b.not.vol
+])
+AT_CHECK([file junk9c.not.vol],1,
+[reading junk9c.not.vol
+mesh3d
+dimension 3
+geomtype 0
+points 0
+err: bad points
+],
+[error: failed to load junk9c.not.vol
+])
+AT_CHECK([file junk1.not.zh],1,
+[reading junk1.not.zh
+err: junk1.not.zh: missing header zedhat
+],
+[error: failed to load junk1.not.zh
+])
+AT_CHECK([file junk2.not.zh],1,
+[reading junk2.not.zh
+zedhat
+format 10
+err: bad format
+],
+[error: failed to load junk2.not.zh
 ])
 AT_CLEANUP
 

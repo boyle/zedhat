@@ -7,13 +7,18 @@
 #include <string.h> /* strlen, strncat */
 #include <ctype.h> /* isspace */
 #include <zlib.h> /* gzopen, gzgets, gzeof, gzclose */
+#include <assert.h> /* assert */
 
+#include "model.h"
 #include "file.h"
 
 #ifdef UNIT_TESTING
 extern void * _test_malloc(const size_t size, const char * file, const int line);
 #define malloc(size) _test_malloc(size, __FILE__, __LINE__)
 #endif
+
+#define SUCCESS 1
+#define FAILURE 0
 
 #define MAXCHAR 1024
 void gzreadnext(gzFile F, char data[], int n)
@@ -35,13 +40,12 @@ void gzreadnext(gzFile F, char data[], int n)
 }
 
 #define LEN 32
+enum fileformat_field {EOL, TEST, FMT, HP, STIM, DATA, PARAM, DIM, TYPE, SURF, NODE, ELEM};
 enum fileformat_req {OPTIONAL, REQUIRED, REQUIRED_FIRST};
 typedef struct {
+    enum fileformat_field field;
     char section [LEN];
-    int n_size;
-    size_t offset;
     int (*sscanf_funcptr)(const char *, model *, mesh *, int i);
-    int (*test_funcptr)(model *, mesh *);
     enum fileformat_req req;
     int cnt;
 } fileformat;
@@ -56,15 +60,141 @@ int check_req(const fileformat * f, enum fileformat_req needs)
     return 0;
 }
 
+static int ooo_section(const char * section)
+{
+    printf("err: expect dimension before %s\n", section);
+    return -1;
+}
+
+static int bad_section(const char * section)
+{
+    printf("err: bad %s\n", section);
+    return -1;
+}
+
+static int bad_malloc(const char * section)
+{
+    printf("err: out of memory %s\n", section);
+    return -1;
+}
+
+static int sscanf_size(const char * data, const char * section, enum fileformat_field field, model * m, mesh * mm)
+{
+    assert(m != NULL);
+    assert(mm != NULL);
+    int cnt = 0;
+    int expect = 1;
+    int n[2] = {1, 1};
+    double d = 0;
+    switch(field) {
+    case HP:
+        expect = -1; /* double */
+        break;
+    case PARAM:
+    case DATA:
+        expect = 2; /* 2 ints */
+        break;
+    default:
+        expect = 1; /* 1 int */
+        break;
+    }
+    if(expect < 0) {
+        expect = -expect;
+        cnt = sscanf(data, " %lf\n", &d);
+        if(cnt == expect) {
+            printf("%s %lg\n", section, d);
+        }
+    }
+    else {
+        for(int j = 0, idx = 0; j < expect; j++) {
+            cnt += sscanf(&(data[idx]), " %d %n", &(n[j]), &idx);
+        }
+        if(cnt == expect) {
+            printf("%s %d\n", section, n[0]);
+        }
+    }
+    const int min_rows = (field == TYPE) ? 0 : 1;
+    if((cnt != expect) || (n[0] < min_rows) || (n[1] < 1) || (d < 0.0)) {
+        return bad_section(section);
+    }
+    int rows = n[0];
+    switch(field) {
+    case FMT:
+        if(n[0] != 1) {
+            return bad_section(section);
+        }
+        rows = 0;
+        break;
+    case STIM:
+        if(!set_model_stimmeas(m, n[0])) {
+            return bad_malloc(section);
+        }
+        break;
+    case DATA:
+        if(!set_model_data(m, n[0], n[1])) {
+            return bad_malloc(section);
+        }
+        break;
+    case PARAM:
+        if(!set_model_params(m, n[0], n[1])) {
+            return bad_malloc(section);
+        }
+        break;
+    case HP:
+        set_model_hp(m, d);
+        rows = 0;
+        break;
+    case DIM:
+        if(n[0] != 2 && n[0] != 3) {
+            return bad_section(section);
+        }
+        set_mesh_dim(mm, n[0]);
+        rows = 0;
+        break;
+    case TYPE:
+        if(n[0] != 0) {
+            return bad_section(section);
+        }
+        rows = 0;
+        break;
+    case SURF:
+        if(mm->dim == 0) {
+            return ooo_section(section);
+        }
+        if(!set_mesh_surfaceelems(mm, n[0])) {
+            return bad_malloc(section);
+        }
+        break;
+    case NODE:
+        if(mm->dim == 0) {
+            return ooo_section(section);
+        }
+        if(!set_mesh_nodes(mm, n[0])) {
+            return bad_malloc(section);
+        }
+        break;
+    case ELEM:
+        if(mm->dim == 0) {
+            return ooo_section(section);
+        }
+        if(!set_mesh_elems(mm, n[0])) {
+            return bad_malloc(section);
+        }
+        break;
+    default:  /* LCOV_EXCL_LINE */
+        assert(0);  /* LCOV_EXCL_LINE */
+    }
+    return rows;
+}
+
+
 int readfile_loop(const char filename[], model * m, fileformat * f_list)
 {
     if(m == NULL) {
-        return 1;
+        return FAILURE;
     }
-    int ret = 1;
-    int cnt;
+    int ret = FAILURE;
     char data[MAXCHAR];
-    model_free(m);
     gzFile F = gzopen(filename, "r");
     if(!F) {
         printf("err: failed to open %s\n", filename);
@@ -76,7 +206,7 @@ int readfile_loop(const char filename[], model * m, fileformat * f_list)
     do {
         gzreadnext(F, data, MAXCHAR);
         fileformat * f = &(f_list[0]);
-        while(f->section[0]) {
+        while(f->field != EOL) {
             char section_n [LEN + 1];
             char * eol = stpncpy(section_n, f->section, LEN + 1);
             *eol = '\n';
@@ -90,53 +220,22 @@ int readfile_loop(const char filename[], model * m, fileformat * f_list)
             }
             first = 0;
             f->cnt += 1;
-            if(!f->n_size) {
+            if(f->field == TEST) {
                 printf("%s\n", f->section);
-                f++;
                 break;
             }
             gzreadnext(F, data, MAXCHAR);
-            cnt = 0;
-            if(f->n_size < 0) {
-                double * d = (double *) ((char *)mm + f->offset);
-                cnt = sscanf(data, " %lf\n", d);
-                if(cnt != 1) {
-                    printf("err: bad %s\n", f->section);
+            int n = sscanf_size(data, f->section, f->field, m, mm);
+            if(n < 0) {
+                goto __quit;
+            }
+            for(int i = 0; i < n; i += 1) {
+                gzreadnext(F, data, MAXCHAR);
+                int rets = (*f->sscanf_funcptr)(data, m, mm, i);
+                if( rets == FAILURE ) {
+                    bad_section(f->section);
                     goto __quit;
                 }
-                printf("%s %lg\n", f->section, *d);
-                f++;
-                break;
-            }
-            int * n = (int *) ((char *)mm + f->offset);
-            int idx = 0;
-            for(int j = 0; j < f->n_size; j++) {
-                cnt += sscanf(&(data[idx]), "%d %n", &(n[j]), &idx);
-            }
-            if(cnt != f->n_size) {
-                printf("err: bad %s\n", f->section);
-                goto __quit;
-            }
-            printf("%s %d\n", f->section, *n);
-            if(f->sscanf_funcptr) {
-                int * n = (int *) ((char *)mm + f->offset);
-                for(int i = 0; i < *n; i += 1) {
-                    gzreadnext(F, data, MAXCHAR);
-                    int ret = (*f->sscanf_funcptr)(data, m, mm, i);
-                    if( ret ) {
-                        if(ret == 1) {
-                            printf("err: bad %s\n", f->section);
-                        }
-                        else {
-                            printf("err: out of memory %s\n", f->section);
-                        }
-                        goto __quit;
-                    }
-                }
-            }
-            if(f->test_funcptr && (*f->test_funcptr)(m, mm)) {
-                printf("err: bad %s\n", f->section);
-                goto __quit;
             }
         }
     } while(!gzeof(F));
@@ -145,48 +244,22 @@ int readfile_loop(const char filename[], model * m, fileformat * f_list)
         printf("err: %s: missing %s\n", filename, (f_list[chk - 1]).section);
         goto __quit;
     }
-    if( (mm->n_nodes == 0) || (mm->n_elems == 0) || (mm->n_se == 0) ) {
-        printf("err: %s: empty mesh nodes = %d, elems = %d, surfs = %d\n",
-               filename, mm->n_nodes, mm->n_elems, mm->n_se);
-        ret = 2;
-    }
-    else {
-        ret = 0;
-    }
+    ret = SUCCESS;
 __quit:
-    if(ret != 0) {
-        model_free(m);
-    }
     if(F) {
         if(gzclose(F) != Z_OK) {
             printf("err: failed to close %s\n", filename);
-            ret = 1;
+            ret = FAILURE;
         }
     }
     return ret;
 }
 
-int readngvol_test_dimension(model * m, mesh * mm)
-{
-    return !((mm->dim == 3) || (mm->dim == 2));
-}
-
-int readngvol_test_geomtype(model * m, mesh * mm)
-{
-    return (mm->type != 0);
-}
-
 int readngvol_surfaceelements(const char * data, model * m, mesh * mm, const int se)
 {
-    if(!mm->surfaceelems) {
-        mm->surfaceelems = malloc(sizeof(int) * mm->n_se * mm->dim);
-    }
-    if(!mm->bc) {
-        mm->bc = malloc(sizeof(int) * mm->n_se * 1);
-    }
-    if(!mm->surfaceelems || !mm->bc) {
-        return 2;
-    }
+    assert(mm != NULL);
+    assert(mm->surfaceelems != NULL);
+    assert(mm->bc != NULL);
     int cnt;
     if(mm->dim == 3) {
         cnt = sscanf(data, "%*d %d %*d %*d 3 %d %d %d\n", &mm->bc[se], &mm->surfaceelems[3 * se + 0], &mm->surfaceelems[3 * se + 1], &mm->surfaceelems[3 * se + 2]);
@@ -194,17 +267,13 @@ int readngvol_surfaceelements(const char * data, model * m, mesh * mm, const int
     else {
         cnt = sscanf(data, "%*d %d %*d %*d 2 %d %d\n", &mm->bc[se], &mm->surfaceelems[2 * se + 0], &mm->surfaceelems[2 * se + 1]);
     }
-    return (cnt != mm->dim + 1);
+    return (cnt == mm->dim + 1) ? SUCCESS : FAILURE;
 }
 
 int readngvol_points(const char * data, model * m, mesh * mm, const int node)
 {
-    if(!mm->nodes) {
-        mm->nodes = malloc(sizeof(double) * mm->n_nodes * mm->dim);
-    }
-    if(!mm->nodes) {
-        return 2;
-    }
+    assert(mm != NULL);
+    assert(mm->nodes != NULL);
     int cnt;
     if(mm->dim == 3) {
         cnt = sscanf(data, " %lf %lf %lf\n", &mm->nodes[3 * node + 0], &mm->nodes[3 * node + 1], &mm->nodes[3 * node + 2]);
@@ -212,20 +281,14 @@ int readngvol_points(const char * data, model * m, mesh * mm, const int node)
     else {
         cnt = sscanf(data, " %lf %lf\n", &mm->nodes[2 * node + 0], &mm->nodes[2 * node + 1]);
     }
-    return (cnt != mm->dim);
+    return (cnt == mm->dim) ? SUCCESS : FAILURE;
 }
 
 int readngvol_volumeelements(const char * data, model * m, mesh * mm, const int elem)
 {
-    if(!mm->elems) {
-        mm->elems = malloc(sizeof(int) * mm->n_elems * (mm->dim + 1));
-    }
-    if(!mm->matidx) {
-        mm->matidx = malloc(sizeof(int) * mm->n_elems * 1);
-    }
-    if(!mm->elems || !mm->matidx) {
-        return 2;
-    }
+    assert(mm != NULL);
+    assert(mm->elems != NULL);
+    assert(mm->matidx != NULL);
     int cnt;
     if(mm->dim == 3) {
         cnt = sscanf(data, "%d 4 %d %d %d %d\n", &mm->matidx[elem], &mm->elems[4 * elem + 0], &mm->elems[4 * elem + 1], &mm->elems[4 * elem + 2], &mm->elems[4 * elem + 3]);
@@ -233,78 +296,60 @@ int readngvol_volumeelements(const char * data, model * m, mesh * mm, const int 
     else {
         cnt = sscanf(data, "%d 3 %d %d %d\n", &mm->matidx[elem], &mm->elems[3 * elem + 0], &mm->elems[3 * elem + 1], &mm->elems[3 * elem + 2]);
     }
-    return (cnt != mm->dim + 2);
-}
-
-int readzh_test_format1(model * m, mesh * mm)
-{
-    return (m->format != 1);
+    return (cnt == mm->dim + 2) ? SUCCESS : FAILURE;
 }
 
 int readzh_stimmeas(const char * data, model * m, mesh * mm, const int i)
 {
-    if(!m->stimmeas) {
-        m->stimmeas = malloc(sizeof(int) * m->n_stimmeas * 4);
-    }
-    if(!m->stimmeas) {
-        return 2;
-    }
+    assert(m != NULL);
+    assert(m->stimmeas != NULL);
     int cnt = sscanf(data, "%d %d %d %d\n",
                      &m->stimmeas[4 * i + 0], &m->stimmeas[4 * i + 1],
                      &m->stimmeas[4 * i + 2], &m->stimmeas[4 * i + 3]);
-    return (cnt != 4);
+    return (cnt == 4) ? SUCCESS : FAILURE;
 }
 
 int readzh_data(const char * data, model * m, mesh * mm, const int i)
 {
-    const int rows = m->n_data[0];
+    assert(m != NULL);
+    assert(m->data != NULL);
     const int cols = m->n_data[1];
-    if(!m->data) {
-        m->data = malloc(sizeof(double) * rows * cols);
-    }
-    if(!m->data) {
-        return 2;
-    }
     int cnt = 0;
     int idx = 0;
     for(int j = 0; j < cols; j++) {
         cnt += sscanf(&(data[idx]), " %lf %n", &(m->data[cols * i + j]), &idx);
     }
-    return (cnt != cols);
+    return (cnt == cols) ? SUCCESS : FAILURE;
 }
 
 int readzh_params(const char * data, model * m, mesh * mm, const int i)
 {
-    const int rows = m->n_params[0];
+    assert(m != NULL);
+    assert(m->params != NULL);
     const int cols = m->n_params[1];
-    if(!m->params) {
-        m->params = malloc(sizeof(double) * rows * cols);
-    }
-    if(!m->params) {
-        return 2;
-    }
     int cnt = 0;
     int idx = 0;
     for(int j = 0; j < cols; j++) {
         cnt += sscanf(&(data[idx]), " %lf %n", &(m->params[cols * i + j]), &idx);
     }
-    return (cnt != cols);
+    return (cnt == cols) ? SUCCESS : FAILURE;
 }
+
 
 int readfile_ngvol(const char filename[], model * m)
 {
     fileformat ngvol [] = {
-        {"mesh3d", 0, 0, NULL, NULL, REQUIRED_FIRST},
-        {"dimension", 1, offsetof(model, fwd.dim), NULL, &readngvol_test_dimension, REQUIRED},
-        {"geomtype", 1, offsetof(model, fwd.type), NULL, &readngvol_test_geomtype, REQUIRED},
+        {TEST, "mesh3d", NULL, REQUIRED_FIRST},
+        {DIM,  "dimension", NULL, REQUIRED},
+        {TYPE, "geomtype", NULL, REQUIRED},
         /* GEOM_STL=11: surfaceelementsgi
-         * GEOM_OCC=12, GEOM_ACIS=13: surfaceelementsuv
-         * default: surfaceelements
-         */
-        {"surfaceelements", 1, offsetof(model, fwd.n_se), &readngvol_surfaceelements, NULL, REQUIRED},
-        {"points", 1, offsetof(model, fwd.n_nodes), &readngvol_points, NULL, REQUIRED},
-        {"volumeelements", 1, offsetof(model, fwd.n_elems), &readngvol_volumeelements, NULL, REQUIRED},
-        {{0}}
+        * GEOM_OCC=12, GEOM_ACIS=13: surfaceelementsuv
+        * default: surfaceelements
+        */
+        {SURF, "surfaceelements", &readngvol_surfaceelements, REQUIRED},
+        {NODE, "points", &readngvol_points, REQUIRED},
+        {ELEM, "volumeelements", &readngvol_volumeelements, REQUIRED},
+        { 0 }
     };
     return readfile_loop(filename, m, ngvol);
 }
@@ -312,19 +357,19 @@ int readfile_ngvol(const char filename[], model * m)
 int readfile(const char filename[], model * m)
 {
     fileformat zh_format1 [] = {
-        {"zedhat", 0, 0, NULL, NULL, REQUIRED_FIRST},
-        {"format", 1, offsetof(model, format), NULL, &readzh_test_format1, REQUIRED},
+        {TEST, "zedhat", NULL, REQUIRED_FIRST},
+        {FMT, "format", NULL, REQUIRED},
+        {STIM, "stimmeas", &readzh_stimmeas, OPTIONAL},
+        {DATA, "data", &readzh_data, OPTIONAL},
+        {PARAM, "parameters", &readzh_params, OPTIONAL},
+        {HP,   "hyperparameter", NULL, OPTIONAL},
         /* netgen .vol format */
-        {"dimension", 1, offsetof(model, fwd.dim), NULL, &readngvol_test_dimension, REQUIRED},
-        {"geomtype", 1, offsetof(model, fwd.type), NULL, &readngvol_test_geomtype, REQUIRED},
-        {"surfaceelements", 1, offsetof(model, fwd.n_se), &readngvol_surfaceelements, NULL, REQUIRED},
-        {"points", 1, offsetof(model, fwd.n_nodes), &readngvol_points, NULL, REQUIRED},
-        {"volumeelements", 1, offsetof(model, fwd.n_elems), &readngvol_volumeelements, NULL, REQUIRED},
-        {"stimmeas", 1, offsetof(model, n_stimmeas), &readzh_stimmeas, NULL, OPTIONAL},
-        {"data", 2, offsetof(model, n_data), &readzh_data, NULL, OPTIONAL},
-        {"parameters", 2, offsetof(model, n_params), &readzh_params, NULL, OPTIONAL},
-        {"hyperparameter", -1, offsetof(model, hp), NULL, NULL, OPTIONAL},
-        {{0}}
+        {DIM,  "dimension", NULL, REQUIRED},
+        {TYPE, "geomtype", NULL, REQUIRED},
+        {SURF, "surfaceelements", &readngvol_surfaceelements, REQUIRED},
+        {NODE, "points", &readngvol_points, REQUIRED},
+        {ELEM, "volumeelements", &readngvol_volumeelements, REQUIRED},
+        { 0 }
     };
     return readfile_loop(filename, m, zh_format1);
 }

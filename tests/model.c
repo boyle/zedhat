@@ -16,26 +16,41 @@
 #include "cmocka.h"
 #include "model.h"
 
+void * __real__test_malloc(const size_t size, const char * file, const int line);
+void * __wrap__test_malloc(size_t size)
+{
+    if(mock()) {
+        printf("  malloc x\n");
+        return NULL;
+    }
+    else {
+        printf("  malloc ✓\n");
+        return __real__test_malloc(size, __FILE__, __LINE__);
+    }
+}
+
+// TODO FIXME these undef shouldn't be required
+#undef malloc
+#undef free
+
 #define assert_mat_equal(m, n, a, b, delta) do { \
    for (int i=0; i < m*n; i++) { \
          assert_float_equal(a[i],b[i],delta); \
    }\
 } while(0)
 
-void test_mesh(void ** state)
-{
-    mesh m = {0};
-    mesh_free(&m);
-    mesh_init(&m);
-    mesh_free(NULL);
-}
-
 void test_model(void ** state)
 {
-    model m = {{0}};
-    model_free(&m);
-    model_init(&m);
-    model_free(NULL);
+    model * m;
+    free_model(NULL);
+    will_return(__wrap__test_malloc, 0);
+    m = malloc_model();
+    assert_non_null(m);
+    m = free_model(m);
+    assert_null(m);
+    will_return(__wrap__test_malloc, 1);
+    m = malloc_model();
+    assert_null(m);
 }
 
 double simple_det3(int n, double A[3][3])
@@ -1043,7 +1058,6 @@ void test_3d_resistor (void ** state)
 int main(void)
 {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(test_mesh),
         cmocka_unit_test(test_model),
         cmocka_unit_test(test_det2),
         cmocka_unit_test(test_det3),

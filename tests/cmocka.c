@@ -632,6 +632,8 @@ static ListNode * list_remove(
     void * const cleanup_value_data)
 {
     assert_non_null(node);
+    assert_non_null(node->prev);
+    assert_non_null(node->next);
     node->prev->next = node->next;
     node->next->prev = node->prev;
     if (cleanup_value) {

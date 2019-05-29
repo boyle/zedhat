@@ -5,6 +5,7 @@
 #include <lapacke.h> /* inv: dgetrf, dgetri */
 #include <math.h> /* fabs */
 #include <limits.h> /* MAX_INT */
+#include <assert.h>
 
 #include "matrix.h"
 #include "model.h"
@@ -14,43 +15,160 @@
  */
 
 #ifdef UNIT_TESTING
+extern void * _test_malloc(const size_t size, const char * file, const int line);
 extern void _test_free(void * const ptr, const char * file, const int line);
+#define malloc(size) _test_malloc(size, __FILE__, __LINE__)
 #define free(ptr) _test_free(ptr, __FILE__, __LINE__)
 #endif
 
-void model_init(model * m)
-{
-    bzero(m, sizeof(model));
-}
+#define SUCCESS 1
+#define FAILURE 0
 
-void model_free(model * m)
-{
-    if(m == NULL) {
-        return;
-    }
-    free(m->data);
-    free(m->params);
-    free(m->stimmeas);
-    mesh_free(&(m->fwd));
-    model_init(m);
-}
-
-void mesh_init(mesh * m)
+static void init_mesh(mesh * m)
 {
     bzero(m, sizeof(mesh));
 }
 
-void mesh_free(mesh * m)
+static void init_model(model * m)
 {
-    if(m == NULL) {
-        return;
+    bzero(m, sizeof(model));
+}
+
+model * malloc_model()
+{
+    model * m = malloc(sizeof(model));
+    if(m) {
+        init_model(m);
     }
+    return m;
+}
+
+static void free_mesh(mesh * m)
+{
     free(m->nodes);
     free(m->elems);
     free(m->matidx);
     free(m->surfaceelems);
     free(m->bc);
-    mesh_init(m);
+}
+
+void * free_model(model * m)
+{
+    if(m == NULL) {
+        return NULL;
+    }
+    free(m->data);
+    free(m->params);
+    free(m->stimmeas);
+    free_mesh(&(m->fwd));
+    init_model(m);
+    free(m);
+    return NULL;
+}
+
+int set_model_data(model * m, int rows, int cols)
+{
+    assert(rows > 0);
+    assert(cols > 0);
+    assert(m != NULL);
+    m->n_data[0] = rows;
+    m->n_data[1] = cols;
+    free(m->data);
+    m->data = malloc(sizeof(double) * rows * cols);
+    if(m->data == NULL) {
+        return FAILURE;
+    }
+    return SUCCESS;
+}
+
+int set_model_params(model * m, int rows, int cols)
+{
+    assert(rows > 0);
+    assert(cols > 0);
+    assert(m != NULL);
+    m->n_params[0] = rows;
+    m->n_params[1] = cols;
+    free(m->params);
+    m->params = malloc(sizeof(double) * rows * cols);
+    if(m->params == NULL) {
+        return FAILURE;
+    }
+    return SUCCESS;
+}
+
+int set_model_stimmeas(model * m, int rows)
+{
+    assert(rows > 0);
+    assert(m != NULL);
+    m->n_stimmeas = rows;
+    free(m->stimmeas);
+    m->stimmeas = malloc(sizeof(int) * rows * 4);
+    if(m->stimmeas == NULL) {
+        return FAILURE;
+    }
+    return SUCCESS;
+}
+
+void set_model_hp(model * m, double hp)
+{
+    assert(hp >= 0.0);
+    assert(m != NULL);
+    m->hp = hp;
+}
+
+void set_mesh_dim(mesh * m, int dim)
+{
+    assert(dim == 2 || dim == 3);
+    assert(m != NULL);
+    free_mesh(m);
+    init_mesh(m);
+    m->dim = dim;
+}
+
+int set_mesh_nodes(mesh * m, int n_nodes)
+{
+    assert(n_nodes >= 0);
+    assert(m != NULL);
+    assert(m->dim == 2 || m->dim == 3);
+    m->n_nodes = n_nodes;
+    free(m->nodes);
+    m->nodes = malloc(sizeof(double) * n_nodes * m->dim);
+    if(m->nodes == NULL) {
+        return FAILURE;
+    }
+    return SUCCESS;
+}
+
+int set_mesh_elems(mesh * m, int n_elems)
+{
+    assert(n_elems >= 0);
+    assert(m != NULL);
+    assert(m->dim == 2 || m->dim == 3);
+    m->n_elems = n_elems;
+    free(m->elems);
+    free(m->matidx);
+    m->elems = malloc(sizeof(int) * n_elems * (m->dim + 1));
+    m->matidx = malloc(sizeof(int) * n_elems);
+    if((m->elems == NULL) || (m->matidx == NULL)) {
+        return FAILURE;
+    }
+    return SUCCESS;
+}
+
+int set_mesh_surfaceelems(mesh * m, int n_se)
+{
+    assert(n_se >= 0);
+    assert(m != NULL);
+    assert(m->dim == 2 || m->dim == 3);
+    m->n_se = n_se;
+    free(m->surfaceelems);
+    free(m->bc);
+    m->surfaceelems = malloc(sizeof(int) * n_se * m->dim);
+    m->bc = malloc(sizeof(int) * n_se);
+    if((m->surfaceelems == NULL) || (m->bc == NULL)) {
+        return FAILURE;
+    }
+    return SUCCESS;
 }
 
 double * inv(int n, double A[n][n])
@@ -76,7 +194,7 @@ double det(int n, double A[n][n])
         /* construct sub-matrix B */
         double B[n - 1][n - 1];
         for(int j = 1; j < n; j++) {
-            for(int k=0, s=0; k < n; k++) {
+            for(int k = 0, s = 0; k < n; k++) {
                 if(k != i) {
                     B[j - 1][s] = A[j][k];
                     s++;

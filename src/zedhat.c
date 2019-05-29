@@ -15,17 +15,17 @@ matrix * get_fwd_matrix(const args_t args, const char * name, const char * symbo
 {
     matrix * A = malloc_matrix();
     int nret = malloc_matrix_name(A, name, symbol, units);
-    if ((A == NULL) || nret) {
+    if ((A == NULL) || (!nret)) {
         printf("fwd %s: malloc failed (%s)\n", name, args.file[0]);
         free_matrix(A);
         return NULL;
     }
-    model M = {{0}};
-    int ret = readfile(args.file[0], &M);
-    if(ret) {
+    model * M = malloc_model();
+    int ret = readfile(args.file[0], M);
+    if(!ret) {
         printf("fwd %s: ret = %d (%s)\n", name, ret, args.file[0]);
         free_matrix(A);
-        model_free(&M);
+        free_model(M);
         return NULL;
     }
     else {
