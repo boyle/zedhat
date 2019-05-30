@@ -221,6 +221,12 @@ typedef struct CheckMemoryData {
     size_t size;
 } CheckMemoryData;
 
+/* AB 2019-05-30 safe malloc/free/etc */
+static void * libc_malloc(size_t size);
+static void * libc_calloc(size_t nmemb, size_t size);
+static void libc_free(void * ptr);
+static void * libc_realloc(void * ptr, size_t size);
+
 static ListNode * list_initialize(ListNode * const node);
 static ListNode * list_add(ListNode * const head, ListNode * new_node);
 static ListNode * list_add_value(ListNode * const head, const void * value,
@@ -598,7 +604,7 @@ static ListNode * list_initialize(ListNode * const node)
 static ListNode * list_add_value(ListNode * const head, const void * value,
                                  const int refcount)
 {
-    ListNode * const new_node = (ListNode *)malloc(sizeof(ListNode));
+    ListNode * const new_node = (ListNode *)libc_malloc(sizeof(ListNode));
     assert_non_null(head);
     assert_non_null(value);
     new_node->value = value;
@@ -641,7 +647,7 @@ static void list_remove_free(
     void * const cleanup_value_data)
 {
     assert_non_null(node);
-    free(list_remove(node, cleanup_value, cleanup_value_data));
+    libc_free(list_remove(node, cleanup_value, cleanup_value_data));
 }
 
 
@@ -708,7 +714,7 @@ static void free_value(const void * value, void * cleanup_value_data)
 {
     (void)cleanup_value_data;
     assert_non_null(value);
-    free((void *)value);
+    libc_free((void *)value);
 }
 
 
@@ -722,7 +728,7 @@ static void free_symbol_map_value(const void * value,
     list_free(&map_value->symbol_values_list_head,
               children ? free_symbol_map_value : free_value,
               (void *) ((uintptr_t)children - 1));
-    free(map_value);
+    libc_free(map_value);
 }
 
 
@@ -755,7 +761,7 @@ static void add_symbol_value(ListNode * const symbol_map_head,
     if (!list_find(symbol_map_head, symbol_name, symbol_names_match,
                    &target_node)) {
         SymbolMapValue * const new_symbol_map_value =
-            (SymbolMapValue *)malloc(sizeof(*new_symbol_map_value));
+            (SymbolMapValue *)libc_malloc(sizeof(*new_symbol_map_value));
         new_symbol_map_value->symbol_name = symbol_name;
         list_initialize(&new_symbol_map_value->symbol_values_list_head);
         target_node = list_add_value(symbol_map_head, new_symbol_map_value,
@@ -899,7 +905,7 @@ static size_t check_for_leftover_values_list(const ListNode * head,
              child_node = child_node->next, ++leftover_count) {
             const FuncOrderingValue * const o =
                 (const FuncOrderingValue *) child_node->value;
-            cm_print_error(error_message, "%s", o->function);
+            cm_print_error(error_message, o->function);
             cm_print_error(SOURCE_LOCATION_FORMAT
                            ": note: remaining item was declared here\n",
                            o->location.file, o->location.line);
@@ -930,7 +936,7 @@ static size_t check_for_leftover_values(
         if (!list_empty(child_list)) {
             if (number_of_symbol_names == 1) {
                 const ListNode * child_node;
-                cm_print_error(error_message, "%s", value->symbol_name);
+                cm_print_error(error_message, value->symbol_name);
                 for (child_node = child_list->next; child_node != child_list;
                      child_node = child_node->next) {
                     const SourceLocation * const location =
@@ -964,7 +970,7 @@ LargestIntegralType _mock(const char * const function, const char * const file,
         const LargestIntegralType value = symbol->value;
         global_last_mock_value_location = symbol->location;
         if (rc == 1) {
-            free(symbol);
+            libc_free(symbol);
         }
         return value;
     }
@@ -1064,7 +1070,7 @@ void _will_return(const char * const function_name, const char * const file,
                   const int count)
 {
     SymbolValue * const return_value =
-        (SymbolValue *)malloc(sizeof(*return_value));
+        (SymbolValue *)libc_malloc(sizeof(*return_value));
     assert_true(count != 0);
     return_value->value = value;
     set_source_location(&return_value->location, file, line);
@@ -1087,7 +1093,7 @@ void _expect_check(
     CheckParameterEvent * const event, const int count)
 {
     CheckParameterEvent * const check =
-        event ? event : (CheckParameterEvent *)malloc(sizeof(*check));
+        event ? event : (CheckParameterEvent *)libc_malloc(sizeof(*check));
     const char * symbols[] = {function, parameter};
     check->parameter_name = parameter;
     check->check_value = check_function;
@@ -1113,7 +1119,7 @@ void _expect_function_call(
     assert_non_null(function_name);
     assert_non_null(file);
     assert_true(count != 0);
-    ordering = (FuncOrderingValue *)malloc(sizeof(*ordering));
+    ordering = (FuncOrderingValue *)libc_malloc(sizeof(*ordering));
     set_source_location(&ordering->location, file, line);
     ordering->function = function_name;
     list_add_value(&global_call_ordering_head, ordering, count);
@@ -1402,8 +1408,8 @@ static void expect_set(
     const CheckParameterValue check_function, const int count)
 {
     CheckIntegerSet * const check_integer_set =
-        (CheckIntegerSet *)malloc(sizeof(*check_integer_set) +
-                                  (sizeof(values[0]) * number_of_values));
+        (CheckIntegerSet *)libc_malloc(sizeof(*check_integer_set) +
+                                       (sizeof(values[0]) * number_of_values));
     LargestIntegralType * const set = (LargestIntegralType *)(
                                           check_integer_set + 1);
     declare_initialize_value_pointer_pointer(check_data, check_integer_set);
@@ -1477,7 +1483,7 @@ static void expect_range(
     const CheckParameterValue check_function, const int count)
 {
     CheckIntegerRange * const check_integer_range =
-        (CheckIntegerRange *)malloc(sizeof(*check_integer_range));
+        (CheckIntegerRange *)libc_malloc(sizeof(*check_integer_range));
     declare_initialize_value_pointer_pointer(check_data, check_integer_range);
     check_integer_range->minimum = minimum;
     check_integer_range->maximum = maximum;
@@ -1619,7 +1625,7 @@ static void expect_memory_setup(
     const CheckParameterValue check_function, const int count)
 {
     CheckMemoryData * const check_data =
-        (CheckMemoryData *)malloc(sizeof(*check_data) + size);
+        (CheckMemoryData *)libc_malloc(sizeof(*check_data) + size);
     void * const mem = (void *)(check_data + 1);
     declare_initialize_value_pointer_pointer(check_data_pointer, check_data);
     assert_non_null(memory);
@@ -1703,7 +1709,7 @@ void _check_expected(
         global_last_parameter_location = check->location;
         check_succeeded = check->check_value(value, check->check_value_data);
         if (rc == 1) {
-            free(check);
+            libc_free(check);
         }
         if (!check_succeeded) {
             cm_print_error(SOURCE_LOCATION_FORMAT
@@ -1941,6 +1947,13 @@ static ListNode * get_allocated_blocks_list(void)
         global_allocated_blocks.value = (void *)1;
     }
     return &global_allocated_blocks;
+}
+
+static void * libc_malloc(size_t size)
+{
+#undef malloc
+    return malloc(size);
+#define malloc test_malloc
 }
 
 static void * libc_calloc(size_t nmemb, size_t size)
@@ -2189,9 +2202,9 @@ static void free_allocated_blocks(const ListNode * const check_point)
             .ptr = discard_const(node->value),
         };
         node = node->next;
-        free(discard_const_p(char, block_info.data) +
-             sizeof(struct MallocBlockInfoData) +
-             MALLOC_GUARD_SIZE);
+        libc_free(discard_const_p(char, block_info.data) +
+                  sizeof(struct MallocBlockInfoData) +
+                  MALLOC_GUARD_SIZE);
     }
 }
 
@@ -3203,11 +3216,11 @@ int _run_tests(const UnitTest * const tests, const size_t number_of_tests)
      * when a test setup occurs and popped on tear down.
      */
     TestState * test_states =
-        (TestState *)malloc(number_of_tests * sizeof(*test_states));
+        (TestState *)libc_malloc(number_of_tests * sizeof(*test_states));
     /* The number of test states which should be 0 at the end */
     long number_of_test_states = 0;
     /* Names of the tests that failed. */
-    const char ** failed_names = (const char **)malloc(number_of_tests *
+    const char ** failed_names = (const char **)libc_malloc(number_of_tests *
                                  sizeof(*failed_names));
     void ** current_state = NULL;
     /* Count setup and teardown functions */
@@ -3312,8 +3325,8 @@ int _run_tests(const UnitTest * const tests, const size_t number_of_tests)
                     "teardown %"PRIdS " functions\n", setups, teardowns);
         total_failed = (size_t) -1;
     }
-    free(test_states);
-    free((void *)failed_names);
+    libc_free(test_states);
+    libc_free((void *)failed_names);
     fail_if_blocks_allocated(check_point, "run_tests");
     return (int)total_failed;
 }
@@ -3342,8 +3355,8 @@ int _run_group_tests(const UnitTest * const tests, const size_t number_of_tests)
     if (number_of_tests == 0) {
         return -1;
     }
-    failed_names = (const char **)malloc(number_of_tests *
-                                         sizeof(*failed_names));
+    failed_names = (const char **)libc_malloc(number_of_tests *
+                   sizeof(*failed_names));
     if (failed_names == NULL) {
         return -2;
     }
@@ -3449,7 +3462,7 @@ int _run_group_tests(const UnitTest * const tests, const size_t number_of_tests)
     else {
         print_error("\n %"PRIdS " FAILED TEST(S)\n", total_failed);
     }
-    free((void *)failed_names);
+    libc_free((void *)failed_names);
     fail_if_blocks_allocated(check_point, "run_group_tests");
     return (int)total_failed;
 }
