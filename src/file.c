@@ -1,6 +1,5 @@
 /* Copyright 2018, Alistair Boyle, 3-clause BSD License */
 #include "config.h"
-#include <stdlib.h> /* malloc */
 #include <stdio.h> /* printf */
 #include <stddef.h> /* offsetof */
 #include <stdint.h> /* SIZE_MAX */
@@ -11,11 +10,6 @@
 
 #include "model.h"
 #include "file.h"
-
-#ifdef UNIT_TESTING
-extern void * _test_malloc(const size_t size, const char * file, const int line);
-#define malloc(size) _test_malloc(size, __FILE__, __LINE__)
-#endif
 
 #define SUCCESS 1
 #define FAILURE 0
