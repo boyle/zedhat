@@ -19,6 +19,7 @@ shift
 #  the ChangeLog is short, or
 #  there's newer tags
 if ( [[ -d "${top_src_dir}/.git/refs/tags" ]] && \
+      [[ -x /usr/bin/tac ]] && \
       ( [[ ! -f "${distdir}/ChangeLog" ]] || \
         [[ $(wc -l "${distdir}/ChangeLog" | cut -f 1 -d ' ' ) -lt 10 ]] || \
         [[ "${top_src_dir}/.git/refs/tags" -nt "${distdir}/ChangeLog" ]] ) ); then

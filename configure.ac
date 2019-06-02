@@ -14,6 +14,14 @@ AC_CONFIG_HEADERS([src/config.h])
 AC_USE_SYSTEM_EXTENSIONS
 PKG_PROG_PKG_CONFIG
 
+AC_CANONICAL_HOST
+case $host_os in
+#   darwin* )  ;;
+#   *BSD* )    ;;
+   linux* )   ;;
+   *)   AC_MSG_ERROR([unsupported host platform $host_os]) ;;
+esac
+
 # debugging
 #AC_MSG_CHECKING(whether to enable debugging)
 #default="no"
@@ -69,8 +77,9 @@ AC_TYPE_UINT32_T
 AC_FUNC_ERROR_AT_LINE
 AC_FUNC_STRNLEN
 AC_CHECK_HEADER_STDBOOL # matrix.h
-AC_CHECK_HEADERS([float.h stdlib.h string.h sys/time.h malloc.h stddef.h signal.h limits.h],,AC_MSG_ERROR([missing header]))
-AC_CHECK_FUNCS([gettimeofday strndup memset strcasecmp strchr strdup strerror signal])
+AC_CHECK_HEADERS_ONCE([malloc.h inttypes.h signal.h strings.h])
+AC_CHECK_HEADERS([float.h stdlib.h sys/time.h stddef.h limits.h],,AC_MSG_ERROR([missing header]))
+AC_CHECK_FUNCS([malloc gettimeofday strndup memset strcasecmp strchr strdup strerror signal])
 AC_HEADER_ASSERT
 AC_CHECK_FUNCS([memmove strstr]) # cmocka.c
 AC_FUNC_STRTOD # argv.c
@@ -160,7 +169,7 @@ AC_OUTPUT
 AC_MSG_RESULT([])
 AC_MSG_RESULT([   zedhat Configuration Summary       ])
 AC_MSG_RESULT([======================================])
-AC_MSG_RESULT([  C Compiler: $CC ($ax_cv_c_compiler_vendor) ($ax_cv_c_compiler_version)])
+AC_MSG_RESULT([  C Compiler: $CC ($build_os->$host_os/$ax_cv_c_compiler_vendor-$ax_cv_c_compiler_version)])
 AC_MSG_RESULT([      CFLAGS: $CFLAGS])
 #AC_MSG_RESULT([ WARN_CFLAGS: $WARN_CFLAGS])
 AC_MSG_RESULT([     LDFLAGS: $LDFLAGS])

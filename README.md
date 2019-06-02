@@ -20,3 +20,23 @@ and for developers
 
  - lcov
  - astyle
+
+For macOS 10.14.4, install Xcode from the Mac store, launch Xcode to complete the installation, then from a terminal install [homebrew](https://brew.sh) and
+```
+brew install autoconf automake pkg-config lapack openblas suite-sparse
+export LDFLAGS="-L/usr/local/lib -L/usr/local/opt/openblas/lib"
+export CFLAGS="-fgnu89-inline -I/usr/local/include -I/usr/local/opt/openblas/include"
+export PKG_CONFIG_PATH="/usr/local/opt/openblas/lib/pkgconfig"
+./autogen && ./configure && make
+```
+(Homebrew `gcc` is required to have a working version of `gfortran`.
+Homebrew `openblas` is necessary since Xcode does not provide lapacke, only
+clapack, the older C interface to LAPACK.
+Homebrew `suite-sparse` provides UMFPACK and CHOLMOD.)
+
+ For Windows 10, install [chocolatey](https://chocolatey.org/install) as admin, then from regular PowerShell
+ ```
+ choco -y install mingw
+ choco -y install git.install
+ ```
+ and finally start "Git Bash"
