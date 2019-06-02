@@ -16,7 +16,7 @@ PKG_PROG_PKG_CONFIG
 
 AC_CANONICAL_HOST
 case $host_os in
-#   darwin* )  ;;
+   darwin* )  ;;
 #   *BSD* )    ;;
    linux* )   ;;
    *)   AC_MSG_ERROR([unsupported host platform $host_os]) ;;

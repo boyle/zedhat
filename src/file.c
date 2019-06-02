@@ -11,6 +11,17 @@
 #include "model.h"
 #include "file.h"
 
+#ifdef UNIT_TESTING
+extern gzFile _mock_gzopen(const char * path, const char * mode);
+extern char * _mock_gzgets(gzFile file, char * buf, int len);
+extern int _mock_gzclose(gzFile file);
+extern int _mock_gzeof(gzFile file);
+#define gzopen(path, mode) _mock_gzopen(path, mode)
+#define gzgets(file, buf, len) _mock_gzgets(file, buf, len)
+#define gzclose(file) _mock_gzclose(file)
+#define gzeof(file) _mock_gzeof(file)
+#endif
+
 #define SUCCESS 1
 #define FAILURE 0
 

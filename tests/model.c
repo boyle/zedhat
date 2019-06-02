@@ -16,8 +16,7 @@
 #include "cmocka.h"
 #include "model.h"
 
-void * __real__test_malloc(const size_t size, const char * file, const int line);
-void * __wrap__test_malloc(size_t size)
+void * _mock_test_malloc(size_t size, const char * file, const int line)
 {
     if(mock()) {
         printf("  malloc x\n");
@@ -25,7 +24,7 @@ void * __wrap__test_malloc(size_t size)
     }
     else {
         printf("  malloc ✓\n");
-        return __real__test_malloc(size, __FILE__, __LINE__);
+        return _test_malloc(size, file, line);
     }
 }
 
@@ -43,12 +42,12 @@ void test_model(void ** state)
 {
     model * m;
     free_model(NULL);
-    will_return(__wrap__test_malloc, 0);
+    will_return(_mock_test_malloc, 0);
     m = malloc_model();
     assert_non_null(m);
     m = free_model(m);
     assert_null(m);
-    will_return(__wrap__test_malloc, 1);
+    will_return(_mock_test_malloc, 1);
     m = malloc_model();
     assert_null(m);
 }

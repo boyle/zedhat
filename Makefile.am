@@ -34,13 +34,10 @@ check_PROGRAMS = $(BUILT_TESTS)
 #readngvol_SOURCES = src/readngvol.c
 tests_file_SOURCES = tests/file.c src/file.c src/model.c tests/cmocka.c
 tests_file_CFLAGS = -DUNIT_TESTING  $(AM_CFLAGS)
-tests_file_LDFLAGS = $(foreach f,_test_malloc gzopen gzgets gzeof gzclose,-Wl,-wrap=$(f))
 tests_model_SOURCES = tests/model.c src/model.c tests/cmocka.c
 tests_model_CFLAGS = -DUNIT_TESTING $(AM_CFLAGS)
-tests_model_LDFLAGS = $(foreach f,_test_malloc,-Wl,-wrap=$(f))
 tests_matrix_SOURCES = tests/matrix.c src/matrix.c tests/cmocka.c
 tests_matrix_CFLAGS = -DUNIT_TESTING $(AM_CFLAGS)
-tests_matrix_LDFLAGS = $(foreach f,_test_malloc _test_strdup,-Wl,-wrap=$(f))
 
 clean-local: clean-local-check
 	  -rm -f src/*.lo

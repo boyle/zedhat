@@ -11,8 +11,7 @@
 #include "cmocka.h"
 #include "matrix.h"
 
-void * __real__test_malloc(const size_t size, const char * file, const int line);
-void * __wrap__test_malloc(size_t size)
+void * _mock_test_malloc(const size_t size, const char * file, const int line)
 {
     if(mock()) {
         printf("  malloc x\n");
@@ -20,15 +19,14 @@ void * __wrap__test_malloc(size_t size)
     }
     else {
         printf("  malloc ✓\n");
-        return __real__test_malloc(size, __FILE__, __LINE__);
+        return _test_malloc(size, file, line);
     }
 }
 
-char * __real__test_strdup(const char * str, const char * file, const int line);
-char * __wrap__test_strdup(const char * str)
+char * _test_strdup(const char * str, const char * file, const int line)
 {
     size_t size = strlen(str) + 1;
-    char * n = __wrap__test_malloc(size);
+    char * n = _mock_test_malloc(size, file, line);
     if(n != NULL) {
         strcpy(n, str);
     }
@@ -38,11 +36,11 @@ char * __wrap__test_strdup(const char * str)
 void test_malloc_matrix(void ** state)
 {
     matrix * M = NULL;
-    will_return(__wrap__test_malloc, 0);
+    will_return(_mock_test_malloc, 0);
     M = malloc_matrix();
     assert_non_null(M); /* success */
     M = free_matrix(M);
-    will_return(__wrap__test_malloc, 1);
+    will_return(_mock_test_malloc, 1);
     M = malloc_matrix();
     assert_null(M); /* failure */
     M = free_matrix(M);
@@ -76,12 +74,12 @@ int bitcnt(int x)
 
 void test_malloc_matrix_name_happy(void ** state)
 {
-    will_return(__wrap__test_malloc, 0);
+    will_return(_mock_test_malloc, 0);
     matrix * M = malloc_matrix();
     assert_non_null(M);
     for(int i = 0; i < 8; i++) {
         if(bitcnt(i) > 0) {
-            will_return_count(__wrap__test_malloc, 0, bitcnt(i));
+            will_return_count(_mock_test_malloc, 0, bitcnt(i));
         }
         int ret = malloc_matrix_name(M, i & 1 ? "A" : NULL, i & 2 ? "B" : NULL, i & 4 ? "C" : NULL);
         printf("%d='b%d%d%d (%d)", i, (i >> 0) & 1, (i >> 1) & 1, (i >> 2) & 1, bitcnt(i));
@@ -93,14 +91,14 @@ void test_malloc_matrix_name_happy(void ** state)
 
 void test_malloc_matrix_name_sad(void ** state)
 {
-    will_return(__wrap__test_malloc, 0);
+    will_return(_mock_test_malloc, 0);
     matrix * M = malloc_matrix();
     assert_non_null(M);
     for(int i = 1; i < 8; i++) {
         if(bitcnt(i) > 1) {
-            will_return_count(__wrap__test_malloc, 0, bitcnt(i) - 1);
+            will_return_count(_mock_test_malloc, 0, bitcnt(i) - 1);
         }
-        will_return(__wrap__test_malloc, 1);
+        will_return(_mock_test_malloc, 1);
         int ret = malloc_matrix_name(M, i & 1 ? "A" : NULL, i & 2 ? "B" : NULL, i & 4 ? "C" : NULL);
         assert_int_equal(ret, 0);
     }
@@ -115,7 +113,7 @@ void test_malloc_matrix_data_null(void ** state)
 
 void test_malloc_matrix_data_identity(void ** state)
 {
-    will_return(__wrap__test_malloc, 0);
+    will_return(_mock_test_malloc, 0);
     matrix * M = malloc_matrix();
     assert_non_null(M);
     int ret = malloc_matrix_data(M, IDENTITY, 1, 1, 0);
@@ -126,15 +124,15 @@ void test_malloc_matrix_data_identity(void ** state)
 void test_malloc_matrix_data_dense(void ** state)
 {
     int ret;
-    will_return(__wrap__test_malloc, 0);
+    will_return(_mock_test_malloc, 0);
     matrix * M = malloc_matrix();
-    will_return(__wrap__test_malloc, 0);
+    will_return(_mock_test_malloc, 0);
     ret = malloc_matrix_data(M, DENSE, 2, 2, 4);
     assert_int_equal(ret, 1);
     M = free_matrix(M);
-    will_return(__wrap__test_malloc, 0);
+    will_return(_mock_test_malloc, 0);
     M = malloc_matrix();
-    will_return(__wrap__test_malloc, 1);
+    will_return(_mock_test_malloc, 1);
     ret = malloc_matrix_data(M, DENSE, 2, 2, 4);
     assert_int_equal(ret, 0);
     M = free_matrix(M);
@@ -143,11 +141,11 @@ void test_malloc_matrix_data_dense(void ** state)
 void test_malloc_matrix_data_coo(void ** state)
 {
     for(int i = 0; i < 8; i++) {
-        will_return(__wrap__test_malloc, 0);
+        will_return(_mock_test_malloc, 0);
         matrix * M = malloc_matrix();
-        will_return(__wrap__test_malloc, (i >> 0) & 1);
-        will_return(__wrap__test_malloc, (i >> 1) & 1);
-        will_return(__wrap__test_malloc, (i >> 2) & 1);
+        will_return(_mock_test_malloc, (i >> 0) & 1);
+        will_return(_mock_test_malloc, (i >> 1) & 1);
+        will_return(_mock_test_malloc, (i >> 2) & 1);
         int ret = malloc_matrix_data(M, COO, 1, 1, 1);
         assert_int_equal(ret, bitcnt(i) > 0 ? 0 : 1);
         M = free_matrix(M);
@@ -156,9 +154,9 @@ void test_malloc_matrix_data_coo(void ** state)
 
 void test_malloc_matrix_data_coo_symmetric(void ** state)
 {
-    will_return(__wrap__test_malloc, 0);
+    will_return(_mock_test_malloc, 0);
     matrix * M = malloc_matrix();
-    will_return_count(__wrap__test_malloc, 0, 3);
+    will_return_count(_mock_test_malloc, 0, 3);
     int ret = malloc_matrix_data(M, COO_SYMMETRIC, 1, 1, 1);
     assert_int_equal(ret, 1);
     M->type = COO_SYMMETRIC;
