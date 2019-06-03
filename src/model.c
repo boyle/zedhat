@@ -307,7 +307,7 @@ int cmp_int( const void * a, const void * b )
 {
     return *(int *)a - *(int *)b;
 }
-int calc_gnd(const int gnd, int * nnz, int * ii, int * jj, double * Se)
+int calc_gnd(const int gnd, size_t * nnz, int * ii, int * jj, double * Se)
 {
     const int gndidx = gnd - 1;
     int ret = 0;

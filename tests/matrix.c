@@ -46,16 +46,6 @@ void test_malloc_matrix(void ** state)
     M = free_matrix(M);
 }
 
-void printf_matrix(const matrix * M)
-{
-    printf("%s [%3s]: %zux%zu %5s -- %s\n",
-           M->symbol ? M->symbol : "?",
-           M->units ? M->units : "?",
-           M->m, M->n,
-           M->type == DENSE ? "DENSE" : M->type == COO ? "COO" : "?",
-           M->name ? M->name : "?");
-}
-
 void test_malloc_matrix_name_null(void ** state)
 {
     int ret = malloc_matrix_name(NULL, "A", "B", "C");

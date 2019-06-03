@@ -42,6 +42,6 @@ double det(int n, double A[n][n]);
 double * inv(int n, double A[n][n]);
 int calc_Se_n(const int nd);
 int calc_Se(mesh const * const mdl, int * ii, int * jj, double * Se);
-int calc_gnd(const int gnd, int * nnz, int * ii, int * jj, double * Se);
+int calc_gnd(const int gnd, size_t * nnz, int * ii, int * jj, double * Se);
 int calc_stim_neumann(mesh const * const m, double amp, int bc, int gnd, double * b);
 #endif

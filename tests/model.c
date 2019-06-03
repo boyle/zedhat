@@ -639,7 +639,7 @@ void test_shape_2d(void ** state)
     for(int gnd = 0; gnd < 7; gnd++ ) {
         int ret = calc_Se(&m, ii, jj, ss);
         assert_int_equal(ret, 0);
-        int nnz_local = nnz;
+        size_t nnz_local = nnz;
         int ngnd = calc_gnd(gnd, &nnz_local, ii, jj, ss);
         printf("calc_gnd() gnd node #%d: deleted %d entries\n", gnd, ngnd);
         if (gnd > 0 && gnd <= 4 ) {
@@ -714,7 +714,7 @@ void test_shape_3d(void ** state)
     for(int gnd = 0; gnd < 11; gnd++ ) {
         int ret = calc_Se(&m, ii, jj, ss);
         assert_int_equal(ret, 0);
-        int nnz_local = nnz;
+        size_t nnz_local = nnz;
         int ngnd = calc_gnd(gnd, &nnz_local, ii, jj, ss);
         printf("calc_gnd() gnd node #%d: deleted %d entries\n", gnd, ngnd);
         if (gnd > 0 && gnd <= 8 ) {
@@ -874,7 +874,7 @@ void test_2d_resistor (void ** state)
     m.surfaceelems = &(se[0][0]);
     m.n_se = 4;
     const int gnd = 1;
-    int nnz = calc_Se_n(2) * m.n_elems;
+    size_t nnz = calc_Se_n(2) * m.n_elems;
     int * ii = malloc(sizeof(int) * nnz);
     int * jj = malloc(sizeof(int) * nnz);
     double * ss = malloc(sizeof(double) * nnz);
@@ -994,7 +994,7 @@ void test_3d_resistor (void ** state)
     m.surfaceelems = &(se[0][0]);
     m.n_se = 12;
     const int gnd = 1;
-    int nnz = calc_Se_n(3) * m.n_elems;
+    size_t nnz = calc_Se_n(3) * m.n_elems;
     int * ii = malloc(sizeof(int) * nnz);
     int * jj = malloc(sizeof(int) * nnz);
     double * ss = malloc(sizeof(double) * nnz);

@@ -3,6 +3,7 @@
 #include <stdlib.h> /* malloc, free */
 #include <string.h> /* strncmp, strdup, bzero */
 #include <assert.h> /* assert */
+#include <stdio.h> /* printf */
 
 #include "matrix.h"
 
@@ -22,6 +23,55 @@ extern char * _test_strdup(const char * ptr, const char * file, const int line);
 void matrix_init(matrix * m)
 {
     bzero(m, sizeof(matrix));
+}
+
+static void free_matrix_data(matrix * M)
+{
+    assert(M != NULL);
+    assert(M->type < MAX_MATRIX_TYPE);
+    switch (M->type) {
+    // TODO case CSR_SYMMETRIC:
+    // TODO case CSC_SYMMETRIC:
+    case COO_SYMMETRIC:
+        M->type--;
+        break;
+    default: /* NOP */
+        break;
+    }
+    switch (M->type) {
+    // TODO case DIAGONAL:
+    case DENSE:
+        free(M->x.dense);
+        M->x.dense = NULL;
+        break;
+    // TODO case CSR:
+    // TODO case CSC:
+    case COO:
+        free(M->x.sparse.a);
+        free(M->x.sparse.ia);
+        free(M->x.sparse.ja);
+        M->x.sparse.a = NULL;
+        M->x.sparse.ia = NULL;
+        M->x.sparse.ja = NULL;
+        break;
+    default: /* NOP */
+        break;
+    }
+    M->type = IDENTITY;
+}
+
+matrix * free_matrix(matrix * M)
+{
+    if(M == NULL) {
+        return NULL;
+    }
+    free_matrix_data(M);
+    free(M->symbol);
+    free(M->name);
+    free(M->units);
+    matrix_init(M);
+    free(M);
+    return NULL;
 }
 
 matrix * malloc_matrix()
@@ -64,6 +114,7 @@ int malloc_matrix_data(matrix * M, enum matrix_type type, const size_t rows, con
     if(M == NULL) {
         return FAILURE;
     }
+    free_matrix_data(M);
     M->scale = 1.0;
     M->type = type;
     M->m = rows;
@@ -98,24 +149,24 @@ int malloc_matrix_data(matrix * M, enum matrix_type type, const size_t rows, con
 //      M->type--; /* strip _SYMMETRIC */
 //  case CSR:
 //      M->x.sparse.a = malloc(sizeof(double) * nnz);
-//      M->x.sparse.ia = malloc(sizeof(unsigned int) * (rows + 1));
-//      M->x.sparse.ja = malloc(sizeof(unsigned int) * nnz);
+//      M->x.sparse.ia = malloc(sizeof(int) * (rows + 1));
+//      M->x.sparse.ja = malloc(sizeof(int) * nnz);
 //      break;
 //  case CSC_SYMMETRIC:
 //      M->symmetric = true;
 //      M->type--; /* strip _SYMMETRIC */
 //  case CSC:
 //      M->x.sparse.a = malloc(sizeof(double) * nnz);
-//      M->x.sparse.ia = malloc(sizeof(unsigned int) * nnz);
-//      M->x.sparse.ja = malloc(sizeof(unsigned int) * (cols + 1));
+//      M->x.sparse.ia = malloc(sizeof(int) * nnz);
+//      M->x.sparse.ja = malloc(sizeof(int) * (cols + 1));
 //      break;
     case COO_SYMMETRIC:
         M->symmetric = true;
         M->type--; /* strip _SYMMETRIC */
     case COO:
         M->x.sparse.a = malloc(sizeof(double) * nnz);
-        M->x.sparse.ia = malloc(sizeof(unsigned int) * nnz);
-        M->x.sparse.ja = malloc(sizeof(unsigned int) * nnz);
+        M->x.sparse.ia = malloc(sizeof(int) * nnz);
+        M->x.sparse.ja = malloc(sizeof(int) * nnz);
         M->x.sparse.na = nnz;
         M->x.sparse.nia = nnz;
         M->x.sparse.nja = nnz;
@@ -137,45 +188,6 @@ int malloc_matrix_data(matrix * M, enum matrix_type type, const size_t rows, con
     return SUCCESS;
 }
 
-
-matrix * free_matrix(matrix * M)
-{
-    if(M == NULL) {
-        return NULL;
-    }
-    assert(M->type < MAX_MATRIX_TYPE);
-    switch (M->type) {
-    // TODO case CSR_SYMMETRIC:
-    // TODO case CSC_SYMMETRIC:
-    case COO_SYMMETRIC:
-        M->type--;
-        break;
-    default: /* NOP */
-        break;
-    }
-    switch (M->type) {
-    // TODO case DIAGONAL:
-    case DENSE:
-        free(M->x.dense);
-        break;
-    // TODO case CSR:
-    // TODO case CSC:
-    case COO:
-        free(M->x.sparse.a);
-        free(M->x.sparse.ia);
-        free(M->x.sparse.ja);
-        break;
-    default: /* NOP */
-        break;
-    }
-    free(M->symbol);
-    free(M->name);
-    free(M->units);
-    matrix_init(M);
-    free(M);
-    return NULL;
-}
-
 /*
 void matrix_transpose(matrix * M)
 {
@@ -183,3 +195,23 @@ void matrix_transpose(matrix * M)
     M->transposed = ! M->transposed;
 }
 */
+
+void printf_matrix(matrix const * const A)
+{
+    assert(A != NULL);
+    printf("matrix %s: %zux%zu\n", A->symbol, A->m, A->n);
+    printf(" ");
+    if(A->name != NULL) {
+        printf(" %s", A->name);
+    }
+    if(A->units != NULL) {
+        printf(" [%s]", A->symbol);
+    }
+    switch(A->type) {
+    case IDENTITY: printf(" IDENTITY\n"); break;
+    case DENSE: printf(" DENSE\n"); break;
+    case COO_SYMMETRIC: printf(" COO_SYMMETRIC\n"); break;
+    case COO: printf(" COO (nnz=%zu)\n", A->x.sparse.na); break;
+    case MAX_MATRIX_TYPE: printf(" MAX\n"); break;
+    }
+}

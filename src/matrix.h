@@ -10,8 +10,8 @@ enum matrix_type {IDENTITY, /* DIAGONAL, */ DENSE, /* DENSE_SYMMETRIC, CSR, CSR_
 
 typedef struct matrix_sparse_type {
     double * a;   /* data */
-    unsigned int * ia; /* row index */
-    unsigned int * ja; /* column index */
+    int * ia; /* row index */
+    int * ja; /* column index */
     size_t nia; /* length of ia */
     size_t nja; /* length of ja */
     size_t na; /* length of a */
@@ -38,5 +38,6 @@ int malloc_matrix_name(matrix * M, const char * name, const char * symbol, const
 int malloc_matrix_data(matrix * M, enum matrix_type type, const size_t rows, const size_t cols, const size_t nnz);
 matrix * free_matrix(matrix * M);
 //void matrix_transpose(matrix * M);
+void printf_matrix(matrix const * const A);
 
 #endif
