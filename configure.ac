@@ -16,9 +16,9 @@ PKG_PROG_PKG_CONFIG
 
 AC_CANONICAL_HOST
 case $host_os in
-   darwin* )  ;;
-#   *BSD* )    ;;
-   linux* )   ;;
+   darwin* ) HOST_EXTRA_CFLAGS="-fgnu89-inline" ;;
+#   *BSD* ) ;;
+   linux* ) ;;
    *)   AC_MSG_ERROR([unsupported host platform $host_os]) ;;
 esac
 
@@ -64,7 +64,7 @@ AC_CONFIG_FILES([Makefile])
 AC_PROG_CC
 AX_COMPILER_VENDOR
 AX_COMPILER_VERSION
-CFLAGS+=" -std=c11 -Wall -Werror" # -pedantic
+CFLAGS+=" -std=c11 ${HOST_EXTRA_CFLAGS} -Wall -Werror" # -pedantic
 #AX_COMPILER_FLAGS
 #AX_CODE_COVERAGE
 AM_PROG_CC_C_O
