@@ -16,8 +16,7 @@ before_install:
    - pip install --user cpp-coveralls
    - echo "" > .env
    - if [[ "x$TRAVIS_OS_NAME" == "xosx" ]]; then printf 'export LDFLAGS="-L/usr/local/lib -L/usr/local/opt/openblas/lib"\nexport CFLAGS="-I/usr/local/include -I/usr/local/opt/openblas/include"\nexport PKG_CONFIG_PATH="/usr/local/opt/openblas/lib/pkgconfig"\n' > .env; fi
-#   - if [[ "x$TRAVIS_OS_NAME" == "xosx" ]]; then brew update; brew install homebrew/science/openblas; brew install  homebrew/science/suite-sparse; pushd /usr/include; sudo ln -s $(find . -name cblas.h); popd; fi
-# missing lapacke... no homebrew to tap
+   - if [[ "x$TRAVIS_OS_NAME" == "xosx" ]]; then brew update; fi
 
 addons:
    apt:
@@ -46,6 +45,14 @@ addons:
       build_command_prepend: "./autogen && ./configure"
       build_command: "make"
       branch_pattern: coverity_scan
+
+cache:
+   ccache: true
+   directories:
+      - $HOME/Library/Caches/Homebrew
+
+before_cache:
+   - [[ "x$TRAVIS_OS_NAME" == "xosx" ]] && brew cleanup
 
 #        - gcc-6
 script:
