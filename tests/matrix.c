@@ -23,6 +23,18 @@ void * _mock_test_malloc(const size_t size, const char * file, const int line)
     }
 }
 
+void * _mock_test_realloc(void * const ptr, const size_t size, const char * file, const int line)
+{
+    if(mock()) {
+        printf("  realloc x\n");
+        return NULL;
+    }
+    else {
+        printf("  realloc ✓\n");
+        return _test_realloc(ptr, size, file, line);
+    }
+}
+
 char * _test_strdup(const char * str, const char * file, const int line)
 {
     size_t size = strlen(str) + 1;
@@ -118,6 +130,7 @@ void test_malloc_matrix_data_dense(void ** state)
     matrix * M = malloc_matrix();
     will_return(_mock_test_malloc, 0);
     ret = malloc_matrix_data(M, DENSE, 2, 2, 4);
+    printf_matrix(M);
     assert_int_equal(ret, 1);
     M = free_matrix(M);
     will_return(_mock_test_malloc, 0);
@@ -148,8 +161,10 @@ void test_malloc_matrix_data_coo_symmetric(void ** state)
     matrix * M = malloc_matrix();
     will_return_count(_mock_test_malloc, 0, 3);
     int ret = malloc_matrix_data(M, COO_SYMMETRIC, 1, 1, 1);
+    printf_matrix(M);
     assert_int_equal(ret, 1);
     M->type = COO_SYMMETRIC;
+    printf_matrix(M);
     M = free_matrix(M);
 }
 

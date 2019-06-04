@@ -268,6 +268,7 @@ void calc_Se_ij(const int nd, int const * const elem, int * ii, int * jj)
 
 int calc_Se_n(const int nd)
 {
+    /* nd=2: 6, nd=3: 10 ... for symmetric (isotropic conductivity)*/
     const int n = nd + 1;
     return n * (n + 1) / 2;
 }
