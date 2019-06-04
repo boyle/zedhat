@@ -52,7 +52,7 @@ cache:
       - $HOME/Library/Caches/Homebrew
 
 before_cache:
-   - [[ "x$TRAVIS_OS_NAME" == "xosx" ]] && brew cleanup
+   - if [[ "x$TRAVIS_OS_NAME" == "xosx" ]]; then brew cleanup; fi
 
 #        - gcc-6
 script:
