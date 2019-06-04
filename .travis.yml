@@ -15,7 +15,7 @@ before_install:
    - echo -n | openssl s_client -connect https://scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
    - pip install --user cpp-coveralls
    - echo "" > .env
-   - [[ "x$TRAVIS_OS_NAME" == "xosx" ]] && printf 'export LDFLAGS="-L/usr/local/lib -L/usr/local/opt/openblas/lib"\nexport CFLAGS="-I/usr/local/include -I/usr/local/opt/openblas/include"\nexport PKG_CONFIG_PATH="/usr/local/opt/openblas/lib/pkgconfig"\n' > .env
+   - if [[ "x$TRAVIS_OS_NAME" == "xosx" ]]; then printf 'export LDFLAGS="-L/usr/local/lib -L/usr/local/opt/openblas/lib"\nexport CFLAGS="-I/usr/local/include -I/usr/local/opt/openblas/include"\nexport PKG_CONFIG_PATH="/usr/local/opt/openblas/lib/pkgconfig"\n' > .env; fi
 #   - if [[ "x$TRAVIS_OS_NAME" == "xosx" ]]; then brew update; brew install homebrew/science/openblas; brew install  homebrew/science/suite-sparse; pushd /usr/include; sudo ln -s $(find . -name cblas.h); popd; fi
 # missing lapacke... no homebrew to tap
 
@@ -60,7 +60,7 @@ after_failure:
 
 
 after_success:
-   - if [[ "$CC" == "gcc" && "$TRAVIS_OS_NAME" == "linux"]]; then coveralls --exclude tests --gcov-options '\-lp'; fi
+   - if [[ "$CC" == "gcc" && "$TRAVIS_OS_NAME" == "linux" ]]; then coveralls --exclude tests --gcov-options '\-lp'; fi
 
 env:
    global:
