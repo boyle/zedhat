@@ -7,7 +7,8 @@
 
 #include <string.h> /* strncmp, strlen */
 #include <stdlib.h> /* malloc, free */
-#include <stdio.h> /* printf, fprintf */
+#include <stdio.h> /* printf, fprintf, sprintf */
+#include <limits.h> /* INT_MAX */
 #include <libgen.h> /* basename */
 #include <zlib.h> /* cmocka: mocking zlib's gzopen, gzgets, gzclose, gzeof */
 
@@ -311,6 +312,23 @@ static void test_malloc_fail8 (void ** state)
     free_model(m);
 }
 
+static void test_long_fail (void ** state)
+{
+    int ret;
+    will_return(_mock_test_malloc, 0);
+    model * m = malloc_model();
+    mock_zh_read(6, 0, 3);
+    will_return(_mock_gzgets, "parameters\n");
+    char too_many[1024];
+    sprintf(too_many, "%d 6\n", INT_MAX - 1);
+    will_return(_mock_gzgets, too_many);
+    will_return_count(_mock_test_malloc, 0, 5);
+    will_return(_mock_test_malloc, 1);
+    ret = readfile("test", m);
+    assert_int_equal(ret, 0);
+    free_model(m);
+}
+
 static void test_gzclose_fail (void ** state)
 {
     int ret;
@@ -351,6 +369,7 @@ int main(int argc, char ** argv)
             cmocka_unit_test(test_malloc_fail6),
             cmocka_unit_test(test_malloc_fail7),
             cmocka_unit_test(test_malloc_fail8),
+            cmocka_unit_test(test_long_fail),
             cmocka_unit_test(test_gzclose_fail),
             cmocka_unit_test(test_null_fail),
         };

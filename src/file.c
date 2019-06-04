@@ -7,6 +7,7 @@
 #include <ctype.h> /* isspace */
 #include <zlib.h> /* gzopen, gzgets, gzeof, gzclose */
 #include <assert.h> /* assert */
+#include <limits.h> /* MAX_INT */
 
 #include "model.h"
 #include "file.h"
@@ -77,6 +78,12 @@ static int bad_section(const char * section)
     return -1;
 }
 
+static int long_section(const char * section)
+{
+    printf("err: %s too long\n", section);
+    return -1;
+}
+
 static int bad_malloc(const char * section)
 {
     printf("err: out of memory %s\n", section);
@@ -123,6 +130,9 @@ static int sscanf_size(const char * data, const char * section, enum fileformat_
         return bad_section(section);
     }
     int rows = n[0];
+    if(rows > INT_MAX / (sizeof(double) > sizeof(int) ? sizeof(double) : sizeof(int)) / 10) {
+        long_section(section);
+    }
     switch(field) {
     case FMT:
         if(n[0] != 1) {
