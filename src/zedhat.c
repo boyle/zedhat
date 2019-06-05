@@ -22,14 +22,14 @@ int build_system_matrix(const model * m, matrix * A)
     const mesh * fwd = &(m->fwd);
     const int dim = fwd->dim;
     const int ne = fwd->n_elems;
-    const int se_n = calc_Se_n(dim); /* sparse matrix entries per mesh element */
+    const int se_n = calc_sys_elem_n(dim); /* sparse matrix entries per mesh element */
     const int nn = fwd->n_nodes;
     size_t nnz = se_n * ne;
     if(!malloc_matrix_data(A, COO_SYMMETRIC, nn, nn, nnz)) {
         return 0;
     }
     /* build shape matrices */
-    int ret = calc_Se(fwd, A->x.sparse.ia, A->x.sparse.ja, A->x.sparse.a);
+    int ret = calc_sys_elem(fwd, A->x.sparse.ia, A->x.sparse.ja, A->x.sparse.a);
     if (ret != 0) {
         return 0;
     }
@@ -44,7 +44,7 @@ int build_system_matrix(const model * m, matrix * A)
         }
     }
     /* remove ground node */
-    int gnd = calc_gnd(1, &nnz, A->x.sparse.ia, A->x.sparse.ja, A->x.sparse.a);
+    int gnd = calc_sys_gnd(1, &nnz, A->x.sparse.ia, A->x.sparse.ja, A->x.sparse.a);
     if(gnd == 0) {
         return 0;
     }

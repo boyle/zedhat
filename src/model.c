@@ -213,7 +213,7 @@ double det(int n, double A[n][n])
  * inputs: nd = # of dimensions (2=2D, 3=3D),
  *         N = ptrs to node coordinates (nd+1 nodes with nd double precision values)
  *             ex: {&n[120], &n[332], &n[556], &n[733]} for 3D, where n[120] = {1.1, 0.1, 3.2}, etc.
- *             NOTE: nodes should be in increasing order so that calc_Se_ij
+ *             NOTE: nodes should be in increasing order so that calc_sys_elem_ij
  *                   gives an upper triangular matrix in the global node numbering
  * output: Se = replaces Se[0..t-1] for t = n(n+1)/2 entries with n=nd+1 elements as
  *         upper triangular symmetric matrix, row-major order
@@ -233,7 +233,7 @@ static double calc_elem_vol(const int n, double const * const * const nodes, dou
     return fabs(det(n, E));
 }
 
-double * calc_Se_v(const int nd, double const * const * const nodes, double * Se)
+static double * calc_sys_elem_v(const int nd, double const * const * const nodes, double * Se)
 {
     const int n = nd + 1;
     double E[n][n]; /* from [1] eq (C.33) */
@@ -262,7 +262,7 @@ double * calc_Se_v(const int nd, double const * const * const nodes, double * Se
     return Se;
 }
 
-void calc_Se_ij(const int nd, int const * const elem, int * ii, int * jj)
+static void calc_sys_elem_ij(const int nd, int const * const elem, int * ii, int * jj)
 {
     const int n = nd + 1;
     int idx = 0;
@@ -275,7 +275,7 @@ void calc_Se_ij(const int nd, int const * const elem, int * ii, int * jj)
     }
 }
 
-int calc_Se_n(const int nd)
+int calc_sys_elem_n(const int nd)
 {
     /* nd=2: 6, nd=3: 10 ... for symmetric (isotropic conductivity)*/
     const int n = nd + 1;
@@ -283,15 +283,15 @@ int calc_Se_n(const int nd)
 }
 
 /* returns 0 on success, > 0 on failure as the singular element number e+1 */
-int calc_Se(mesh const * const m, int * ii, int * jj, double * Se)
+int calc_sys_elem(mesh const * const m, int * ii, int * jj, double * Se)
 {
     const int nd = m->dim;
     const int n_elems = m->n_elems;
     const int * elems = m->elems;
     const double * nodes = m->nodes;
-    const int n = calc_Se_n(nd);
+    const int n = calc_sys_elem_n(nd);
     for(int i = 0; i < n_elems; i++) {
-        calc_Se_ij(nd, elems, ii, jj);
+        calc_sys_elem_ij(nd, elems, ii, jj);
         double const * node_list [4];
         for(int j = 0; j < nd + 1; j ++) {
             int idx = elems[j] - 1;
@@ -300,7 +300,7 @@ int calc_Se(mesh const * const m, int * ii, int * jj, double * Se)
             }
             node_list[j] = &(nodes[idx * nd]);
         }
-        if(calc_Se_v(nd, node_list, Se) == NULL) {
+        if(calc_sys_elem_v(nd, node_list, Se) == NULL) {
             return i + 1;
         }
         elems += (nd + 1);
@@ -317,7 +317,7 @@ int cmp_int( const void * a, const void * b )
 {
     return *(int *)a - *(int *)b;
 }
-int calc_gnd(const int gnd, size_t * nnz, int * ii, int * jj, double * Se)
+int calc_sys_gnd(const int gnd, size_t * nnz, int * ii, int * jj, double * Se)
 {
     const int gndidx = gnd - 1;
     int ret = 0;
@@ -455,7 +455,7 @@ int calc_stim_neumann(mesh const * const m, double amp, int bc, int gnd, double 
         copy_nodes_from_surfaceelems(m, i, dim, tmp);
         area[j] = calc_elem_area(dim, tmp);
         total_area += area[j];
-        printf("bc#%d: area[%d]=%g\n", bc, j, area[j]);
+        // printf("bc#%d: area[%d]=%g\n", bc, j, area[j]);
         list[j] = i;
         j++;
     }

@@ -482,7 +482,7 @@ void test_shape_Se_v(void ** state)
         };
         printf("Se: check for singular matrix erroring out\n");
         m.nodes = &(singularA[0][0]);
-        assert_int_equal( calc_Se(&m, ii, jj, ss), 1 );
+        assert_int_equal( calc_sys_elem(&m, ii, jj, ss), 1 );
     }
     /* matlab:
      *   E = inv([1 1 0; 1 0 1; 1 0 0])
@@ -496,7 +496,7 @@ void test_shape_Se_v(void ** state)
             {0.0, 0.0},
         };
         m.nodes = &(A[0][0]);
-        assert_int_equal( calc_Se(&m, ii, jj, ss), 0 );
+        assert_int_equal( calc_sys_elem(&m, ii, jj, ss), 0 );
         printf_mat_double("A", 3, 2, &(A[0][0]));
         printf_mat_double("A --> S", 3, 3, sym_to_full(3, ss, out));
         double Se2[3][3] = {
@@ -522,7 +522,7 @@ void test_shape_Se_v(void ** state)
         };
         m.dim = 3;
         m.nodes = &(B[0][0]);
-        assert_int_equal( calc_Se(&m, ii, jj, ss), 0 );
+        assert_int_equal( calc_sys_elem(&m, ii, jj, ss), 0 );
         printf_mat_double("B", 4, 3, &(B[0][0]));
         printf_mat_double("B --> S", 4, 4, sym_to_full(4, ss, out));
         double Se3[4][4] = {
@@ -539,8 +539,8 @@ void test_shape_Se_v(void ** state)
 
 void test_shape_Se_n(void ** state)
 {
-    assert_true(calc_Se_n(2) == 6);
-    assert_true(calc_Se_n(3) == 10);
+    assert_true(calc_sys_elem_n(2) == 6);
+    assert_true(calc_sys_elem_n(3) == 10);
 }
 
 void printf_ii(const char * name, int n, int * ii)
@@ -554,7 +554,7 @@ void printf_ii(const char * name, int n, int * ii)
 
 void test_shape_Se_ij(void ** state)
 {
-    const int n3 = calc_Se_n(3);
+    const int n3 = calc_sys_elem_n(3);
     int ii [n3 + 1];
     int jj [n3 + 1];
     double ss [n3 + 1];
@@ -572,11 +572,11 @@ void test_shape_Se_ij(void ** state)
     m.n_nodes = 4;
     for(int nd = 2; nd <= 3; nd++) {
         m.dim = nd;
-        const int n = calc_Se_n(nd);
+        const int n = calc_sys_elem_n(nd);
         ii[n] = -1;
         jj[n] = -1;
         printf_ii("elems", nd + 1, elems);
-        calc_Se(&m, ii, jj, ss);
+        calc_sys_elem(&m, ii, jj, ss);
         printf_ii("ii", n, ii);
         printf_ii("jj", n, jj);
         int k = 0;
@@ -626,7 +626,7 @@ void test_shape_2d(void ** state)
         qsort(&(e[i * 3]), 3, sizeof(int), &cmp_int_tests);
     }
     printf_mat_int("elems (sorted)", 2, 3, e);
-    const int nnz = calc_Se_n(2) * 2;
+    const int nnz = calc_sys_elem_n(2) * 2;
     int * ii = malloc(sizeof(int) * nnz);
     int * jj = malloc(sizeof(int) * nnz);
     double * ss = malloc(sizeof(double) * nnz);
@@ -637,11 +637,11 @@ void test_shape_2d(void ** state)
     m.n_elems = 2;
     m.n_nodes = 4;
     for(int gnd = 0; gnd < 7; gnd++ ) {
-        int ret = calc_Se(&m, ii, jj, ss);
+        int ret = calc_sys_elem(&m, ii, jj, ss);
         assert_int_equal(ret, 0);
         size_t nnz_local = nnz;
-        int ngnd = calc_gnd(gnd, &nnz_local, ii, jj, ss);
-        printf("calc_gnd() gnd node #%d: deleted %d entries\n", gnd, ngnd);
+        int ngnd = calc_sys_gnd(gnd, &nnz_local, ii, jj, ss);
+        printf("calc_sys_gnd() gnd node #%d: deleted %d entries\n", gnd, ngnd);
         if (gnd > 0 && gnd <= 4 ) {
             assert_int_not_equal(ngnd, 0);
         }
@@ -652,12 +652,12 @@ void test_shape_2d(void ** state)
     /* intentionally try building a bad mesh */
     {
         m.elems = &(elems[0][0]);
-        int ret = calc_Se(&m, ii, jj, ss);
+        int ret = calc_sys_elem(&m, ii, jj, ss);
         assert_int_equal(ret, 1);
     }
     {
         m.elems = &(elems[2][0]);
-        int ret = calc_Se(&m, ii, jj, ss);
+        int ret = calc_sys_elem(&m, ii, jj, ss);
         assert_int_equal(ret, 2);
     }
     /* clean up */
@@ -701,7 +701,7 @@ void test_shape_3d(void ** state)
         qsort(&(e[i * 4]), 4, sizeof(int), &cmp_int_tests);
     }
     printf_mat_int("elems (sorted)", 6, 4, e);
-    const int nnz = calc_Se_n(3) * 6;
+    const int nnz = calc_sys_elem_n(3) * 6;
     int * ii = malloc(sizeof(int) * nnz);
     int * jj = malloc(sizeof(int) * nnz);
     double * ss = malloc(sizeof(double) * nnz);
@@ -712,11 +712,11 @@ void test_shape_3d(void ** state)
     m.n_elems = 6;
     m.n_nodes = 8;
     for(int gnd = 0; gnd < 11; gnd++ ) {
-        int ret = calc_Se(&m, ii, jj, ss);
+        int ret = calc_sys_elem(&m, ii, jj, ss);
         assert_int_equal(ret, 0);
         size_t nnz_local = nnz;
-        int ngnd = calc_gnd(gnd, &nnz_local, ii, jj, ss);
-        printf("calc_gnd() gnd node #%d: deleted %d entries\n", gnd, ngnd);
+        int ngnd = calc_sys_gnd(gnd, &nnz_local, ii, jj, ss);
+        printf("calc_sys_gnd() gnd node #%d: deleted %d entries\n", gnd, ngnd);
         if (gnd > 0 && gnd <= 8 ) {
             assert_int_not_equal(ngnd, 0);
         }
@@ -727,12 +727,12 @@ void test_shape_3d(void ** state)
     /* intentionally try building a bad mesh */
     {
         m.elems = &(elems[0][0]);
-        int ret = calc_Se(&m, ii, jj, ss);
+        int ret = calc_sys_elem(&m, ii, jj, ss);
         assert_int_equal(ret, 1);
     }
     {
         m.elems = &(elems[2][0]);
-        int ret = calc_Se(&m, ii, jj, ss);
+        int ret = calc_sys_elem(&m, ii, jj, ss);
         assert_int_equal(ret, 6);
     }
     /* clean up */
@@ -920,13 +920,13 @@ void test_2d_resistor (void ** state)
     m.surfaceelems = &(se[0][0]);
     m.n_se = 4;
     const int gnd = 1;
-    size_t nnz = calc_Se_n(2) * m.n_elems;
+    size_t nnz = calc_sys_elem_n(2) * m.n_elems;
     int * ii = malloc(sizeof(int) * nnz);
     int * jj = malloc(sizeof(int) * nnz);
     double * ss = malloc(sizeof(double) * nnz);
-    int ret = calc_Se(&m, ii, jj, ss);
+    int ret = calc_sys_elem(&m, ii, jj, ss);
     assert_int_equal(ret, 0);
-    int ngnd = calc_gnd(gnd, &nnz, ii, jj, ss);
+    int ngnd = calc_sys_gnd(gnd, &nnz, ii, jj, ss);
     assert_int_not_equal(ngnd, 0);
     double bb[4] = {0}; /* nodes */
     ret = calc_stim_neumann(&m, +1, 1, gnd, &(bb[0]));
@@ -1037,13 +1037,13 @@ void test_3d_resistor (void ** state)
     m.surfaceelems = &(se[0][0]);
     m.n_se = 12;
     const int gnd = 1;
-    size_t nnz = calc_Se_n(3) * m.n_elems;
+    size_t nnz = calc_sys_elem_n(3) * m.n_elems;
     int * ii = malloc(sizeof(int) * nnz);
     int * jj = malloc(sizeof(int) * nnz);
     double * ss = malloc(sizeof(double) * nnz);
-    int ret = calc_Se(&m, ii, jj, ss);
+    int ret = calc_sys_elem(&m, ii, jj, ss);
     assert_int_equal(ret, 0);
-    int ngnd = calc_gnd(gnd, &nnz, ii, jj, ss);
+    int ngnd = calc_sys_gnd(gnd, &nnz, ii, jj, ss);
     assert_int_not_equal(ngnd, 0);
     double bb[8] = {0}; /* nodes */
     ret = calc_stim_neumann(&m, +1, 1, gnd, &(bb[0]));
