@@ -783,14 +783,18 @@ void test_bc_2d_neumann (void ** state)
         printf("gnd = %d\n", gnd);
         printf_mat_double("b", 4, 1, &(b[0]));
         if(gnd == 0) {
-           double bc1 = 0, bc2 = 0;
-           for(int i=0; i<m.n_nodes; i++) {
-              if(sgn(b[i])>0) bc1 += b[i];
-              else bc2 += b[i];
-           }
-           printf("∑ (b>0) = %g, ∑ (b<0) = %g\n",bc1,bc2);
-           assert_float_equal(bc1, 1, DBL_EPSILON);
-           assert_float_equal(bc2, -1, DBL_EPSILON);
+            double bc1 = 0, bc2 = 0;
+            for(int i = 0; i < m.n_nodes; i++) {
+                if(sgn(b[i]) > 0) {
+                    bc1 += b[i];
+                }
+                else {
+                    bc2 += b[i];
+                }
+            }
+            printf("∑ (b>0) = %g, ∑ (b<0) = %g\n", bc1, bc2);
+            assert_float_equal(bc1, 1, DBL_EPSILON);
+            assert_float_equal(bc2, -1, DBL_EPSILON);
         }
         assert_mat_equal( 4, 1, b, expect, DBL_EPSILON);
     }
@@ -856,7 +860,9 @@ void test_bc_3d_neumann (void ** state)
                            };
         int expect_ret = 12; /* no gnd node case */
         /* how many bc nodes are on gnd node? look at |expect*6| */
-        if(gnd != 0) expect_ret -= round(fabs(expect[gnd-1]*6));
+        if(gnd != 0) {
+            expect_ret -= round(fabs(expect[gnd - 1] * 6));
+        }
         if(gnd > 0) {
             expect[gnd - 1] = 0;
         }
@@ -864,14 +870,18 @@ void test_bc_3d_neumann (void ** state)
         printf_mat_double("b", 8, 1, &(b[0]));
         printf("gnd = %d, expect %d local nodes\n", gnd, expect_ret);
         if(gnd == 0) {
-           double bc1 = 0, bc2 = 0;
-           for(int i=0; i<m.n_nodes; i++) {
-              if(sgn(b[i])>0) bc1 += b[i];
-              else bc2 += b[i];
-           }
-           printf("∑ (b>0) = %g, ∑ (b<0) = %g\n",bc1,bc2);
-           assert_float_equal(bc1, 1, DBL_EPSILON);
-           assert_float_equal(bc2, -1, DBL_EPSILON);
+            double bc1 = 0, bc2 = 0;
+            for(int i = 0; i < m.n_nodes; i++) {
+                if(sgn(b[i]) > 0) {
+                    bc1 += b[i];
+                }
+                else {
+                    bc2 += b[i];
+                }
+            }
+            printf("∑ (b>0) = %g, ∑ (b<0) = %g\n", bc1, bc2);
+            assert_float_equal(bc1, 1, DBL_EPSILON);
+            assert_float_equal(bc2, -1, DBL_EPSILON);
         }
         assert_mat_equal( 8, 1, b, expect, 10 * DBL_EPSILON);
         assert_int_equal(ret, expect_ret);

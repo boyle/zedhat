@@ -388,17 +388,17 @@ static double calc_elem_area(const int nd, double nodes[nd][nd])
     }
     if(nd == 3) {
         /* cross product of lengths c = a x b*/
-       // printf("%gi\n",nodes[0][1]*nodes[1][2] - nodes[0][2]*nodes[1][1]);
-       // printf("%gj\n",nodes[0][2]*nodes[1][0] - nodes[0][0]*nodes[1][2]);
-       // printf("%gk\n",nodes[0][0]*nodes[1][1] - nodes[0][1]*nodes[1][0]);
-       const double tmp[3] = {
-        cross3i(nodes[0], nodes[1]),
-        cross3j(nodes[0], nodes[1]),
-        cross3k(nodes[0], nodes[1]),
-       };
+        // printf("%gi\n",nodes[0][1]*nodes[1][2] - nodes[0][2]*nodes[1][1]);
+        // printf("%gj\n",nodes[0][2]*nodes[1][0] - nodes[0][0]*nodes[1][2]);
+        // printf("%gk\n",nodes[0][0]*nodes[1][1] - nodes[0][1]*nodes[1][0]);
+        const double tmp[3] = {
+            cross3i(nodes[0], nodes[1]),
+            cross3j(nodes[0], nodes[1]),
+            cross3k(nodes[0], nodes[1]),
+        };
         // printf("[0] x [1]: "); printf_vec(nd, tmp);
-        assert(dot3(tmp,nodes[0]) == 0); /* confirm c . a = 0 */
-        assert(dot3(tmp,nodes[1]) == 0); /* confirm c . b = 0 */
+        assert(dot3(tmp, nodes[0]) == 0); /* confirm c . a = 0 */
+        assert(dot3(tmp, nodes[1]) == 0); /* confirm c . b = 0 */
         nodes[0][0] = sum_sq3(tmp);
         // printf("∑[0]²: "); printf_vec(1, nodes[0]);
     }
