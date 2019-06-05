@@ -5,7 +5,7 @@
 #include <stdbool.h> /* bool */
 #include "config.h"
 
-enum matrix_type {IDENTITY, /* DIAGONAL, */ DENSE, /* DENSE_SYMMETRIC, CSR, CSR_SYMMETRIC, CSC, CSC_SYMMETRIC, */ COO, COO_SYMMETRIC, MAX_MATRIX_TYPE};
+enum matrix_type {IDENTITY, /* DIAGONAL, */ DENSE, /* DENSE_SYMMETRIC, CSR, CSR_SYMMETRIC,*/ CSC, CSC_SYMMETRIC, COO, COO_SYMMETRIC, MAX_MATRIX_TYPE};
 /* NOTE: *_SYMMETRIC values are immediately converted to their base type and set/check the bool symmetric flag */
 
 typedef struct matrix_sparse_type {
@@ -39,5 +39,6 @@ int malloc_matrix_data(matrix * M, enum matrix_type type, const size_t rows, con
 matrix * free_matrix(matrix * M);
 //void matrix_transpose(matrix * M);
 void printf_matrix(matrix const * const A);
+int coo_to_csc(matrix * A);
 
 #endif

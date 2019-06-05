@@ -4,11 +4,15 @@
 #include <stdlib.h> /* strtof */
 #include <errno.h> /* strtof -> errno */
 #include <getopt.h>
+#include <assert.h> /* assert */
+#include <math.h> /* INFINITY */
 #include "argv.h"
 
 int parse_argv(int argc, char ** argv, args_t * args)
 {
     int err = (argc <= 1);
+    assert(args != NULL);
+    args->tol = INFINITY;
     while (1) {
         static struct option long_options[] = {
             {"help",    no_argument, 0, 'h'},

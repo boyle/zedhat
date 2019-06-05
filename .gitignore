@@ -26,6 +26,7 @@ tests/libcholmod_solve
 tests/matrix
 tests/model
 tests/file
+tests/fwd
 testsuite
 testsuite.dir/
 zedhat

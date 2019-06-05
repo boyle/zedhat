@@ -34,7 +34,7 @@ void * _mock_test_malloc(size_t size, const char * file, const int line)
 
 #define assert_mat_equal(m, n, a, b, delta) do { \
    for (int i=0; i < m*n; i++) { \
-         assert_float_equal(a[i],b[i],delta); \
+         assert_double_equal(a[i],b[i],delta); \
    }\
 } while(0)
 
@@ -93,9 +93,9 @@ void test_det2(void ** state)
     printf("|At| = %g\n", det(2, At));
     printf("|B| = %g\n", det(2, B));
     printf("|AB| = %g\n", det(2, AB));
-    assert_float_equal( det(2, I), 1.0, 0.0);
-    assert_float_equal( det(2, A), det(2, At), 0.0);
-    assert_float_equal( det(2, AB), det(2, A)*det(2, B), 2e4 * DBL_EPSILON);
+    assert_double_equal( det(2, I), 1.0, 0.0);
+    assert_double_equal( det(2, A), det(2, At), 0.0);
+    assert_double_equal( det(2, AB), det(2, A)*det(2, B), 2e4 * DBL_EPSILON);
     printf("checks |I| = 1; |A| = |At|; |A*B| = |A|*|B|\n");
 }
 
@@ -134,16 +134,16 @@ void test_det3(void ** state)
     printf("|At| = %g\n", det(3, At));
     printf("|B| = %g\n", det(3, B));
     printf("|AB| = %g\n", det(3, AB));
-    assert_float_equal( det(3, I), 1.0, 0.0);
-    assert_float_equal( det(3, A), det(3, At), 0.0);
-    assert_float_equal( det(3, AB), det(3, A)*det(3, B), 2e4 * DBL_EPSILON);
+    assert_double_equal( det(3, I), 1.0, 0.0);
+    assert_double_equal( det(3, A), det(3, At), 0.0);
+    assert_double_equal( det(3, AB), det(3, A)*det(3, B), 2e4 * DBL_EPSILON);
     printf("checks |I| = 1; |A| = |At|; |A*B| = |A|*|B|\n");
     /* compare to simple_det3 when n == 3 */
-    assert_float_equal( det(3, I), simple_det3(3, I), 0.0);
-    assert_float_equal( det(3, A), simple_det3(3, A), 0.0);
-    assert_float_equal( det(3, B), simple_det3(3, B), 0.0);
-    assert_float_equal( det(3, At), simple_det3(3, At), 0.0);
-    assert_float_equal( det(3, AB), simple_det3(3, AB), 0.0);
+    assert_double_equal( det(3, I), simple_det3(3, I), 0.0);
+    assert_double_equal( det(3, A), simple_det3(3, A), 0.0);
+    assert_double_equal( det(3, B), simple_det3(3, B), 0.0);
+    assert_double_equal( det(3, At), simple_det3(3, At), 0.0);
+    assert_double_equal( det(3, AB), simple_det3(3, AB), 0.0);
 }
 
 void test_det4(void ** state)
@@ -185,9 +185,9 @@ void test_det4(void ** state)
     printf("|At| = %g\n", det(4, At));
     printf("|B| = %0.16g\n", det(4, B));
     printf("|AB| = %0.16g\n", det(4, AB));
-    assert_float_equal( det(4, I), 1.0, 0.0);
-    assert_float_equal( det(4, A), det(4, At), 0.0);
-    assert_float_equal( det(4, AB), det(4, A)*det(4, B), 2e5 * DBL_EPSILON);
+    assert_double_equal( det(4, I), 1.0, 0.0);
+    assert_double_equal( det(4, A), det(4, At), 0.0);
+    assert_double_equal( det(4, AB), det(4, A)*det(4, B), 2e5 * DBL_EPSILON);
     printf("checks |I| = 1; |A| = |At|; |A*B| = |A|*|B|\n");
 }
 
@@ -582,8 +582,8 @@ void test_shape_Se_ij(void ** state)
         int k = 0;
         for(int i = 0; i < nd + 1; i++ ) {
             for(int j = i; j < nd + 1; j++ ) {
-                assert_int_equal(ii[k], i);
-                assert_int_equal(jj[k], j);
+                assert_int_equal(ii[k], j);
+                assert_int_equal(jj[k], i);
                 k++;
             }
         }
@@ -608,24 +608,14 @@ void test_shape_2d(void ** state)
         {1, 0},
         {0, 1},
         {1, 1},
-        {0, 0}, /* guard */
     };
     printf_mat_double("nodes", 4, 2, &(nodes[0][0]));
-    /* TODO currently each row of elems must be sorted
-     * or we won't get an upper triangular matrix */
-    /* Our 'elems' starts at 1 which agrees with netgen */
     int elems[4][3] = { /* from netgen cube.geo */
         {0, 0, 0}, /* guard */
         {2, 1, 4},
         {1, 3, 4},
         {0, 0, 0}, /* guard */
     };
-    int * e = &(elems[1][0]);
-    printf_mat_int("elems", 2, 3, e);
-    for(int i = 0; i < 2; i++) {
-        qsort(&(e[i * 3]), 3, sizeof(int), &cmp_int_tests);
-    }
-    printf_mat_int("elems (sorted)", 2, 3, e);
     const int nnz = calc_sys_elem_n(2) * 2;
     int * ii = malloc(sizeof(int) * nnz);
     int * jj = malloc(sizeof(int) * nnz);
@@ -636,18 +626,11 @@ void test_shape_2d(void ** state)
     m.nodes = &(nodes[0][0]);
     m.n_elems = 2;
     m.n_nodes = 4;
-    for(int gnd = 0; gnd < 7; gnd++ ) {
+    for(int gnd = 0; gnd < m.n_nodes; gnd++ ) {
+        printf("gnd = %d\n", gnd);
         int ret = calc_sys_elem(&m, ii, jj, ss);
         assert_int_equal(ret, 0);
-        size_t nnz_local = nnz;
-        int ngnd = calc_sys_gnd(gnd, &nnz_local, ii, jj, ss);
-        printf("calc_sys_gnd() gnd node #%d: deleted %d entries\n", gnd, ngnd);
-        if (gnd > 0 && gnd <= 4 ) {
-            assert_int_not_equal(ngnd, 0);
-        }
-        else {
-            assert_int_equal(ngnd, 0);
-        }
+        calc_sys_gnd(gnd + 1, nnz, ii, jj, ss);
     }
     /* intentionally try building a bad mesh */
     {
@@ -679,12 +662,8 @@ void test_shape_3d(void ** state)
         {1, 0, 1},
         {0, 1, 1},
         {1, 1, 1},
-        {0, 0, 0}, /* guard */
     };
     printf_mat_double("nodes", 8, 3, &(nodes[0][0]));
-    /* TODO currently each row of elems must be sorted
-     * or we won't get an upper triangular matrix */
-    /* Our 'elems' starts at 1 which agrees with netgen */
     int elems[8][4] = { /* from netgen cube.geo */
         {0, 0, 0, 0}, /* guard */
         {2, 5, 1, 4},
@@ -695,12 +674,6 @@ void test_shape_3d(void ** state)
         {8, 4, 3, 5},
         {0, 0, 0, 0}, /* guard */
     };
-    int * e = &(elems[1][0]);
-    printf_mat_int("elems", 6, 4, e);
-    for(int i = 0; i < 6; i++) {
-        qsort(&(e[i * 4]), 4, sizeof(int), &cmp_int_tests);
-    }
-    printf_mat_int("elems (sorted)", 6, 4, e);
     const int nnz = calc_sys_elem_n(3) * 6;
     int * ii = malloc(sizeof(int) * nnz);
     int * jj = malloc(sizeof(int) * nnz);
@@ -711,18 +684,11 @@ void test_shape_3d(void ** state)
     m.nodes = &(nodes[0][0]);
     m.n_elems = 6;
     m.n_nodes = 8;
-    for(int gnd = 0; gnd < 11; gnd++ ) {
+    for(int gnd = 0; gnd < m.n_nodes; gnd++ ) {
+        printf("gnd = %d\n", gnd);
         int ret = calc_sys_elem(&m, ii, jj, ss);
         assert_int_equal(ret, 0);
-        size_t nnz_local = nnz;
-        int ngnd = calc_sys_gnd(gnd, &nnz_local, ii, jj, ss);
-        printf("calc_sys_gnd() gnd node #%d: deleted %d entries\n", gnd, ngnd);
-        if (gnd > 0 && gnd <= 8 ) {
-            assert_int_not_equal(ngnd, 0);
-        }
-        else {
-            assert_int_equal(ngnd, 0);
-        }
+        calc_sys_gnd(gnd + 1, nnz, ii, jj, ss);
     }
     /* intentionally try building a bad mesh */
     {
@@ -766,8 +732,13 @@ void test_bc_2d_neumann (void ** state)
     m.n_nodes = 4;
     for (int gnd = 0; gnd <= 4; gnd++) {
         double b[4] = {0}; /* nodes */
-        int ret = calc_stim_neumann(&m, +1, 1, gnd, &(b[0]));
-        ret += calc_stim_neumann(&m, -1, 2, gnd, &(b[0]));
+        int ret = calc_stim_neumann(&m, +1, 1, &(b[0]));
+        ret += calc_stim_neumann(&m, -1, 2, &(b[0]));
+        if(gnd > 0) {
+            model mdl = {.fwd = m};
+            calc_stim_gnd(&mdl, gnd, &(b[0]));
+            ret--;
+        }
         double expect[4] = { +0.5,
                              -0.5,
                              +0.5,
@@ -793,8 +764,8 @@ void test_bc_2d_neumann (void ** state)
                 }
             }
             printf("∑ (b>0) = %g, ∑ (b<0) = %g\n", bc1, bc2);
-            assert_float_equal(bc1, 1, DBL_EPSILON);
-            assert_float_equal(bc2, -1, DBL_EPSILON);
+            assert_double_equal(bc1, 1, DBL_EPSILON);
+            assert_double_equal(bc2, -1, DBL_EPSILON);
         }
         assert_mat_equal( 4, 1, b, expect, DBL_EPSILON);
     }
@@ -846,9 +817,15 @@ void test_bc_3d_neumann (void ** state)
     m.n_se = 12;
     m.n_nodes = 8;
     for (int gnd = 0; gnd <= 8; gnd++) {
+        printf("gnd = %d\n", gnd);
         double b[8] = {0}; /* nodes */
-        int ret = calc_stim_neumann(&m, +1, 1, gnd, &(b[0]));
-        ret += calc_stim_neumann(&m, -1, 5, gnd, &(b[0]));
+        int ret = calc_stim_neumann(&m, +1, 1, &(b[0]));
+        ret += calc_stim_neumann(&m, -1, 5, &(b[0]));
+        assert_int_equal(ret, 12);
+        if(gnd > 0) {
+            model mdl = {.fwd = m};
+            calc_stim_gnd(&mdl, gnd, &(b[0]));
+        }
         double expect[8] = { +2.0 / 6.0,
                              -2.0 / 6.0,
                              +1.0 / 6.0,
@@ -858,17 +835,11 @@ void test_bc_3d_neumann (void ** state)
                              +2.0 / 6.0,
                              -2.0 / 6.0,
                            };
-        int expect_ret = 12; /* no gnd node case */
-        /* how many bc nodes are on gnd node? look at |expect*6| */
-        if(gnd != 0) {
-            expect_ret -= round(fabs(expect[gnd - 1] * 6));
-        }
         if(gnd > 0) {
             expect[gnd - 1] = 0;
         }
         printf_mat_double("expect", 8, 1, &(expect[0]));
         printf_mat_double("b", 8, 1, &(b[0]));
-        printf("gnd = %d, expect %d local nodes\n", gnd, expect_ret);
         if(gnd == 0) {
             double bc1 = 0, bc2 = 0;
             for(int i = 0; i < m.n_nodes; i++) {
@@ -880,11 +851,10 @@ void test_bc_3d_neumann (void ** state)
                 }
             }
             printf("∑ (b>0) = %g, ∑ (b<0) = %g\n", bc1, bc2);
-            assert_float_equal(bc1, 1, DBL_EPSILON);
-            assert_float_equal(bc2, -1, DBL_EPSILON);
+            assert_double_equal(bc1, 1, DBL_EPSILON);
+            assert_double_equal(bc2, -1, DBL_EPSILON);
         }
         assert_mat_equal( 8, 1, b, expect, 10 * DBL_EPSILON);
-        assert_int_equal(ret, expect_ret);
     }
 }
 
@@ -926,11 +896,13 @@ void test_2d_resistor (void ** state)
     double * ss = malloc(sizeof(double) * nnz);
     int ret = calc_sys_elem(&m, ii, jj, ss);
     assert_int_equal(ret, 0);
-    int ngnd = calc_sys_gnd(gnd, &nnz, ii, jj, ss);
-    assert_int_not_equal(ngnd, 0);
+    calc_sys_gnd(gnd, nnz, ii, jj, ss);
     double bb[4] = {0}; /* nodes */
-    ret = calc_stim_neumann(&m, +1, 1, gnd, &(bb[0]));
-    ret += calc_stim_neumann(&m, -1, 2, gnd, &(bb[0]));
+    ret = calc_stim_neumann(&m, +1, 1, &(bb[0]));
+    ret += calc_stim_neumann(&m, -1, 2, &(bb[0]));
+    model mdl = {.fwd = m};
+    calc_stim_gnd(&mdl, gnd, &(bb[0]));
+    ret--;
     printf_mat_double("bb", 4, 1, &(bb[0]));
     /* fwd_solve */
     cholmod_dense * x, *b, *r ;
@@ -961,7 +933,7 @@ void test_2d_resistor (void ** state)
     double norm = cholmod_norm_dense (r, 0, &c);
     printf ("norm(b-Ax) = %8.1e\n",
             cholmod_norm_dense (r, 0, &c)) ;        /* print norm(r) */
-    assert_float_equal(norm, 0.0, DBL_EPSILON);
+    assert_double_equal(norm, 0.0, DBL_EPSILON);
     double * soln = x->x;
     printf_mat_double("x", 4, 1, soln);
     /* check x */
@@ -995,9 +967,6 @@ void test_3d_resistor (void ** state)
         {1, 1, 1},
     };
     printf_mat_double("nodes", 8, 3, &(nodes[0][0]));
-    /* TODO currently each row of elems must be sorted
-     * or we won't get an upper triangular matrix */
-    /* Our 'elems' starts at 1 which agrees with netgen */
     int elems[6][4] = { /* from netgen cube.geo */
         {2, 5, 1, 4},
         {1, 5, 3, 4},
@@ -1006,12 +975,6 @@ void test_3d_resistor (void ** state)
         {2, 6, 5, 4},
         {8, 4, 3, 5},
     };
-    int * e = &(elems[0][0]);
-    printf_mat_int("elems", 6, 4, e);
-    for(int i = 0; i < 6; i++) {
-        qsort(&(e[i * 4]), 4, sizeof(int), &cmp_int_tests);
-    }
-    printf_mat_int("elems (sorted)", 6, 4, e);
     int bc[12] = {2, 2, 1, 1, 3, 3, 4, 4, 5, 5, 6, 6};
     int se[12][3] = {
         {1, 2, 5},
@@ -1043,11 +1006,13 @@ void test_3d_resistor (void ** state)
     double * ss = malloc(sizeof(double) * nnz);
     int ret = calc_sys_elem(&m, ii, jj, ss);
     assert_int_equal(ret, 0);
-    int ngnd = calc_sys_gnd(gnd, &nnz, ii, jj, ss);
-    assert_int_not_equal(ngnd, 0);
+    calc_sys_gnd(gnd, nnz, ii, jj, ss);
     double bb[8] = {0}; /* nodes */
-    ret = calc_stim_neumann(&m, +1, 1, gnd, &(bb[0]));
-    ret += calc_stim_neumann(&m, -1, 2, gnd, &(bb[0]));
+    ret = calc_stim_neumann(&m, +1, 1, &(bb[0]));
+    ret += calc_stim_neumann(&m, -1, 2, &(bb[0]));
+    model mdl = {.fwd = m};
+    calc_stim_gnd(&mdl, gnd, &(bb[0]));
+    ret--;
     printf_mat_double("bb", 8, 1, &(bb[0]));
     /* fwd_solve */
     cholmod_dense * x, *b, *r ;
@@ -1078,7 +1043,7 @@ void test_3d_resistor (void ** state)
     double norm = cholmod_norm_dense (r, 0, &c);
     printf ("norm(b-Ax) = %8.1e\n",
             norm) ;        /* print norm(r) */
-    assert_float_equal(norm, 0.0, 2 * DBL_EPSILON);
+    assert_double_equal(norm, 0.0, 2 * DBL_EPSILON);
     double * soln = x->x;
     printf_mat_double("x", m.n_nodes, 1, soln);
     /* check x */
@@ -1095,6 +1060,111 @@ void test_3d_resistor (void ** state)
     free(ii);
     free(jj);
     free(ss);
+}
+
+static void printf_bc_se(model const * const mdl)
+{
+    const int dim = mdl->fwd.dim;
+    printf("bc");
+    for(int i = 0; i < dim; i++) {
+        printf(" se[%d]", i);
+    }
+    printf("\n");
+    for(int i = 0; i < mdl->fwd.n_se; i++) {
+        printf("  %2d", mdl->fwd.bc[i]);
+        for(int j = 0; j < dim; j++) {
+            printf("  %2d", mdl->fwd.surfaceelems[i * dim + j]);
+        }
+        printf("\n");
+    }
+}
+
+void test_elec_to_sys (void ** state)
+{
+    model mdl = {{0}};
+    assert_int_equal(calc_elec_to_sys_map(&mdl), 1);
+    mdl.fwd.dim = 2;
+    mdl.fwd.n_nodes = 100;
+    mdl.fwd.n_se = 4;
+    int se[4][2] = {{10, 11}, {30, 31}, {40, 41}, {20, 0}};
+    int bc[4] = {2, 0, 4, 3};
+    mdl.fwd.surfaceelems = &(se[0][0]);
+    mdl.fwd.bc = &(bc[0]);
+    will_return(_mock_test_malloc, 1);
+    assert_int_equal(calc_elec_to_sys_map(&mdl), 0);
+    will_return(_mock_test_malloc, 0);
+    assert_int_equal(calc_elec_to_sys_map(&mdl), 1);
+    printf_bc_se(&mdl);
+    printf("elec_to_sys (n_nodes=%d, n_elec=%d)\n", mdl.fwd.n_nodes, mdl.n_elec);
+    for(int i = 0; i < mdl.n_elec; i++) {
+        printf("  [%d] %d\n", i, mdl.elec_to_sys[i]);
+    }
+    assert_int_equal(mdl.n_elec, 3);
+    assert_int_equal(mdl.elec_to_sys[0], 100 + 1 - 1);
+    assert_int_equal(mdl.elec_to_sys[1], 20 - 1);
+    assert_int_equal(mdl.elec_to_sys[2], 100 + 2 - 1);
+    test_free(mdl.elec_to_sys);
+}
+
+void test_check_model (void ** state)
+{
+    model mdl = {{0}};
+    assert_int_equal(calc_elec_to_sys_map(&mdl), 1);
+    /* in 2D */
+    mdl.fwd.dim = 2;
+    mdl.fwd.n_nodes = 100;
+    mdl.fwd.n_se = 4;
+    int se2[4][2] = {{10, 11}, {30, 31}, {40, 41}, {20, 0}};
+    int bc[4] = {2, 0, 1, 3};
+    mdl.fwd.surfaceelems = &(se2[0][0]);
+    mdl.fwd.bc = &(bc[0]);
+    printf_bc_se(&mdl);
+    printf("happy\n");
+    assert_int_equal(check_model(&mdl), 1);
+    /* skipped BC# */
+    bc[2] = 4;
+    printf_bc_se(&mdl);
+    assert_int_equal(check_model(&mdl), 0);
+    bc[2] = 1;
+    assert_int_equal(check_model(&mdl), 1);
+    /* PEM but with node#=0 */
+    se2[0][1] = 0;
+    assert_int_equal(check_model(&mdl), 1);
+    /* mixed PEM/CEM */
+    bc[0] = 1;
+    printf_bc_se(&mdl);
+    assert_int_equal(check_model(&mdl), 0);
+    /* PEM with duplicate BC=1 */
+    se2[2][1] = 0;
+    printf_bc_se(&mdl);
+    assert_int_equal(check_model(&mdl), 0);
+    bc[0] = 2;
+    se2[2][1] = 41;
+    assert_int_equal(check_model(&mdl), 1);
+    /* PEM but with node#=0 for other than first node */
+    se2[0][0] = 0;
+    se2[0][1] = 10;
+    printf_bc_se(&mdl);
+    assert_int_equal(check_model(&mdl), 0);
+    se2[0][0] = 10;
+    se2[0][1] = 11;
+    assert_int_equal(check_model(&mdl), 1);
+    /* in 3D */
+    mdl.fwd.dim = 3;
+    mdl.fwd.n_nodes = 100;
+    mdl.fwd.n_se = 2;
+    int se3[2][3] = {{10, 11, 12}, {30, 31, 32}};
+    bc[0] = 0;
+    bc[1] = 1;
+    mdl.fwd.surfaceelems = &(se3[0][0]);
+    mdl.fwd.bc = &(bc[0]);
+    printf_bc_se(&mdl);
+    printf("happy\n");
+    assert_int_equal(check_model(&mdl), 1);
+    /* bad num nodes (2) != CEM or PEM */
+    se3[1][1] = 0;
+    printf_bc_se(&mdl);
+    assert_int_equal(check_model(&mdl), 0);
 }
 
 int main(void)
@@ -1117,6 +1187,8 @@ int main(void)
         cmocka_unit_test(test_bc_3d_neumann),
         cmocka_unit_test(test_2d_resistor),
         cmocka_unit_test(test_3d_resistor),
+        cmocka_unit_test(test_elec_to_sys),
+        cmocka_unit_test(test_check_model),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

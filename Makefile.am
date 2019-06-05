@@ -4,7 +4,7 @@ AUTOMAKE_OPTIONS = foreign
 
 # the actual program to be installed at the end
 bin_PROGRAMS = zedhat
-zedhat_SOURCES = src/zedhat.c src/argv.c src/file.c src/model.c src/matrix.c
+zedhat_SOURCES = src/zedhat.c src/argv.c src/file.c src/model.c src/matrix.c src/fwd.c
 
 AM_CFLAGS = $(CFLAGS) $(CODE_COVERAGE_CFLAGS) $(WARN_CFLAGS)
 AM_CFLAGS += -I$(top_srcdir)/src
@@ -14,7 +14,7 @@ LIBS += $(CODE_COVERAGE_LIBS) $(UMFPACK_LIBS) $(CHOLMOD_LIBS) $(LAPACKE_LIBS) $(
 AM_LDFLAGS = $(LDFLAGS) $(WARN_LDFLAGS)
 
 # header files that need to be distributed but not installed
-noinst_HEADERS = src/argv.h src/matrix.h src/model.h src/file.h
+noinst_HEADERS = src/argv.h src/matrix.h src/model.h src/file.h src/fwd.h
 
 dist_man_MANS = man/zedhat.1
 
@@ -27,11 +27,12 @@ EXTRA_DIST = $(bin_SCRIPTS) \
 
 BUILT_TESTS = tests/libcblas_dgemm tests/liblapacke_dgels \
 			  tests/libumfpack_solve tests/libcholmod_solve \
-			  tests/file tests/model tests/matrix
+			  tests/file tests/model tests/matrix tests/fwd
 check_PROGRAMS = $(BUILT_TESTS)
 #tests_unit_perftimer_SOURCES = tests/unit-perftimer.c src/perftimer.c
 #tests_unit_perftimer_CPPFLAGS = -I$(srcdir)/src
-#readngvol_SOURCES = src/readngvol.c
+tests_fwd_SOURCES = tests/fwd.c src/fwd.c src/model.c src/matrix.c tests/cmocka.c
+tests_fwd_CFLAGS = -DUNIT_TESTING $(AM_CFLAGS)
 tests_file_SOURCES = tests/file.c src/file.c src/model.c tests/cmocka.c
 tests_file_CFLAGS = -DUNIT_TESTING  $(AM_CFLAGS)
 tests_model_SOURCES = tests/model.c src/model.c tests/cmocka.c

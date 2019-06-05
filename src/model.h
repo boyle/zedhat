@@ -2,6 +2,8 @@
 #ifndef __MODEL_H__
 #define __MODEL_H__
 
+#include <stddef.h> /* size_t */
+
 typedef struct mesh_type {
     int dim;
     double * nodes; /* n_nodes x dim */
@@ -17,6 +19,8 @@ typedef struct mesh_type {
 #define MAX_MODEL_FORMAT 1
 typedef struct model_type {
     mesh fwd; /* forward model */
+    int n_elec; /* number of electrodes */
+    int * elec_to_sys; /* electrode# to system matrix row/col# */
     int n_data [2]; /* number of data measurements */
     int n_params [2]; /* number of image frames */
     int n_stimmeas; /* number of stimmeas measurements*/
@@ -28,6 +32,7 @@ typedef struct model_type {
 
 model * malloc_model();
 void * free_model(model * m);
+void reset_model(model * m);
 /* these handle free-ing of any old data and then malloc of new mesh variables */
 int set_model_data(model * m, int rows, int cols);
 int set_model_params(model * m, int rows, int cols);
@@ -38,10 +43,21 @@ int set_mesh_nodes(mesh * m, int n_nodes);
 int set_mesh_elems(mesh * m, int n_elems);
 int set_mesh_surfaceelems(mesh * m, int n_se);
 
+int calc_elec_to_sys_map(model * m);
+
 double det(int n, double A[n][n]);
 double * inv(int n, double A[n][n]);
+int calc_sys_size(model const * const m);
+size_t calc_sys_nnz(model const * const m);
 int calc_sys_elem_n(const int nd);
+int calc_sys_cem_n(const int nd);
 int calc_sys_elem(mesh const * const mdl, int * ii, int * jj, double * Se);
-int calc_sys_gnd(const int gnd, size_t * nnz, int * ii, int * jj, double * Se);
-int calc_stim_neumann(mesh const * const m, double amp, int bc, int gnd, double * b);
+int calc_sys_cem(mesh const * const m, int bc, double zc, int cem_node, int Se_idx, int * ii, int * jj, double * Se);
+void calc_sys_gnd(const int gnd, size_t nnz, int * ii, int * jj, double * Se);
+int calc_stim_neumann(mesh const * const m, double amp, int bc, double * b);
+void calc_stim_gnd(model const * const m, int gnd, double * b);
+void calc_stim(model const * const m, int idx, double * b);
+double calc_meas(model const * const m, int idx, double * x);
+
+int check_model(model const * const m);
 #endif

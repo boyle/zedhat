@@ -27,7 +27,7 @@ extern int _mock_gzeof(gzFile file);
 #define FAILURE 0
 
 #define MAXCHAR 1024
-void gzreadnext(gzFile F, char data[], int n)
+static void gzreadnext(gzFile F, char data[], int n)
 {
     char * ptr = gzgets(F, data, n);
     if(ptr == Z_NULL) {
@@ -56,7 +56,7 @@ typedef struct {
     int cnt;
 } fileformat;
 
-int check_req(const fileformat * f, enum fileformat_req needs)
+static int check_req(const fileformat * f, enum fileformat_req needs)
 {
     for(int i = 0; f[i].section[0]; i++) {
         if((f[i].req >= needs) && (!f[i].cnt)) {
@@ -208,6 +208,7 @@ int readfile_loop(const char filename[], model * m, fileformat * f_list)
     if(m == NULL) {
         return FAILURE;
     }
+    reset_model(m);
     int ret = FAILURE;
     char data[MAXCHAR];
     gzFile F = gzopen(filename, "r");
@@ -270,7 +271,7 @@ __quit:
     return ret;
 }
 
-int readngvol_surfaceelements(const char * data, model * m, mesh * mm, const int se)
+static int readngvol_surfaceelements(const char * data, model * m, mesh * mm, const int se)
 {
     assert(mm != NULL);
     assert(mm->surfaceelems != NULL);
@@ -285,7 +286,7 @@ int readngvol_surfaceelements(const char * data, model * m, mesh * mm, const int
     return (cnt == mm->dim + 1) ? SUCCESS : FAILURE;
 }
 
-int readngvol_points(const char * data, model * m, mesh * mm, const int node)
+static int readngvol_points(const char * data, model * m, mesh * mm, const int node)
 {
     assert(mm != NULL);
     assert(mm->nodes != NULL);
@@ -299,7 +300,7 @@ int readngvol_points(const char * data, model * m, mesh * mm, const int node)
     return (cnt == mm->dim) ? SUCCESS : FAILURE;
 }
 
-int readngvol_volumeelements(const char * data, model * m, mesh * mm, const int elem)
+static int readngvol_volumeelements(const char * data, model * m, mesh * mm, const int elem)
 {
     assert(mm != NULL);
     assert(mm->elems != NULL);
@@ -314,7 +315,7 @@ int readngvol_volumeelements(const char * data, model * m, mesh * mm, const int 
     return (cnt == mm->dim + 2) ? SUCCESS : FAILURE;
 }
 
-int readzh_stimmeas(const char * data, model * m, mesh * mm, const int i)
+static int readzh_stimmeas(const char * data, model * m, mesh * mm, const int i)
 {
     assert(m != NULL);
     assert(m->stimmeas != NULL);
@@ -324,7 +325,7 @@ int readzh_stimmeas(const char * data, model * m, mesh * mm, const int i)
     return (cnt == 4) ? SUCCESS : FAILURE;
 }
 
-int readzh_data(const char * data, model * m, mesh * mm, const int i)
+static int readzh_data(const char * data, model * m, mesh * mm, const int i)
 {
     assert(m != NULL);
     assert(m->data != NULL);
@@ -337,7 +338,7 @@ int readzh_data(const char * data, model * m, mesh * mm, const int i)
     return (cnt == cols) ? SUCCESS : FAILURE;
 }
 
-int readzh_params(const char * data, model * m, mesh * mm, const int i)
+static int readzh_params(const char * data, model * m, mesh * mm, const int i)
 {
     assert(m != NULL);
     assert(m->params != NULL);
@@ -386,5 +387,17 @@ int readfile(const char filename[], model * m)
         {ELEM, "volumeelements", &readngvol_volumeelements, REQUIRED},
         { 0 }
     };
-    return readfile_loop(filename, m, zh_format1);
+    if(!readfile_loop(filename, m, zh_format1)) {
+        return FAILURE;
+    }
+    /* post processing */
+    int ret = SUCCESS;
+    if(m->n_stimmeas > 0) {
+        int nret = calc_elec_to_sys_map(m);
+        if(!nret) {
+            bad_malloc("stimmeas");
+        }
+        ret &= nret;
+    }
+    return ret;
 }

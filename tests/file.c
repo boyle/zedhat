@@ -33,7 +33,7 @@ void * _mock_test_malloc(const size_t size, const char * file, const int line)
 #define MAGIC_FILE 0xdeadbeef
 gzFile _mock_gzopen(const char * path, const char * mode)
 {
-    if(strncmp(path, "test", 5) != 0) {
+    if(strncmp(path, "unittest", 5) != 0) {
         return gzopen(path, mode);
     }
     return (void *) mock();
@@ -151,17 +151,17 @@ static void test_happy (void ** state)
         printf("-- netgen %dd --\n", dim);
         will_return_count(_mock_test_malloc, 0, 5);
         mock_ngvol_read(6, 1, 3);
-        ret = readfile_ngvol("test", m);
+        ret = readfile_ngvol("unittest", m);
         assert_int_equal(ret, 1);
         /* now repeat for a zedhat file */
         printf("-- zedhat %dd --\n", dim);
         will_return_count(_mock_test_malloc, 0, 5);
         mock_zh_read(6, 1, 3);
-        ret = readfile("test", m);
+        ret = readfile("unittest", m);
         assert_int_equal(ret, 1);
         /* now repeat for a zedhat file with optional fields: stimmeas */
         printf("-- zedhat %dd (optional fields) --\n", dim);
-        will_return_count(_mock_test_malloc, 0, 5 + 3);
+        will_return_count(_mock_test_malloc, 0, 5 + 4);
         will_return_count(_mock_gzeof, 0, 4);
         mock_zh_read(6, 1, 3);
         will_return(_mock_gzgets, "stimmeas\n");
@@ -175,7 +175,7 @@ static void test_happy (void ** state)
         will_return(_mock_gzgets, "-1.1 2.2 +3.3 4.4e-2\n");
         will_return(_mock_gzgets, "hyperparameter\n");
         will_return(_mock_gzgets, " 1.1\n");
-        ret = readfile("test", m);
+        ret = readfile("unittest", m);
         assert_int_equal(ret, 1);
     }
     m = free_model(m);
@@ -190,7 +190,7 @@ static void test_mangle_fail1 (void ** state)
     will_return(_mock_gzgets, "hyperparameter\n");
     will_return(_mock_gzgets, " asdf\n");
     will_return_count(_mock_test_malloc, 0, 5);
-    ret = readfile("test", m);
+    ret = readfile("unittest", m);
     assert_int_equal(ret, 0);
     free_model(m);
 }
@@ -203,7 +203,7 @@ static void test_malloc_fail1 (void ** state)
     will_return(_mock_test_malloc, 1);
     will_return(_mock_test_malloc, 0);
     mock_ngvol_read(3, 0, 3);
-    ret = readfile_ngvol("test", m);
+    ret = readfile_ngvol("unittest", m);
     assert_int_equal(ret, 0);
     free_model(m);
 }
@@ -216,7 +216,7 @@ static void test_malloc_fail2 (void ** state)
     will_return(_mock_test_malloc, 0);
     will_return(_mock_test_malloc, 1);
     mock_ngvol_read(3, 0, 3);
-    ret = readfile_ngvol("test", m);
+    ret = readfile_ngvol("unittest", m);
     assert_int_equal(ret, 0);
     free_model(m);
 }
@@ -230,7 +230,7 @@ static void test_malloc_fail3 (void ** state)
     will_return(_mock_test_malloc, 0);
     will_return(_mock_test_malloc, 1);
     mock_ngvol_read(4, 0, 3);
-    ret = readfile_ngvol("test", m);
+    ret = readfile_ngvol("unittest", m);
     assert_int_equal(ret, 0);
     free_model(m);
 }
@@ -246,7 +246,7 @@ static void test_malloc_fail4 (void ** state)
     will_return(_mock_test_malloc, 1);
     will_return(_mock_test_malloc, 0);
     mock_ngvol_read(5, 0, 3);
-    ret = readfile_ngvol("test", m);
+    ret = readfile_ngvol("unittest", m);
     assert_int_equal(ret, 0);
     free_model(m);
 }
@@ -262,12 +262,12 @@ static void test_malloc_fail5 (void ** state)
     will_return(_mock_test_malloc, 0);
     will_return(_mock_test_malloc, 1);
     mock_ngvol_read(5, 0, 3);
-    ret = readfile_ngvol("test", m);
+    ret = readfile_ngvol("unittest", m);
     assert_int_equal(ret, 0);
     free_model(m);
 }
 
-static void test_malloc_fail6 (void ** state)
+static void test_malloc_fail6a (void ** state)
 {
     int ret;
     will_return(_mock_test_malloc, 0);
@@ -277,7 +277,24 @@ static void test_malloc_fail6 (void ** state)
     will_return(_mock_gzgets, "1\n");
     will_return_count(_mock_test_malloc, 0, 5);
     will_return(_mock_test_malloc, 1);
-    ret = readfile("test", m);
+    ret = readfile("unittest", m);
+    assert_int_equal(ret, 0);
+    free_model(m);
+}
+
+static void test_malloc_fail6b (void ** state)
+{
+    int ret;
+    will_return(_mock_test_malloc, 0);
+    model * m = malloc_model();
+    will_return(_mock_gzeof, 0);
+    mock_zh_read(6, 1, 3);
+    will_return(_mock_gzgets, "stimmeas\n");
+    will_return(_mock_gzgets, "1\n");
+    will_return(_mock_gzgets, "1 2 3 4\n");
+    will_return_count(_mock_test_malloc, 0, 6);
+    will_return(_mock_test_malloc, 1);
+    ret = readfile("unittest", m);
     assert_int_equal(ret, 0);
     free_model(m);
 }
@@ -292,7 +309,7 @@ static void test_malloc_fail7 (void ** state)
     will_return(_mock_gzgets, "2 6\n");
     will_return_count(_mock_test_malloc, 0, 5);
     will_return(_mock_test_malloc, 1);
-    ret = readfile("test", m);
+    ret = readfile("unittest", m);
     assert_int_equal(ret, 0);
     free_model(m);
 }
@@ -307,7 +324,7 @@ static void test_malloc_fail8 (void ** state)
     will_return(_mock_gzgets, "2 6\n");
     will_return_count(_mock_test_malloc, 0, 5);
     will_return(_mock_test_malloc, 1);
-    ret = readfile("test", m);
+    ret = readfile("unittest", m);
     assert_int_equal(ret, 0);
     free_model(m);
 }
@@ -324,7 +341,7 @@ static void test_long_fail (void ** state)
     will_return(_mock_gzgets, too_many);
     will_return_count(_mock_test_malloc, 0, 5);
     will_return(_mock_test_malloc, 1);
-    ret = readfile("test", m);
+    ret = readfile("unittest", m);
     assert_int_equal(ret, 0);
     free_model(m);
 }
@@ -336,7 +353,7 @@ static void test_gzclose_fail (void ** state)
     model * m = malloc_model();
     will_return_count(_mock_test_malloc, 0, 5);
     mock_ngvol_read(6, 2, 3);
-    ret = readfile_ngvol("test", m);
+    ret = readfile_ngvol("unittest", m);
     assert_int_equal(ret, 0);
     free_model(m);
 }
@@ -344,15 +361,15 @@ static void test_gzclose_fail (void ** state)
 static void test_null_fail (void ** state)
 {
     (void) state; /* unused */
-    assert_int_equal(readfile_ngvol("test", NULL), 0);
-    assert_int_equal(readfile("test", NULL), 0);
+    assert_int_equal(readfile_ngvol("unittest", NULL), 0);
+    assert_int_equal(readfile("unittest", NULL), 0);
 }
 
 int main(int argc, char ** argv)
 {
     test_malloc_enabled = 0;
     if(argc != 2) {
-        fprintf(stderr, "usage: %s <netgen.vol|test>\n", basename(argv[0]));
+        fprintf(stderr, "usage: %s <netgen.vol|unittest>\n", basename(argv[0]));
         return 1;
     }
     char * filename = argv[1];
@@ -366,7 +383,8 @@ int main(int argc, char ** argv)
             cmocka_unit_test(test_malloc_fail3),
             cmocka_unit_test(test_malloc_fail4),
             cmocka_unit_test(test_malloc_fail5),
-            cmocka_unit_test(test_malloc_fail6),
+            cmocka_unit_test(test_malloc_fail6a),
+            cmocka_unit_test(test_malloc_fail6b),
             cmocka_unit_test(test_malloc_fail7),
             cmocka_unit_test(test_malloc_fail8),
             cmocka_unit_test(test_long_fail),

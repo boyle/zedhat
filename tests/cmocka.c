@@ -1183,8 +1183,8 @@ static int float_values_not_equal_display_error(const float left,
 
 /* Returns 1 if the specified float values are equal, else returns 0. */
 static int double_compare(const double left,
-                         const double right,
-                         const double epsilon)
+                          const double right,
+                          const double epsilon)
 {
     double absLeft;
     double absRight;
@@ -1889,10 +1889,10 @@ void _assert_float_not_equal(const float a,
 }
 
 void _assert_double_equal(const double a,
-                         const double b,
-                         const double epsilon,
-                         const char * const file,
-                         const int line)
+                          const double b,
+                          const double epsilon,
+                          const char * const file,
+                          const int line)
 {
     if (!double_values_equal_display_error(a, b, epsilon)) {
         _fail(file, line);
@@ -1900,10 +1900,10 @@ void _assert_double_equal(const double a,
 }
 
 void _assert_double_not_equal(const double a,
-                             const double b,
-                             const double epsilon,
-                             const char * const file,
-                             const int line)
+                              const double b,
+                              const double epsilon,
+                              const char * const file,
+                              const int line)
 {
     if (!double_values_not_equal_display_error(a, b, epsilon)) {
         _fail(file, line);

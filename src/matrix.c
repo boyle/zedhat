@@ -4,6 +4,7 @@
 #include <string.h> /* strncmp, strdup, bzero */
 #include <assert.h> /* assert */
 #include <stdio.h> /* printf */
+#include <cholmod.h> /* cholmod_* */
 
 #include "matrix.h"
 
@@ -33,7 +34,7 @@ static void free_matrix_data(matrix * M)
     assert(M->type < MAX_MATRIX_TYPE);
     switch (M->type) {
     // TODO case CSR_SYMMETRIC:
-    // TODO case CSC_SYMMETRIC:
+    case CSC_SYMMETRIC:
     case COO_SYMMETRIC:
         M->type--;
         break;
@@ -47,7 +48,7 @@ static void free_matrix_data(matrix * M)
         M->x.dense = NULL;
         break;
     // TODO case CSR:
-    // TODO case CSC:
+    case CSC:
     case COO:
         free(M->x.sparse.a);
         free(M->x.sparse.ia);
@@ -123,7 +124,6 @@ int malloc_matrix_data(matrix * M, enum matrix_type type, const size_t rows, con
     M->n = cols;
     assert(rows > 0);
     assert(cols > 0);
-    assert(nnz <= cols * rows);
     /* malloc data */
     assert(type < MAX_MATRIX_TYPE);
     switch(type) {
@@ -154,14 +154,17 @@ int malloc_matrix_data(matrix * M, enum matrix_type type, const size_t rows, con
 //      M->x.sparse.ia = malloc(sizeof(int) * (rows + 1));
 //      M->x.sparse.ja = malloc(sizeof(int) * nnz);
 //      break;
-//  case CSC_SYMMETRIC:
-//      M->symmetric = true;
-//      M->type--; /* strip _SYMMETRIC */
-//  case CSC:
-//      M->x.sparse.a = malloc(sizeof(double) * nnz);
-//      M->x.sparse.ia = malloc(sizeof(int) * nnz);
-//      M->x.sparse.ja = malloc(sizeof(int) * (cols + 1));
-//      break;
+    case CSC_SYMMETRIC:
+        M->symmetric = true;
+        M->type--; /* strip _SYMMETRIC */
+    case CSC:
+        M->x.sparse.a = malloc(sizeof(double) * nnz);
+        M->x.sparse.ia = malloc(sizeof(int) * nnz);
+        M->x.sparse.ja = malloc(sizeof(int) * (cols + 1));
+        M->x.sparse.na = nnz;
+        M->x.sparse.nia = nnz;
+        M->x.sparse.nja = (cols + 1);
+        break;
     case COO_SYMMETRIC:
         M->symmetric = true;
         M->type--; /* strip _SYMMETRIC */
@@ -217,6 +220,8 @@ void printf_matrix(matrix const * const A)
     case DENSE: printf(" DENSE\n"); break;
     case COO_SYMMETRIC: printf(" COO_SYMMETRIC\n"); break;
     case COO: printf(" COO (nnz=%zu)\n", A->x.sparse.na); break;
+    case CSC_SYMMETRIC: printf(" CSC_SYMMETRIC\n"); break;
+    case CSC: printf(" CSC (nnz=%zu)\n", A->x.sparse.na); break;
     case MAX_MATRIX_TYPE: printf(" MAX\n"); break; /* LCOV_EXCL_LINE */
     }
     if(A->type == DENSE) {
@@ -232,11 +237,26 @@ void printf_matrix(matrix const * const A)
             printf("\n");
         }
     }
-    if(A->type == COO) {
+    else if(A->type == COO) {
         const int nnz = A->x.sparse.na;
-        const int maxi = nnz < 10 ? nnz : 10;
+        const int maxi = nnz; // < 10 ? nnz : 10;
         for(int i = 0; i < maxi; i++) {
             printf("  (%4d,%4d) = %14.6e\n", A->x.sparse.ia[i], A->x.sparse.ja[i], A->x.sparse.a[i]);
+        }
+    }
+    else if(A->type == CSC) {
+        const int nnz = A->x.sparse.na;
+        const int cols = A->n;
+        int maxi = nnz; // < 10 ? nnz : 10;
+        printf(" column indices: ");
+        for(int i = 0; i < cols + 1; i++) {
+            printf(" %d", A->x.sparse.ja[i]);
+        }
+        printf("\n");
+        for(int i = 0; i < maxi; i++) {
+            int col;
+            for(col = 0; i > A->x.sparse.ja[col]; col++); /* search for col in compressed list */
+            printf("  (%4d,%4d) = %14.6e\n", A->x.sparse.ia[i], col, A->x.sparse.a[i]);
         }
     }
 }
@@ -345,3 +365,74 @@ void printf_matrix(matrix const * const A)
 //     }
 //     return SUCCESS;
 // }
+
+int coo_to_csc(matrix * A)
+{
+    assert(A != NULL);
+    assert(A->type == COO);
+    const int xtype = CHOLMOD_REAL;
+    cholmod_common c;
+    cholmod_start (&c);                /* start CHOLMOD */
+    cholmod_triplet * T = cholmod_allocate_triplet(A->m, A->n, A->x.sparse.na, +1, xtype, &c);
+    assert(T != NULL);
+    { /* copy contents from A */
+        T->nnz = A->x.sparse.na;
+        double * xx = T->x;
+        int * ii = T->i;
+        int * jj = T->j;
+        for(int i = 0; i < T->nnz; i++) {
+            ii[i] = A->x.sparse.ia[i];
+            jj[i] = A->x.sparse.ja[i];
+            xx[i] = A->x.sparse.a[i];
+        }
+    }
+    //cholmod_print_triplet (T, "T", &c);
+    assert(cholmod_check_triplet(T, &c));
+    cholmod_sparse * As = cholmod_triplet_to_sparse(T, T->nnz, &c);
+    //cholmod_print_sparse (As, "A", &c);
+    assert(cholmod_check_sparse(As, &c));
+    { /* copy contents to A */
+        const int cols = As->ncol;
+        double * xx = As->x;
+        int * ii = As->i;
+        int * jj = As->p;
+        const int nnz = jj[cols];
+        void * ptr;
+        {
+            ptr = realloc(A->x.sparse.a, sizeof(double) * nnz);
+            if(ptr == NULL) {
+                return FAILURE;
+            }
+            A->x.sparse.na = nnz;
+            A->x.sparse.a = ptr;
+        }
+        {
+            ptr = realloc(A->x.sparse.ia, sizeof(int) * nnz);
+            if(ptr == NULL) {
+                return FAILURE;
+            }
+            A->x.sparse.nia = nnz;
+            A->x.sparse.ia = ptr;
+        }
+        {
+            ptr = realloc(A->x.sparse.ja, sizeof(int) * (cols + 1));
+            if(ptr == NULL) {
+                return FAILURE;
+            }
+            A->x.sparse.ja = ptr;
+            A->x.sparse.nja = cols + 1;
+        }
+        for(int i = 0; i < A->x.sparse.na; i++) {
+            A->x.sparse.a[i] = xx[i];
+            A->x.sparse.ia[i] = ii[i];
+        }
+        for(int i = 0; i < A->x.sparse.nja; i++) {
+            A->x.sparse.ja[i] = jj[i];
+        }
+        A->type = CSC;
+    }
+    cholmod_free_sparse(&As, &c);
+    cholmod_free_triplet(&T, &c);
+    cholmod_finish (&c);               /* finish CHOLMOD */
+    return SUCCESS;
+}
