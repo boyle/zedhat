@@ -741,6 +741,7 @@ void test_shape_3d(void ** state)
     free(ss);
 }
 
+# define sgn(a) ((0.0<a)-(a<0.0))
 void test_bc_2d_neumann (void ** state)
 {
     int bc[4] = {0, 2, 0, 1};
@@ -750,8 +751,15 @@ void test_bc_2d_neumann (void ** state)
         {4, 3},
         {3, 1},
     };
+    double nodes[4][2] = {
+        {0, 0},
+        {1, 0},
+        {0, 1},
+        {1, 1},
+    };
     mesh m = {0};
     m.dim = 2;
+    m.nodes = &(nodes[0][0]);
     m.bc = &(bc[0]);
     m.surfaceelems = &(se[0][0]);
     m.n_se = 4;
@@ -774,66 +782,97 @@ void test_bc_2d_neumann (void ** state)
         }
         printf("gnd = %d\n", gnd);
         printf_mat_double("b", 4, 1, &(b[0]));
+        if(gnd == 0) {
+           double bc1 = 0, bc2 = 0;
+           for(int i=0; i<m.n_nodes; i++) {
+              if(sgn(b[i])>0) bc1 += b[i];
+              else bc2 += b[i];
+           }
+           printf("∑ (b>0) = %g, ∑ (b<0) = %g\n",bc1,bc2);
+           assert_float_equal(bc1, 1, DBL_EPSILON);
+           assert_float_equal(bc2, -1, DBL_EPSILON);
+        }
         assert_mat_equal( 4, 1, b, expect, DBL_EPSILON);
     }
 }
 
 void test_bc_3d_neumann (void ** state)
 {
+    /* 3D cube: tests/ngcube.vol
+     *    all nodes used as in elems */
+    double nodes[8][3] = {
+        {0, 0, 0}, /* bc = 1 x2 */
+        {0, 0, 1}, /* bc = 5 x2 */
+        {1, 0, 0}, /* bc = 1 */
+        {0, 1, 0}, /* bc = 1 */
+        {1, 0, 1}, /* bc = 5 */
+        {0, 1, 1}, /* bc = 5 */
+        {1, 1, 0}, /* bc = 1 x2 */
+        {1, 1, 1}, /* bc = 5 x2 */
+    };
+    int elems[6][4] = {
+        {4, 2, 6, 8},
+        {8, 7, 2, 5},
+        {3, 2, 1, 7},
+        {3, 5, 2, 7},
+        {1, 2, 4, 7},
+        {8, 7, 4, 2},
+    };
     int bc[12] = {1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6};
     int se[12][3] = {
-        {1, 2, 5},
-        {2, 5, 6},
-        {4, 3, 8},
-        {3, 8, 7},
-        {6, 8, 2},
-        {8, 2, 4},
-        {1, 5, 3},
-        {5, 3, 7},
-        {5, 7, 8},
-        {5, 8, 6},
+        {1, 4, 7},
+        {7, 3, 1},
+        {4, 1, 2},
+        {2, 6, 4},
+        {8, 7, 4},
+        {6, 8, 4},
+        {7, 8, 5},
+        {3, 7, 5},
+        {8, 6, 2},
+        {2, 5, 8},
+        {3, 5, 2},
         {1, 3, 2},
-        {3, 2, 4},
     };
     mesh m = {0};
     m.dim = 3;
     m.bc = &(bc[0]);
+    m.elems = &(elems[0][0]);
     m.surfaceelems = &(se[0][0]);
+    m.nodes = &(nodes[0][0]);
     m.n_se = 12;
     m.n_nodes = 8;
     for (int gnd = 0; gnd <= 8; gnd++) {
         double b[8] = {0}; /* nodes */
         int ret = calc_stim_neumann(&m, +1, 1, gnd, &(b[0]));
-        ret += calc_stim_neumann(&m, -1, 2, gnd, &(b[0]));
-        /* TODO these are not right... I is the same for all boundary edge nodes */
-        double expect[8] = { +1.0 / 6.0,
-                             +2.0 / 6.0,
+        ret += calc_stim_neumann(&m, -1, 5, gnd, &(b[0]));
+        double expect[8] = { +2.0 / 6.0,
                              -2.0 / 6.0,
-                             -1.0 / 6.0,
-                             +2.0 / 6.0,
+                             +1.0 / 6.0,
                              +1.0 / 6.0,
                              -1.0 / 6.0,
+                             -1.0 / 6.0,
+                             +2.0 / 6.0,
                              -2.0 / 6.0,
                            };
+        int expect_ret = 12; /* no gnd node case */
+        /* how many bc nodes are on gnd node? look at |expect*6| */
+        if(gnd != 0) expect_ret -= round(fabs(expect[gnd-1]*6));
         if(gnd > 0) {
             expect[gnd - 1] = 0;
         }
-        int expect_ret;
-        switch(gnd) {
-        case 0:
-            expect_ret = 12;
-            break;
-        case 1:
-        case 4:
-        case 6:
-        case 7:
-            expect_ret = 11;
-            break;
-        default:
-            expect_ret = 10;
-        }
-        printf("gnd = %d, expect %d local nodes\n", gnd, expect_ret);
+        printf_mat_double("expect", 8, 1, &(expect[0]));
         printf_mat_double("b", 8, 1, &(b[0]));
+        printf("gnd = %d, expect %d local nodes\n", gnd, expect_ret);
+        if(gnd == 0) {
+           double bc1 = 0, bc2 = 0;
+           for(int i=0; i<m.n_nodes; i++) {
+              if(sgn(b[i])>0) bc1 += b[i];
+              else bc2 += b[i];
+           }
+           printf("∑ (b>0) = %g, ∑ (b<0) = %g\n",bc1,bc2);
+           assert_float_equal(bc1, 1, DBL_EPSILON);
+           assert_float_equal(bc2, -1, DBL_EPSILON);
+        }
         assert_mat_equal( 8, 1, b, expect, 10 * DBL_EPSILON);
         assert_int_equal(ret, expect_ret);
     }
@@ -844,18 +883,15 @@ void test_2d_resistor (void ** state)
     /* 2D square:
      *    first four nodes at z=0
      *    first two elems */
-    double nodes[5][2] = {
+    double nodes[4][2] = {
         {0, 0},
         {1, 0},
         {0, 1},
         {1, 1},
-        {0, 0}, /* guard */
     };
-    int elems[4][3] = { /* from netgen cube.geo */
-        {0, 0, 0}, /* guard */
+    int elems[2][3] = { /* from netgen cube.geo */
         {1, 2, 4},
         {1, 3, 4},
-        {0, 0, 0}, /* guard */
     };
     int bc[4] = {0, 1, 0, 2};
     int se[4][2] = {
@@ -866,7 +902,7 @@ void test_2d_resistor (void ** state)
     };
     mesh m = { 0 };
     m.dim = 2;
-    m.elems = &(elems[1][0]);
+    m.elems = &(elems[0][0]);
     m.nodes = &(nodes[0][0]);
     m.n_elems = 2;
     m.n_nodes = 4;
@@ -938,7 +974,7 @@ void test_3d_resistor (void ** state)
 {
     /* 3D cube:
      *    all nodes used as in elems */
-    double nodes[9][3] = {
+    double nodes[8][3] = {
         {0, 0, 0},
         {1, 0, 0},
         {0, 1, 0},
@@ -947,23 +983,20 @@ void test_3d_resistor (void ** state)
         {1, 0, 1},
         {0, 1, 1},
         {1, 1, 1},
-        {0, 0, 0}, /* guard */
     };
     printf_mat_double("nodes", 8, 3, &(nodes[0][0]));
     /* TODO currently each row of elems must be sorted
      * or we won't get an upper triangular matrix */
     /* Our 'elems' starts at 1 which agrees with netgen */
-    int elems[8][4] = { /* from netgen cube.geo */
-        {0, 0, 0, 0}, /* guard */
+    int elems[6][4] = { /* from netgen cube.geo */
         {2, 5, 1, 4},
         {1, 5, 3, 4},
         {3, 5, 7, 8},
         {8, 4, 5, 6},
         {2, 6, 5, 4},
         {8, 4, 3, 5},
-        {0, 0, 0, 0}, /* guard */
     };
-    int * e = &(elems[1][0]);
+    int * e = &(elems[0][0]);
     printf_mat_int("elems", 6, 4, e);
     for(int i = 0; i < 6; i++) {
         qsort(&(e[i * 4]), 4, sizeof(int), &cmp_int_tests);
@@ -986,7 +1019,7 @@ void test_3d_resistor (void ** state)
     };
     mesh m = { 0 };
     m.dim = 3;
-    m.elems = &(elems[1][0]);
+    m.elems = &(elems[0][0]);
     m.nodes = &(nodes[0][0]);
     m.n_elems = 6;
     m.n_nodes = 8;

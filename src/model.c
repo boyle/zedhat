@@ -3,9 +3,10 @@
 #include <string.h> /* bzero */
 #include <stdlib.h> /* free, qsort */
 #include <lapacke.h> /* inv: dgetrf, dgetri */
-#include <math.h> /* fabs */
+#include <math.h> /* fabs, sqrt */
 #include <limits.h> /* MAX_INT */
-#include <assert.h>
+#include <assert.h> /* assert */
+#include <stdio.h> /* printf */
 
 #include "matrix.h"
 #include "model.h"
@@ -354,34 +355,124 @@ int calc_gnd(const int gnd, size_t * nnz, int * ii, int * jj, double * Se)
     return ret;
 }
 
+#define dot2(a,b) (((a[0])*(b[0])) + ((a[1])*(b[1])))
+#define dot3(a,b) (((a[0])*(b[0])) + ((a[1])*(b[1])) + ((a[2])*(b[2])))
+#define sum_sq2(a) dot2(a,a)
+#define sum_sq3(a) dot3(a,a)
+#define cross3i(a,b) (((a[1])*(b[2])) - ((a[2])*(b[1])))
+#define cross3j(a,b) (((a[2])*(b[0])) - ((a[0])*(b[2])))
+#define cross3k(a,b) (((a[0])*(b[1])) - ((a[1])*(b[0])))
+
+// static void printf_vec(const int nd, double x[nd])
+// {
+//     printf(" (");
+//     int i;
+//     for(i = 0; i < nd - 1; i++) {
+//         printf("%g, ", x[i]);
+//     }
+//     printf("%g", x[i]);
+//     printf(")\n");
+// }
+
+static double calc_elem_area(const int nd, double nodes[nd][nd])
+{
+    /* len = diff(nodes) .. point to point distances */
+    // for(int i = 0; i < nd; i++) {
+    //     printf("[%d] ", i); printf_vec(nd, nodes[i]);
+    // }
+    for(int i = 0; i < nd - 1; i++) {
+        for(int j = 0; j < nd; j++) {
+            nodes[i][j] -= nodes[i + 1][j]; /* subtract the row below */
+        }
+        // printf("[%d]-[%d] ", i, i + 1); printf_vec(nd, nodes[i]);
+    }
+    if(nd == 3) {
+        /* cross product of lengths c = a x b*/
+       // printf("%gi\n",nodes[0][1]*nodes[1][2] - nodes[0][2]*nodes[1][1]);
+       // printf("%gj\n",nodes[0][2]*nodes[1][0] - nodes[0][0]*nodes[1][2]);
+       // printf("%gk\n",nodes[0][0]*nodes[1][1] - nodes[0][1]*nodes[1][0]);
+       const double tmp[3] = {
+        cross3i(nodes[0], nodes[1]),
+        cross3j(nodes[0], nodes[1]),
+        cross3k(nodes[0], nodes[1]),
+       };
+        // printf("[0] x [1]: "); printf_vec(nd, tmp);
+        assert(dot3(tmp,nodes[0]) == 0); /* confirm c . a = 0 */
+        assert(dot3(tmp,nodes[1]) == 0); /* confirm c . b = 0 */
+        nodes[0][0] = sum_sq3(tmp);
+        // printf("∑[0]²: "); printf_vec(1, nodes[0]);
+    }
+    else {
+        nodes[0][0] = sum_sq2(nodes[0]);
+        // printf("∑[0]²: "); printf_vec(1, nodes[0]);
+    }
+    const double area = sqrt(nodes[0][0]) / (double)(nd - 1);
+    return area;
+}
+
+static void copy_nodes_from_surfaceelems(mesh const * const m, const int se_idx, const int nd, double nodes[nd][nd])
+{
+    const int dim = m->dim;
+    for(int i = 0; i < dim; i++) {
+        const int nidx = m->surfaceelems[se_idx * dim + i] - 1; /* node index */
+        for(int j = 0; j < dim; j++) {
+            nodes[i][j] = m->nodes[nidx * dim + j];
+        }
+    }
+}
+
+static int count_bc(mesh const * const m, int bc)
+{
+    int n = 0;
+    for(int i = 0; i < m->n_se; i ++ ) {
+        const int bci = m->bc[i];
+        if (bci == bc) {
+            n++;
+        }
+    }
+    return n;
+}
+
 /* Construct a dense column vector for Neumann (current) stimulus 'amp' on
  * boundary m->bc = bc.
  * Returns number of nodes perturbed: 0 = failure. */
 int calc_stim_neumann(mesh const * const m, double amp, int bc, int gnd, double * b)
 {
+    assert(m != NULL);
+    assert(b != NULL);
     const int dim = m->dim;
-    int cnt_bc_local_nodes = 0;
-    for(int i = 0; i < m->n_se; i ++ ) {
-        const int bci = m->bc[i];
-        if (bci == bc) {
-            cnt_bc_local_nodes += dim;
-        }
-    }
-    const double amp_nodal = +amp / (double) cnt_bc_local_nodes;
-    const int gndidx = gnd - 1; /* convert node number to index in 'b' */
-    for(int i = 0; i < m->n_se; i ++ ) {
+    const int n = count_bc(m, bc);
+    int cnt_bc_local_nodes = n * dim;
+    int list[n];
+    double area[n];
+    double total_area = 0;
+    for(int i = 0, j = 0; i < m->n_se; i ++ ) {
         const int bci = m->bc[i];
         if (bci != bc) {
             continue;
         }
-        for(int j = 0; j < dim; j++) {
-            int idx = m->surfaceelems[i * dim + j] - 1;
-            if ( idx == gndidx ) {
+        double tmp[dim][dim];
+        copy_nodes_from_surfaceelems(m, i, dim, tmp);
+        area[j] = calc_elem_area(dim, tmp);
+        total_area += area[j];
+        printf("bc#%d: area[%d]=%g\n", bc, j, area[j]);
+        list[j] = i;
+        j++;
+    }
+    /* set boundary condition */
+    //const double amp_nodal = +amp / (double) cnt_bc_local_nodes;
+    const int gndidx = gnd - 1; /* convert node number to index in 'b' */
+    for(int j = 0; j < n; j++ ) {
+        const int i = list[j];
+        for(int k = 0; k < dim; k++) {
+            const int nidx = m->surfaceelems[i * dim + k] - 1;
+            if ( nidx == gndidx ) {
                 /* ground node: do not apply current */
                 cnt_bc_local_nodes--;
             }
             else {
-                b[ idx ] += amp_nodal;
+                // printf("#%d nidx=%d %g*%g/%g %d\n",j,nidx,amp, area[j],total_area,dim);
+                b[ nidx ] += amp * (area[j] / total_area) / (double) dim;
             }
         }
     }
