@@ -218,10 +218,8 @@ double det(int n, double A[n][n])
  *         upper triangular symmetric matrix, row-major order
  * returns: NULL if matrix inverse fails, Se otherwise
  */
-double * calc_Se_v(const int nd, double const * const * const nodes, double * Se)
+static double calc_elem_vol(const int n, double const * const * const nodes, double E[n][n])
 {
-    const int n = nd + 1;
-    double E[n][n]; /* from [1] eq (C.33) */
     for(int i = 0; i < n; i++) {
         E[i][0] = 1;
         for(int j = 1; j < n; j++) {
@@ -229,11 +227,21 @@ double * calc_Se_v(const int nd, double const * const * const nodes, double * Se
         }
     }
     if(inv(n, E) == NULL) {
+        return -1.0;
+    }
+    return fabs(det(n, E));
+}
+
+double * calc_Se_v(const int nd, double const * const * const nodes, double * Se)
+{
+    const int n = nd + 1;
+    double E[n][n]; /* from [1] eq (C.33) */
+    const double detE = calc_elem_vol(n, nodes, E);
+    if(detE < 0) {
         return NULL;
     }
-    const double detE = fabs(det(n, E));
     int ndf = 1; /* = !nd = factorial(number of dimensions) */
-    for(int i = n - 1; i > 0; i-- ) {
+    for(int i = 2; i <= nd; i++ ) {
         ndf *= i;
     }
     const double c = 1 / (ndf * detE);
