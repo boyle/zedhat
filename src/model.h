@@ -1,4 +1,4 @@
-/* Copyright 2018, Alistair Boyle, 3-clause BSD License */
+/* Copyright 2018,2019, Alistair Boyle, 3-clause BSD License */
 #ifndef __MODEL_H__
 #define __MODEL_H__
 
