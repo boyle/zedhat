@@ -5,20 +5,29 @@
 #include <stddef.h> /* size_t */
 
 typedef struct mesh_type {
-    int dim;
-    double * nodes; /* n_nodes x dim */
+    int dim; /* dimensionality: 2 = 2D, 3 = 3D */
+    /* nodes */
+    double * nodes; /* size: n_nodes x dim */
     int n_nodes;
-    int * elems; /* n_elems x (dim+1) */
-    int * matidx; /* n_elems x 1 */
+    /* volume elements */
+    int * elems; /* size: n_elems x (dim+1) */
+    int * matidx; /* size: n_elems x 1 */
     int n_elems;
-    int * surfaceelems; /* n_se x dim */
-    int * bc; /* n_se x 1 */
+    /* mesh surface */
+    int * surfaceelems; /* size: n_se x dim */
+    int * bc; /* size: n_se x 1 */
     int n_se;
+    /* parameter map
+     * optional COO sparse matrix describing mapping from parameters to elements */
+    int * pmap_param; /* size: n_pmap x 1 */
+    int * pmap_elem; /* size: n_pmap x 1 */
+    double * pmap_frac; /* size: n_pmap x 1 */
+    int n_pmap;
 } mesh;
 
-#define MAX_MODEL_FORMAT 1
 typedef struct model_type {
     mesh fwd; /* forward model */
+    mesh rec; /* reconstruction model */
     int n_elec; /* number of electrodes */
     int * elec_to_sys; /* electrode# to system matrix row/col# */
     int n_data [2]; /* number of data measurements */
@@ -42,6 +51,7 @@ void set_mesh_dim(mesh * m, int dim);
 int set_mesh_nodes(mesh * m, int n_nodes);
 int set_mesh_elems(mesh * m, int n_elems);
 int set_mesh_surfaceelems(mesh * m, int n_se);
+int set_mesh_pmap(mesh * m, int n_pmap);
 
 int calc_elec_to_sys_map(model * m);
 

@@ -9,7 +9,17 @@
 #define SUCCESS 1
 #define FAILURE 0
 
-static int build_system_matrix(const model * m, int gnd, int idx, matrix * A)
+static int malloc_system_matrix(const model * mdl, matrix ** A)
+{
+    *A = malloc_matrix();
+    if(!malloc_matrix_name(*A, "system", "A", "V/A")) {
+        printf("error: matrix %s: out of memory\n", "A");
+        return FAILURE;
+    }
+    return SUCCESS;
+}
+
+static int build_system_matrix(const model * m, int gnd, int idx, matrix * A, matrix * PMAP)
 {
     assert(m != NULL);
     assert(A != NULL);
@@ -17,12 +27,14 @@ static int build_system_matrix(const model * m, int gnd, int idx, matrix * A)
     assert(idx < m->n_elec);
     assert(gnd > 0);
     assert(gnd < m->fwd.n_nodes);
+    /* build shape matrices */
+    /* TODO we could reuse a copy of the expensive to compute shape elements at
+     * each iteration, intead of recomputing from scratch here */
     const int rows = calc_sys_size(m); /* = cols */
     size_t nnz = calc_sys_nnz(m);
     if(!malloc_matrix_data(A, COO_SYMMETRIC, rows, rows, nnz)) {
         return FAILURE;
     }
-    /* build shape matrices */
     int ret = calc_sys_elem(&(m->fwd), A->x.sparse.ia, A->x.sparse.ja, A->x.sparse.a);
     if (ret != 0) {
         return FAILURE;
@@ -31,12 +43,30 @@ static int build_system_matrix(const model * m, int gnd, int idx, matrix * A)
     const int ne = m->fwd.n_elems;
     const int dim = m->fwd.dim;
     const int se_n = calc_sys_elem_n(dim); /* sparse matrix entries per mesh element */
-    if(m->n_params[0] > 0) {
+    if(PMAP == NULL) {
         assert(ne == m->n_params[0]);
         for(int e = 0; e < ne; e++) {
             const double cond = m->params[e * m->n_params[1] + idx]; /* conductivity */
             for(int i = 0; i < se_n; i++) {
                 A->x.sparse.a[e * se_n + i] *= cond;
+            }
+        }
+    }
+    else { /* map parameters to elements */
+        assert(PMAP->n == m->n_params[0]);
+        assert(PMAP->m == ne);
+        assert(PMAP->type == CSR);
+        for(int e = 0; e < ne; e++) {
+            double cond_frac = 0.0;
+            for(int j = PMAP->x.sparse.ia[e]; j < PMAP->x.sparse.ia[e + 1]; j++) {
+                const int param = PMAP->x.sparse.ja[j];
+                const double element_fraction = PMAP->x.sparse.a[j];
+                const double conductivity = m->params[idx + param * m->n_params[1]];
+                cond_frac += conductivity * element_fraction;
+            }
+            // printf("[e=%d] σ=%g\n", e, cond_frac);
+            for(int i = 0; i < se_n; i++) {
+                A->x.sparse.a[e * se_n + i] *= cond_frac;
             }
         }
     }
@@ -87,6 +117,33 @@ static cholmod_sparse * copy_csc_to_cholmod_sparse(matrix * A, cholmod_common * 
     return As;
 }
 
+int build_pmap(model * mdl, matrix ** PMAP)
+{
+    assert(*PMAP == NULL);
+    if(mdl->fwd.n_pmap == 0) {
+        return SUCCESS;
+    }
+    *PMAP = malloc_matrix();
+    if(!malloc_matrix_name(*PMAP, "params_to_elems", "PMAP", "")) {
+        return FAILURE;
+    }
+    const int rows = mdl->fwd.n_elems;
+    const int cols = mdl->n_params[0];
+    const int nnz = mdl->fwd.n_pmap;
+    if(!malloc_matrix_data(*PMAP, COO, rows, cols, nnz)) {
+        return FAILURE;
+    }
+    for(int i = 0; i < nnz; i++) {
+        (*PMAP)->x.sparse.a[i] = mdl->fwd.pmap_frac[i]; /* TODO faster w/ memcpy? */
+        (*PMAP)->x.sparse.ia[i] = mdl->fwd.pmap_elem[i] - 1; /* TODO faster w/ memcpy? */
+        (*PMAP)->x.sparse.ja[i] = mdl->fwd.pmap_param[i] - 1; /* TODO faster w/ memcpy? */
+    }
+    if(!coo_to_csr(*PMAP)) {
+        return FAILURE;
+    }
+    return SUCCESS;
+}
+
 int fwd_solve(model * mdl, double * meas)
 {
     assert(mdl != NULL);
@@ -102,30 +159,31 @@ int fwd_solve(model * mdl, double * meas)
     cholmod_dense * E = NULL, *Y = NULL;
     cholmod_sparse * xset = NULL;
     cholmod_common c;
-    cholmod_start (&c);                /* start CHOLMOD */
     cholmod_sparse * As = NULL;
-    matrix * A = malloc_matrix();
-    if(!malloc_matrix_name(A, "system", "A", "V/A")) {
+    matrix * A = NULL;
+    matrix * PMAP = NULL;
+    cholmod_start (&c);                /* start CHOLMOD */
+    if(!malloc_system_matrix(mdl, &A)) {
         printf("error: matrix %s: out of memory\n", "A");
         goto return_result;
     }
-    if(mdl->n_elec == 0) {
-        int nret = calc_elec_to_sys_map(mdl);
-        if(!nret) {
-            printf("error: %s: out of memory\n", "elec_to_sys");
-            goto return_result;
-        }
+    if(!build_pmap(mdl, &PMAP)) {
+        printf("error: matrix %s: out of memory\n", "PMAP");
+        goto return_result;
+    }
+    if(!calc_elec_to_sys_map(mdl)) {
+        printf("error: %s: out of memory\n", "elec_to_sys");
+        goto return_result;
     }
     for(int idx = 0; idx < mdl->n_params[1]; idx++) {
         /* fill in the matrices and vectors */
         const int gnd_node = 1;
-        if (!build_system_matrix(mdl, gnd_node, idx, A)) {
+        if (!build_system_matrix(mdl, gnd_node, idx, A, PMAP)) {
             printf("error: failed to build system matrix A\n");
             goto return_result;
         }
         // printf_matrix(A);
-        int nret = coo_to_csc(A);
-        if(!nret) {
+        if(!coo_to_csc(A)) {
             printf("error: failed to compress system matrix A\n");
             goto return_result;
         }
@@ -195,7 +253,7 @@ int fwd_solve(model * mdl, double * meas)
             };
             assert(cholmod_check_sparse (&bset, &c));
             assert(cholmod_check_dense (&bs, &c));
-            nret = cholmod_solve2 (CHOLMOD_A, L, &bs, &bset, &x, &xset, &Y, &E, &c);       /* solve Ax=b */
+            int nret = cholmod_solve2 (CHOLMOD_A, L, &bs, &bset, &x, &xset, &Y, &E, &c);       /* solve Ax=b */
             assert(nret);
             meas[idx * (mdl->n_stimmeas) + i] = calc_meas(mdl, i, x->x) * 10;
 #endif
@@ -212,6 +270,7 @@ return_result:
     cholmod_free_dense (&Y, &c);
     cholmod_finish (&c);               /* finish CHOLMOD */
     free_matrix(A);
+    free_matrix(PMAP);
     return ret;
 }
 

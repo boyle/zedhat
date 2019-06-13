@@ -51,6 +51,9 @@ static void free_mesh(mesh * m)
     free(m->matidx);
     free(m->surfaceelems);
     free(m->bc);
+    free(m->pmap_param);
+    free(m->pmap_elem);
+    free(m->pmap_frac);
 }
 
 void reset_model(model * m)
@@ -61,6 +64,7 @@ void reset_model(model * m)
     free(m->stimmeas);
     free(m->elec_to_sys);
     free_mesh(&(m->fwd));
+    free_mesh(&(m->rec));
     init_model(m);
 }
 
@@ -159,8 +163,11 @@ int set_mesh_elems(mesh * m, int n_elems)
     free(m->elems);
     free(m->matidx);
     m->elems = malloc(sizeof(int) * n_elems * (m->dim + 1));
+    if(m->elems == NULL) {
+        return FAILURE;
+    }
     m->matidx = malloc(sizeof(int) * n_elems);
-    if((m->elems == NULL) || (m->matidx == NULL)) {
+    if(m->matidx == NULL) {
         return FAILURE;
     }
     return SUCCESS;
@@ -175,8 +182,34 @@ int set_mesh_surfaceelems(mesh * m, int n_se)
     free(m->surfaceelems);
     free(m->bc);
     m->surfaceelems = malloc(sizeof(int) * n_se * m->dim);
+    if(m->surfaceelems == NULL) {
+        return FAILURE;
+    }
     m->bc = malloc(sizeof(int) * n_se);
-    if((m->surfaceelems == NULL) || (m->bc == NULL)) {
+    if(m->bc == NULL) {
+        return FAILURE;
+    }
+    return SUCCESS;
+}
+
+int set_mesh_pmap(mesh * m, int n_pmap)
+{
+    assert(n_pmap >= 0);
+    assert(m != NULL);
+    m->n_pmap = n_pmap;
+    free(m->pmap_param);
+    free(m->pmap_elem);
+    free(m->pmap_frac);
+    m->pmap_param = malloc(sizeof(int) * n_pmap);
+    if(m->pmap_param == NULL) {
+        return FAILURE;
+    }
+    m->pmap_elem = malloc(sizeof(int) * n_pmap);
+    if(m->pmap_elem == NULL) {
+        return FAILURE;
+    }
+    m->pmap_frac = malloc(sizeof(double) * n_pmap);
+    if(m->pmap_frac == NULL) {
         return FAILURE;
     }
     return SUCCESS;

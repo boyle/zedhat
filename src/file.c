@@ -46,7 +46,7 @@ static void gzreadnext(gzFile F, char data[], int n)
 }
 
 #define LEN 32
-enum fileformat_field {EOL, TEST, FMT, HP, STIM, DATA, PARAM, DIM, TYPE, SURF, NODE, ELEM};
+enum fileformat_field {EOL, TEST, FMT, MESH, HP, STIM, DATA, PARAM, DIM, TYPE, SURF, NODE, ELEM, MAP};
 enum fileformat_req {OPTIONAL, REQUIRED, REQUIRED_FIRST};
 typedef struct {
     enum fileformat_field field;
@@ -90,15 +90,21 @@ static int bad_malloc(const char * section)
     return -1;
 }
 
-static int sscanf_size(const char * data, const char * section, enum fileformat_field field, model * m, mesh * mm)
+static int sscanf_size(const char * data, const char * section, enum fileformat_field field, model * m, mesh ** mm)
 {
     assert(m != NULL);
     assert(mm != NULL);
+    assert(*mm != NULL);
+    static const char fwd[] = "forward\n";
+    static const char rec[] = "reconstruction\n";
     int cnt = 0;
     int expect = 1;
     int n[2] = {1, 1};
     double d = 0;
     switch(field) {
+    case MESH:
+        expect = 0;
+        break;
     case HP:
         expect = -1; /* double */
         break;
@@ -117,7 +123,7 @@ static int sscanf_size(const char * data, const char * section, enum fileformat_
             printf("%s %lg\n", section, d);
         }
     }
-    else {
+    else if(expect > 0) {
         for(int j = 0, idx = 0; j < expect; j++) {
             cnt += sscanf(&(data[idx]), " %d %n", &(n[j]), &idx);
         }
@@ -131,11 +137,25 @@ static int sscanf_size(const char * data, const char * section, enum fileformat_
     }
     int rows = n[0];
     if(rows > INT_MAX / (sizeof(double) > sizeof(int) ? sizeof(double) : sizeof(int)) / 10) {
-        long_section(section);
+        return long_section(section);
     }
     switch(field) {
     case FMT:
         if(n[0] != 1) {
+            return bad_section(section);
+        }
+        rows = 0;
+        break;
+    case MESH:
+        if(strncmp(data, fwd, strlen(fwd)) == 0) {
+            *mm = &(m->fwd);
+            printf("%s %s", section, fwd);
+        }
+        else if(strncmp(data, rec, strlen(rec)) == 0) {
+            *mm = &(m->rec);
+            printf("%s %s", section, rec);
+        }
+        else {
             return bad_section(section);
         }
         rows = 0;
@@ -163,7 +183,7 @@ static int sscanf_size(const char * data, const char * section, enum fileformat_
         if(n[0] != 2 && n[0] != 3) {
             return bad_section(section);
         }
-        set_mesh_dim(mm, n[0]);
+        set_mesh_dim(*mm, n[0]);
         rows = 0;
         break;
     case TYPE:
@@ -173,26 +193,31 @@ static int sscanf_size(const char * data, const char * section, enum fileformat_
         rows = 0;
         break;
     case SURF:
-        if(mm->dim == 0) {
+        if((*mm)->dim == 0) {
             return ooo_section(section);
         }
-        if(!set_mesh_surfaceelems(mm, n[0])) {
+        if(!set_mesh_surfaceelems(*mm, n[0])) {
             return bad_malloc(section);
         }
         break;
     case NODE:
-        if(mm->dim == 0) {
+        if((*mm)->dim == 0) {
             return ooo_section(section);
         }
-        if(!set_mesh_nodes(mm, n[0])) {
+        if(!set_mesh_nodes(*mm, n[0])) {
             return bad_malloc(section);
         }
         break;
     case ELEM:
-        if(mm->dim == 0) {
+        if((*mm)->dim == 0) {
             return ooo_section(section);
         }
-        if(!set_mesh_elems(mm, n[0])) {
+        if(!set_mesh_elems(*mm, n[0])) {
+            return bad_malloc(section);
+        }
+        break;
+    case MAP:
+        if(!set_mesh_pmap(*mm, n[0])) {
             return bad_malloc(section);
         }
         break;
@@ -217,7 +242,7 @@ int readfile_loop(const char filename[], model * m, fileformat * f_list)
         goto __quit;
     }
     printf("reading %s\n", filename);
-    mesh * mm = &(m->fwd);
+    mesh * mm = &(m->fwd); /* default: forward mesh */
     int first = 1;
     do {
         gzreadnext(F, data, MAXCHAR);
@@ -241,7 +266,7 @@ int readfile_loop(const char filename[], model * m, fileformat * f_list)
                 break;
             }
             gzreadnext(F, data, MAXCHAR);
-            int n = sscanf_size(data, f->section, f->field, m, mm);
+            int n = sscanf_size(data, f->section, f->field, m, &mm);
             if(n < 0) {
                 goto __quit;
             }
@@ -338,6 +363,13 @@ static int readzh_data(const char * data, model * m, mesh * mm, const int i)
     return (cnt == cols) ? SUCCESS : FAILURE;
 }
 
+static int readzh_parametermap(const char * data, model * m, mesh * mm, const int i)
+{
+    assert(mm != NULL);
+    int cnt = sscanf(data, " %d %d %lf\n", &(mm->pmap_elem[i]), &(mm->pmap_param[i]), &(mm->pmap_frac[i]));
+    return (cnt == 3) ? SUCCESS : FAILURE;
+}
+
 static int readzh_params(const char * data, model * m, mesh * mm, const int i)
 {
     assert(m != NULL);
@@ -375,6 +407,7 @@ int readfile(const char filename[], model * m)
     fileformat zh_format1 [] = {
         {TEST, "zedhat", NULL, REQUIRED_FIRST},
         {FMT, "format", NULL, REQUIRED},
+        {MESH, "modeltype", NULL, OPTIONAL},
         {STIM, "stimmeas", &readzh_stimmeas, OPTIONAL},
         {DATA, "data", &readzh_data, OPTIONAL},
         {PARAM, "parameters", &readzh_params, OPTIONAL},
@@ -385,19 +418,11 @@ int readfile(const char filename[], model * m)
         {SURF, "surfaceelements", &readngvol_surfaceelements, REQUIRED},
         {NODE, "points", &readngvol_points, REQUIRED},
         {ELEM, "volumeelements", &readngvol_volumeelements, REQUIRED},
+        {MAP, "parametermap", &readzh_parametermap, OPTIONAL},
         { 0 }
     };
     if(!readfile_loop(filename, m, zh_format1)) {
         return FAILURE;
     }
-    /* post processing */
-    int ret = SUCCESS;
-    if(m->n_stimmeas > 0) {
-        int nret = calc_elec_to_sys_map(m);
-        if(!nret) {
-            bad_malloc("stimmeas");
-        }
-        ret &= nret;
-    }
-    return ret;
+    return SUCCESS;
 }

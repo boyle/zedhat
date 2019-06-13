@@ -33,7 +33,7 @@ static void free_matrix_data(matrix * M)
     assert(M != NULL);
     assert(M->type < MAX_MATRIX_TYPE);
     switch (M->type) {
-    // TODO case CSR_SYMMETRIC:
+    case CSR_SYMMETRIC:
     case CSC_SYMMETRIC:
     case COO_SYMMETRIC:
         M->type--;
@@ -47,7 +47,7 @@ static void free_matrix_data(matrix * M)
         free(M->x.dense);
         M->x.dense = NULL;
         break;
-    // TODO case CSR:
+    case CSR:
     case CSC:
     case COO:
         free(M->x.sparse.a);
@@ -106,10 +106,36 @@ int malloc_matrix_name(matrix * M, const char * name, const char * symbol, const
     if ( M == NULL ) {
         return FAILURE;
     }
-    int ret1 = m_strdup(&(M->name), name);
-    int ret2 = m_strdup(&(M->symbol), symbol);
-    int ret3 = m_strdup(&(M->units), units);
-    return ret1 && ret2 && ret3;
+    if(!m_strdup(&(M->name), name)) {
+        return FAILURE;
+    }
+    if(!m_strdup(&(M->symbol), symbol)) {
+        return FAILURE;
+    }
+    if(!m_strdup(&(M->units), units)) {
+        return FAILURE;
+    }
+    return SUCCESS;
+}
+
+static int malloc_matrix_sparse(matrix * M, const int na, const int nia, const int nja)
+{
+    M->x.sparse.a = malloc(sizeof(double) * na);
+    if(M->x.sparse.a == NULL) {
+        return FAILURE;
+    }
+    M->x.sparse.na = na;
+    M->x.sparse.ia = malloc(sizeof(int) * nia);
+    if(M->x.sparse.ia == NULL) {
+        return FAILURE;
+    }
+    M->x.sparse.nia = nia;
+    M->x.sparse.ja = malloc(sizeof(int) * nja);
+    if(M->x.sparse.ja == NULL) {
+        return FAILURE;
+    }
+    M->x.sparse.nja = nja;
+    return SUCCESS;
 }
 
 int malloc_matrix_data(matrix * M, enum matrix_type type, const size_t rows, const size_t cols, const size_t nnz)
@@ -126,6 +152,7 @@ int malloc_matrix_data(matrix * M, enum matrix_type type, const size_t rows, con
     assert(cols > 0);
     /* malloc data */
     assert(type < MAX_MATRIX_TYPE);
+    int ret = SUCCESS;
     switch(type) {
     case IDENTITY:
         assert(nnz == 0);
@@ -145,52 +172,33 @@ int malloc_matrix_data(matrix * M, enum matrix_type type, const size_t rows, con
     case DENSE:
         assert(nnz == rows * cols);
         M->x.dense = malloc(sizeof(double) * nnz);
+        if(M->x.dense == NULL) {
+            ret = FAILURE;
+        }
         break;
-//  case CSR_SYMMETRIC:
-//      M->symmetric = true;
-//      M->type--; /* strip _SYMMETRIC */
-//  case CSR:
-//      M->x.sparse.a = malloc(sizeof(double) * nnz);
-//      M->x.sparse.ia = malloc(sizeof(int) * (rows + 1));
-//      M->x.sparse.ja = malloc(sizeof(int) * nnz);
-//      break;
+    case CSR_SYMMETRIC:
+        M->symmetric = true;
+        M->type--; /* strip _SYMMETRIC */
+    case CSR:
+        ret = malloc_matrix_sparse(M, nnz, rows + 1, nnz);
+        break;
     case CSC_SYMMETRIC:
         M->symmetric = true;
         M->type--; /* strip _SYMMETRIC */
     case CSC:
-        M->x.sparse.a = malloc(sizeof(double) * nnz);
-        M->x.sparse.ia = malloc(sizeof(int) * nnz);
-        M->x.sparse.ja = malloc(sizeof(int) * (cols + 1));
-        M->x.sparse.na = nnz;
-        M->x.sparse.nia = nnz;
-        M->x.sparse.nja = (cols + 1);
+        ret = malloc_matrix_sparse(M, nnz, nnz, cols + 1);
         break;
     case COO_SYMMETRIC:
         M->symmetric = true;
         M->type--; /* strip _SYMMETRIC */
     case COO:
-        M->x.sparse.a = malloc(sizeof(double) * nnz);
-        M->x.sparse.ia = malloc(sizeof(int) * nnz);
-        M->x.sparse.ja = malloc(sizeof(int) * nnz);
-        M->x.sparse.na = nnz;
-        M->x.sparse.nia = nnz;
-        M->x.sparse.nja = nnz;
+        ret = malloc_matrix_sparse(M, nnz, nnz, nnz);
         break;
     case MAX_MATRIX_TYPE: /* LCOV_EXCL_LINE */
         break; /* LCOV_EXCL_LINE */
     }
     /* handle any malloc failures */
-    if(/*(*/M->type == DENSE/*) || (M->type == DIAGONAL)*/) {
-        if (M->x.dense == NULL) {
-            return FAILURE;
-        }
-    }
-    else if (M->type != IDENTITY) { /* COO, CSC, CSR */
-        if ((M->x.sparse.a == NULL) || (M->x.sparse.ia == NULL) || (M->x.sparse.ja == NULL)) {
-            return FAILURE;
-        }
-    }
-    return SUCCESS;
+    return ret;
 }
 
 /*
@@ -203,6 +211,7 @@ void matrix_transpose(matrix * M)
 
 void printf_matrix(matrix const * const A)
 {
+    enum matrix_type type = A->type;
     assert(A != NULL);
     printf("matrix %s: %zux%zu\n", A->symbol, A->m, A->n);
     printf(" ");
@@ -215,16 +224,18 @@ void printf_matrix(matrix const * const A)
     if(A->symmetric) {
         printf(" symmetric");
     }
-    switch(A->type) {
+    switch(type) {
     case IDENTITY: printf(" IDENTITY\n"); break;
     case DENSE: printf(" DENSE\n"); break;
-    case COO_SYMMETRIC: printf(" COO_SYMMETRIC\n"); break;
+    case COO_SYMMETRIC: printf(" COO_SYMMETRIC\n"); type--; break;
     case COO: printf(" COO (nnz=%zu)\n", A->x.sparse.na); break;
-    case CSC_SYMMETRIC: printf(" CSC_SYMMETRIC\n"); break;
+    case CSC_SYMMETRIC: printf(" CSC_SYMMETRIC\n"); type--; break;
     case CSC: printf(" CSC (nnz=%zu)\n", A->x.sparse.na); break;
+    case CSR_SYMMETRIC: printf(" CSR_SYMMETRIC\n"); type--; break;
+    case CSR: printf(" CSR (nnz=%zu)\n", A->x.sparse.na); break;
     case MAX_MATRIX_TYPE: printf(" MAX\n"); break; /* LCOV_EXCL_LINE */
     }
-    if(A->type == DENSE) {
+    if(type == DENSE) {
         const int rows = A->m;
         const int cols = A->n;
         const int maxi = rows < 10 ? rows : 10;
@@ -237,14 +248,14 @@ void printf_matrix(matrix const * const A)
             printf("\n");
         }
     }
-    else if(A->type == COO) {
+    else if(type == COO) {
         const int nnz = A->x.sparse.na;
         const int maxi = nnz; // < 10 ? nnz : 10;
         for(int i = 0; i < maxi; i++) {
             printf("  (%4d,%4d) = %14.6e\n", A->x.sparse.ia[i], A->x.sparse.ja[i], A->x.sparse.a[i]);
         }
     }
-    else if(A->type == CSC) {
+    else if(type == CSC) {
         const int nnz = A->x.sparse.na;
         const int cols = A->n;
         int maxi = nnz; // < 10 ? nnz : 10;
@@ -255,8 +266,23 @@ void printf_matrix(matrix const * const A)
         printf("\n");
         for(int i = 0; i < maxi; i++) {
             int col;
-            for(col = 0; i > A->x.sparse.ja[col]; col++); /* search for col in compressed list */
+            for(col = 0; i >= A->x.sparse.ja[col + 1]; col++); /* search for col in compressed list */
             printf("  (%4d,%4d) = %14.6e\n", A->x.sparse.ia[i], col, A->x.sparse.a[i]);
+        }
+    }
+    else if(type == CSR) {
+        const int nnz = A->x.sparse.na;
+        const int rows = A->m;
+        int maxi = nnz; // < 10 ? nnz : 10;
+        printf(" row indices: ");
+        for(int i = 0; i < rows + 1; i++) {
+            printf(" %d", A->x.sparse.ia[i]);
+        }
+        printf("\n");
+        for(int i = 0; i < maxi; i++) {
+            int row;
+            for(row = 0; i >= A->x.sparse.ia[row + 1]; row++); /* search for row in compressed list */
+            printf("  (%4d,%4d) = %14.6e\n", row, A->x.sparse.ja[i], A->x.sparse.a[i]);
         }
     }
 }
@@ -368,12 +394,14 @@ void printf_matrix(matrix const * const A)
 
 int coo_to_csc(matrix * A)
 {
+    int ret = FAILURE;
     assert(A != NULL);
     assert(A->type == COO);
     const int xtype = CHOLMOD_REAL;
     cholmod_common c;
     cholmod_start (&c);                /* start CHOLMOD */
-    cholmod_triplet * T = cholmod_allocate_triplet(A->m, A->n, A->x.sparse.na, +1, xtype, &c);
+    const int stype = (A->symmetric) ? +1 : 0;
+    cholmod_triplet * T = cholmod_allocate_triplet(A->m, A->n, A->x.sparse.na, stype, xtype, &c);
     assert(T != NULL);
     { /* copy contents from A */
         T->nnz = A->x.sparse.na;
@@ -381,12 +409,12 @@ int coo_to_csc(matrix * A)
         int * ii = T->i;
         int * jj = T->j;
         for(int i = 0; i < T->nnz; i++) {
-            ii[i] = A->x.sparse.ia[i];
+            ii[i] = A->x.sparse.ia[i]; /* TODO memcpy */
             jj[i] = A->x.sparse.ja[i];
             xx[i] = A->x.sparse.a[i];
         }
     }
-    //cholmod_print_triplet (T, "T", &c);
+    // cholmod_print_triplet (T, "T", &c);
     assert(cholmod_check_triplet(T, &c));
     cholmod_sparse * As = cholmod_triplet_to_sparse(T, T->nnz, &c);
     //cholmod_print_sparse (As, "A", &c);
@@ -401,7 +429,7 @@ int coo_to_csc(matrix * A)
         {
             ptr = realloc(A->x.sparse.a, sizeof(double) * nnz);
             if(ptr == NULL) {
-                return FAILURE;
+                goto cleanup;
             }
             A->x.sparse.na = nnz;
             A->x.sparse.a = ptr;
@@ -409,7 +437,7 @@ int coo_to_csc(matrix * A)
         {
             ptr = realloc(A->x.sparse.ia, sizeof(int) * nnz);
             if(ptr == NULL) {
-                return FAILURE;
+                goto cleanup;
             }
             A->x.sparse.nia = nnz;
             A->x.sparse.ia = ptr;
@@ -417,11 +445,12 @@ int coo_to_csc(matrix * A)
         {
             ptr = realloc(A->x.sparse.ja, sizeof(int) * (cols + 1));
             if(ptr == NULL) {
-                return FAILURE;
+                goto cleanup;
             }
             A->x.sparse.ja = ptr;
             A->x.sparse.nja = cols + 1;
         }
+        /* TODO use memcpy? */
         for(int i = 0; i < A->x.sparse.na; i++) {
             A->x.sparse.a[i] = xx[i];
             A->x.sparse.ia[i] = ii[i];
@@ -431,8 +460,32 @@ int coo_to_csc(matrix * A)
         }
         A->type = CSC;
     }
+    ret = SUCCESS;
+cleanup:
     cholmod_free_sparse(&As, &c);
     cholmod_free_triplet(&T, &c);
     cholmod_finish (&c);               /* finish CHOLMOD */
-    return SUCCESS;
+    return ret;
+}
+
+#define swap(type, a, b) do { \
+   type tmp = a; \
+   a = b; \
+   b = tmp; \
+} while(0)
+
+int coo_to_csr(matrix * A)
+{
+    assert(A->type == COO);
+    assert(A->x.sparse.nia == A->x.sparse.nja);
+    assert(A->x.sparse.nia == A->x.sparse.na);
+    swap(int *, A->x.sparse.ia, A->x.sparse.ja);
+    swap(int, A->m, A->n);
+    int ret = coo_to_csc(A);
+    swap(int *, A->x.sparse.ia, A->x.sparse.ja);
+    swap(int, A->m, A->n);
+    if(A->type == CSC) {
+        A->type = CSR;
+    }
+    return ret;
 }
