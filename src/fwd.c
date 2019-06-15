@@ -76,12 +76,11 @@ static int build_system_matrix(const model * m, int gnd, int idx, matrix * A, ma
     for(int i = 0; i < m->n_elec; i++) {
         const int row = m->elec_to_sys[i];
         if(row < nn) {
-            continue;    /* is PEM */
+            continue; /* is PEM */
         }
-        const double zc = 1e-3; /* Ohm/m^2 */
+        const double zc = m->zc[i]; /* Ω/m² */
         const int bc = i + 1; /* electrode# = bc# = i+1 */
-        int tmp = calc_sys_cem(&(m->fwd), bc, zc, row, Se_idx, A->x.sparse.ia, A->x.sparse.ja, A->x.sparse.a);
-        Se_idx += tmp; /* TODO rm */
+        Se_idx += calc_sys_cem(&(m->fwd), bc, zc, row, Se_idx, A->x.sparse.ia, A->x.sparse.ja, A->x.sparse.a);
     }
     assert(nnz == Se_idx);
     /* remove ground node */
@@ -175,6 +174,10 @@ int fwd_solve(model * mdl, double * meas)
         printf("error: %s: out of memory\n", "elec_to_sys");
         goto return_result;
     }
+    if(!calc_elec_zc_map(mdl)) {
+        printf("error: %s: out of memory\n", "elec_zc");
+        goto return_result;
+    }
     for(int idx = 0; idx < mdl->n_params[1]; idx++) {
         /* fill in the matrices and vectors */
         const int gnd_node = 1;
@@ -255,7 +258,7 @@ int fwd_solve(model * mdl, double * meas)
             assert(cholmod_check_dense (&bs, &c));
             int nret = cholmod_solve2 (CHOLMOD_A, L, &bs, &bset, &x, &xset, &Y, &E, &c);       /* solve Ax=b */
             assert(nret);
-            meas[idx * (mdl->n_stimmeas) + i] = calc_meas(mdl, i, x->x) * 10;
+            meas[idx * (mdl->n_stimmeas) + i] = calc_meas(mdl, i, x->x);
 #endif
         }
     }

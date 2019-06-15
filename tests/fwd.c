@@ -76,6 +76,8 @@ void test_2d_resistor_cem (void ** state)
         {1, 2, 1, 2},
         {2, 1, 1, 2},
     };
+    double measgain[2] = {2.5, 1};
+    double zc[2] = {1e-4, 1e-3};
     model m = {{ 0 }};
     m.fwd.dim = 2;
     m.fwd.elems = &(elems[0][0]);
@@ -86,28 +88,32 @@ void test_2d_resistor_cem (void ** state)
     m.fwd.surfaceelems = &(se[0][0]);
     m.fwd.n_se = 4;
     m.stimmeas = &(stimmeas[0][0]);
+    m.measgain = &(measgain[0]);
     m.n_stimmeas = 2;
     m.params = &(cond[0]);
     m.n_params[0] = 2;
     m.n_params[1] = 1;
+    m.n_zc = 2;
+    m.zc = &(zc[0]);
     double meas[2] = {0};
-    will_return_count(_mock_test_malloc, 0, 5 + 3);
-    will_return_count(_mock_test_realloc, 0, 3);
+    will_return_always(_mock_test_malloc, 0);
+    will_return_always(_mock_test_realloc, 0);
     assert_int_equal(fwd_solve(&m, &meas[0]), 1);
     test_free(m.elec_to_sys);
     printf("meas = %g %g\n", meas[0], meas[1]);
-    const double expect = 1.0 + 2.0 * 1e-3;
+    const double default_zc = zc[0]+zc[1];
+    const double expect = 1.0 + default_zc;
     for(int i = 0; i < 2; i++) {
-        const double expecti = i == 0 ? +expect : -expect;
-        printf("Δ = %g - %g = %g\n", meas[i] / 10.0, expecti, meas[i] / 10.0 - expecti);
+        const double expecti = (i == 0 ? +expect * 2.5 : -expect);
+        printf("Δ = %g - %g = %g\n", meas[i], expecti, meas[i] - expecti);
     }
-    const double reltol = 1e3 * DBL_EPSILON;
+    const double reltol = 2e4 * DBL_EPSILON;
     printf("relative tolerance = %g\n", reltol);
-    assert_double_equal(meas[0] / 10.0, +(1.0 + 2.0 * 1e-3), reltol); /* TODO rm /10 */
-    assert_double_equal(meas[1] / 10.0, -(1.0 + 2.0 * 1e-3), reltol); /* TODO rm /10 */
+    assert_double_equal(meas[0], +expect * 2.5, reltol);
+    assert_double_equal(meas[1], -expect, reltol);
 }
 
-#define NUM_MALLOCS_PMAP (5 + 3 + 3 +4)
+#define NUM_MALLOCS_PMAP (5 + 3 + 3 + 4 + 1)
 #define NUM_REALLOCS_PMAP (3 + 3)
 void test_2d_resistor_pmap (void ** state)
 {
@@ -136,6 +142,7 @@ void test_2d_resistor_pmap (void ** state)
         {1, 2, 1, 2},
         {2, 1, 1, 2},
     };
+    double measgain[2] = {1, 1};
     int pmap_elem[2] = {1, 2};
     int pmap_param[2] = {1, 1};
     double pmap_frac[2] = {1.0, 1.0};
@@ -153,25 +160,28 @@ void test_2d_resistor_pmap (void ** state)
     m.fwd.pmap_param = &(pmap_param[0]);
     m.fwd.pmap_frac = &(pmap_frac[0]);
     m.stimmeas = &(stimmeas[0][0]);
+    m.measgain = &(measgain[0]);
     m.n_stimmeas = 2;
     m.params = &(cond[0]);
     m.n_params[0] = 1;
     m.n_params[1] = 1;
     double meas[2] = {0};
-    will_return_count(_mock_test_malloc, 0, NUM_MALLOCS_PMAP);
-    will_return_count(_mock_test_realloc, 0, NUM_REALLOCS_PMAP);
+    will_return_always(_mock_test_malloc, 0);
+    will_return_always(_mock_test_realloc, 0);
     assert_int_equal(fwd_solve(&m, &meas[0]), 1);
     test_free(m.elec_to_sys);
+    test_free(m.zc);
     printf("meas = %g %g\n", meas[0], meas[1]);
-    const double expect = 2.0 + 2.0 * 1e-3;
+    const double default_zc = 1e-2;
+    const double expect = 2.0 + 2.0 * default_zc;
     for(int i = 0; i < 2; i++) {
         const double expecti = i == 0 ? +expect : -expect;
-        printf("Δ = %g - %g = %g\n", meas[i] / 10.0, expecti, meas[i] / 10.0 - expecti);
+        printf("Δ = %g - %g = %g\n", meas[i], expecti, meas[i] - expecti);
     }
     const double reltol = 4e3 * DBL_EPSILON;
     printf("relative tolerance = %g\n", reltol);
-    assert_double_equal(meas[0] / 10.0, +expect, reltol); /* TODO rm /10 */
-    assert_double_equal(meas[1] / 10.0, -expect, reltol); /* TODO rm /10 */
+    assert_double_equal(meas[0], +expect, reltol);
+    assert_double_equal(meas[1], -expect, reltol);
 }
 
 void test_3d_resistor_cem (void ** state)
@@ -216,6 +226,7 @@ void test_3d_resistor_cem (void ** state)
         {1, 2, 1, 2},
         {2, 1, 1, 2},
     };
+    double measgain[2] = {1, 1};
     model m = {{ 0 }};
     m.fwd.dim = 3;
     m.fwd.elems = &(elems[0][0]);
@@ -226,25 +237,28 @@ void test_3d_resistor_cem (void ** state)
     m.fwd.surfaceelems = &(se[0][0]);
     m.fwd.n_se = 12;
     m.stimmeas = &(stimmeas[0][0]);
+    m.measgain = &(measgain[0]);
     m.n_stimmeas = 2;
     m.params = &(cond[0]);
     m.n_params[0] = 6;
     m.n_params[1] = 1;
     double meas[2] = {0};
-    will_return_count(_mock_test_malloc, 0, 5 + 3);
-    will_return_count(_mock_test_realloc, 0, 3);
+    will_return_always(_mock_test_malloc, 0);
+    will_return_always(_mock_test_realloc, 0);
     assert_int_equal(fwd_solve(&m, &meas[0]), 1);
     test_free(m.elec_to_sys);
+    test_free(m.zc);
     printf("meas = %g %g\n", meas[0], meas[1]);
-    const double expect = 1.0 + 2.0 * 1e-3;
+    const double default_zc = 1e-2;
+    const double expect = 1.0 + 2.0 * default_zc;
     for(int i = 0; i < 2; i++) {
         const double expecti = i == 0 ? +expect : -expect;
-        printf("Δ = %g - %g = %g\n", meas[i] / 10, expecti, meas[i] / 10 - expecti);
+        printf("Δ = %g - %g = %g\n", meas[i], expecti, meas[i] - expecti);
     }
     const double reltol = 1e3 * DBL_EPSILON;
     printf("relative tolerance = %g\n", reltol);
-    assert_double_equal(meas[0] / 10, +expect, reltol); /* TODO rm /10 */
-    assert_double_equal(meas[1] / 10, -expect, reltol); /* TODO rm /10 */
+    assert_double_equal(meas[0], +expect, reltol);
+    assert_double_equal(meas[1], -expect, reltol);
 }
 
 /* TODO currently no PEM test cases */
@@ -276,6 +290,7 @@ void test_fail (void ** state)
         {1, 2, 1, 2},
         {2, 1, 1, 2},
     };
+    double measgain[2] = {1, 1};
     int pmap_elem[2] = {1, 2};
     int pmap_param[2] = {1, 1};
     double pmap_frac[2] = {1.0, 1.0};
@@ -293,6 +308,7 @@ void test_fail (void ** state)
     m.fwd.pmap_param = &(pmap_param[0]);
     m.fwd.pmap_frac = &(pmap_frac[0]);
     m.stimmeas = &(stimmeas[0][0]);
+    m.measgain = &(measgain[0]);
     m.n_stimmeas = 2;
     m.params = &(cond[0]);
     m.n_params[0] = 2;
@@ -309,7 +325,7 @@ void test_fail (void ** state)
     for(int i = 0, mallocs = 0, reallocs = 0; i < NUM_MALLOCS_PMAP + NUM_REALLOCS_PMAP / 3; i++) {
         int malloc_fail;
         switch(i) {
-        case 16:
+        case 17:
         case 11:
             reallocs++;
             malloc_fail = 0;
@@ -350,6 +366,7 @@ void test_fail (void ** state)
     will_return_count(_mock_test_realloc, 0, NUM_REALLOCS_PMAP);
     assert_int_equal(fwd_solve(&m, &meas[0]), 1);
     test_free(m.elec_to_sys);
+    test_free(m.zc);
 }
 
 

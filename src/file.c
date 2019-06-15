@@ -46,7 +46,7 @@ static void gzreadnext(gzFile F, char data[], int n)
 }
 
 #define LEN 32
-enum fileformat_field {EOL, TEST, FMT, MESH, HP, STIM, DATA, PARAM, DIM, TYPE, SURF, NODE, ELEM, MAP};
+enum fileformat_field {EOL, TEST, FMT, MESH, HP, STIM, DATA, PARAM, DIM, TYPE, SURF, NODE, ELEM, MAP, ZC};
 enum fileformat_req {OPTIONAL, REQUIRED, REQUIRED_FIRST};
 typedef struct {
     enum fileformat_field field;
@@ -176,8 +176,7 @@ static int sscanf_size(const char * data, const char * section, enum fileformat_
         }
         break;
     case HP:
-        set_model_hp(m, d);
-        rows = 0;
+        rows = 1;
         break;
     case DIM:
         if(n[0] != 2 && n[0] != 3) {
@@ -218,6 +217,11 @@ static int sscanf_size(const char * data, const char * section, enum fileformat_
         break;
     case MAP:
         if(!set_mesh_pmap(*mm, n[0])) {
+            return bad_malloc(section);
+        }
+        break;
+    case ZC:
+        if(!set_model_zc(m, n[0])) {
             return bad_malloc(section);
         }
         break;
@@ -344,10 +348,11 @@ static int readzh_stimmeas(const char * data, model * m, mesh * mm, const int i)
 {
     assert(m != NULL);
     assert(m->stimmeas != NULL);
-    int cnt = sscanf(data, "%d %d %d %d\n",
+    int cnt = sscanf(data, "%d %d %d %d %lf\n",
                      &m->stimmeas[4 * i + 0], &m->stimmeas[4 * i + 1],
-                     &m->stimmeas[4 * i + 2], &m->stimmeas[4 * i + 3]);
-    return (cnt == 4) ? SUCCESS : FAILURE;
+                     &m->stimmeas[4 * i + 2], &m->stimmeas[4 * i + 3],
+                     &m->measgain[i]);
+    return (cnt == 5) ? SUCCESS : FAILURE;
 }
 
 static int readzh_data(const char * data, model * m, mesh * mm, const int i)
@@ -384,6 +389,21 @@ static int readzh_params(const char * data, model * m, mesh * mm, const int i)
 }
 
 
+static int readzh_hp(const char * data, model * m, mesh * mm, const int i)
+{
+    assert(m != NULL);
+    int cnt = sscanf(data, " %lf\n", &(m->hp));
+    return (cnt == 1) ? SUCCESS : FAILURE;
+}
+
+static int readzh_zc(const char * data, model * m, mesh * mm, const int i)
+{
+    assert(mm != NULL);
+    int cnt = sscanf(data, " %d %lf\n", &(m->zcbc[i]), &(m->zc[i]));
+    return (cnt == 2) ? SUCCESS : FAILURE;
+}
+
+
 int readfile_ngvol(const char filename[], model * m)
 {
     fileformat ngvol [] = {
@@ -411,7 +431,7 @@ int readfile(const char filename[], model * m)
         {STIM, "stimmeas", &readzh_stimmeas, OPTIONAL},
         {DATA, "data", &readzh_data, OPTIONAL},
         {PARAM, "parameters", &readzh_params, OPTIONAL},
-        {HP,   "hyperparameter", NULL, OPTIONAL},
+        {HP,   "hyperparameter", &readzh_hp, OPTIONAL},
         /* netgen .vol format */
         {DIM,  "dimension", NULL, REQUIRED},
         {TYPE, "geomtype", NULL, REQUIRED},
@@ -419,6 +439,7 @@ int readfile(const char filename[], model * m)
         {NODE, "points", &readngvol_points, REQUIRED},
         {ELEM, "volumeelements", &readngvol_volumeelements, REQUIRED},
         {MAP, "parametermap", &readzh_parametermap, OPTIONAL},
+        {ZC, "contactimpedances", &readzh_zc, OPTIONAL},
         { 0 }
     };
     if(!readfile_loop(filename, m, zh_format1)) {

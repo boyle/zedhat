@@ -180,12 +180,12 @@ static void test_happy (void ** state)
         assert_int_equal(ret, 1);
         /* now repeat for a zedhat file with optional fields: stimmeas */
         printf("-- zedhat %dd (optional fields) --\n", dim);
-        will_return_count(_mock_test_malloc, 0, 5 + 3 + 3);
-        will_return_count(_mock_gzeof, 0, 4);
+        will_return_count(_mock_test_malloc, 0, 5 + 3 + 3 + 3);
+        will_return_count(_mock_gzeof, 0, 5);
         mock_zh_read(7, 1, 3);
         will_return(_mock_gzgets, "stimmeas\n");
         will_return(_mock_gzgets, "1\n");
-        will_return(_mock_gzgets, "1 2 3 4\n");
+        will_return(_mock_gzgets, "1 2 3 4 2.0\n");
         will_return(_mock_gzgets, "data\n");
         will_return(_mock_gzgets, "1 2\n");
         will_return(_mock_gzgets, " 1.1 -2.2\n");
@@ -193,7 +193,11 @@ static void test_happy (void ** state)
         will_return(_mock_gzgets, "1 3\n");
         will_return(_mock_gzgets, "-1.1 2.2 +3.3 4.4e-2\n");
         will_return(_mock_gzgets, "hyperparameter\n");
+        will_return(_mock_gzgets, " 1\n");
         will_return(_mock_gzgets, " 1.1\n");
+        will_return(_mock_gzgets, "contactimpedances\n");
+        will_return(_mock_gzgets, " 1\n");
+        will_return(_mock_gzgets, "1 10.0\n");
         ret = readfile("unittest", m);
         assert_int_equal(ret, 1);
     }
@@ -299,7 +303,7 @@ static void test_zh_malloc_fails (void ** state)
 
 static void test_zh_malloc_fail_optional (void ** state)
 {
-    for(int i = 0; i < 3; i++) {
+    for(int i = 0; i < 6; i++) {
         printf("i=%d\n", i);
         int ret;
         will_return(_mock_test_malloc, 0);
@@ -307,19 +311,27 @@ static void test_zh_malloc_fail_optional (void ** state)
         mock_zh_read(7, 0, 3);
         int extra_malloc = 0;
         switch(i) {
+        case 1:
+            extra_malloc = 1;
         case 0:
             will_return(_mock_gzgets, "stimmeas\n");
             will_return(_mock_gzgets, "1\n");
             break;
-        case 1:
+        case 2:
             will_return(_mock_gzgets, "data\n");
             will_return(_mock_gzgets, "2 6\n");
             break;
-        case 2:
+        case 3:
             will_return(_mock_gzgets, "parameters\n");
             will_return(_mock_gzgets, "2 6\n");
             break;
-        default: assert_int_equal(0, 1);
+        case 5:
+            extra_malloc = 1;
+        case 4:
+            will_return(_mock_gzgets, "contactimpedances\n");
+            will_return(_mock_gzgets, "1\n");
+            break;
+        default: fail();
         }
         will_return_count(_mock_test_malloc, 0, 8 + extra_malloc);
         will_return(_mock_test_malloc, 1);

@@ -62,7 +62,10 @@ void reset_model(model * m)
     free(m->data);
     free(m->params);
     free(m->stimmeas);
+    free(m->measgain);
     free(m->elec_to_sys);
+    free(m->zcbc);
+    free(m->zc);
     free_mesh(&(m->fwd));
     free_mesh(&(m->rec));
     init_model(m);
@@ -114,21 +117,19 @@ int set_model_stimmeas(model * m, int rows)
     assert(m != NULL);
     m->n_stimmeas = rows;
     m->n_elec = 0;
-    free(m->stimmeas);
     free(m->elec_to_sys);
     m->elec_to_sys = NULL;
+    free(m->stimmeas);
     m->stimmeas = malloc(sizeof(int) * rows * 4);
     if(m->stimmeas == NULL) {
         return FAILURE;
     }
+    free(m->measgain);
+    m->measgain = malloc(sizeof(double) * rows);
+    if(m->measgain == NULL) {
+        return FAILURE;
+    }
     return SUCCESS;
-}
-
-void set_model_hp(model * m, double hp)
-{
-    assert(hp >= 0.0);
-    assert(m != NULL);
-    m->hp = hp;
 }
 
 void set_mesh_dim(mesh * m, int dim)
@@ -161,11 +162,11 @@ int set_mesh_elems(mesh * m, int n_elems)
     assert(m->dim == 2 || m->dim == 3);
     m->n_elems = n_elems;
     free(m->elems);
-    free(m->matidx);
     m->elems = malloc(sizeof(int) * n_elems * (m->dim + 1));
     if(m->elems == NULL) {
         return FAILURE;
     }
+    free(m->matidx);
     m->matidx = malloc(sizeof(int) * n_elems);
     if(m->matidx == NULL) {
         return FAILURE;
@@ -180,11 +181,11 @@ int set_mesh_surfaceelems(mesh * m, int n_se)
     assert(m->dim == 2 || m->dim == 3);
     m->n_se = n_se;
     free(m->surfaceelems);
-    free(m->bc);
     m->surfaceelems = malloc(sizeof(int) * n_se * m->dim);
     if(m->surfaceelems == NULL) {
         return FAILURE;
     }
+    free(m->bc);
     m->bc = malloc(sizeof(int) * n_se);
     if(m->bc == NULL) {
         return FAILURE;
@@ -198,20 +199,68 @@ int set_mesh_pmap(mesh * m, int n_pmap)
     assert(m != NULL);
     m->n_pmap = n_pmap;
     free(m->pmap_param);
-    free(m->pmap_elem);
-    free(m->pmap_frac);
     m->pmap_param = malloc(sizeof(int) * n_pmap);
     if(m->pmap_param == NULL) {
         return FAILURE;
     }
+    free(m->pmap_elem);
     m->pmap_elem = malloc(sizeof(int) * n_pmap);
     if(m->pmap_elem == NULL) {
         return FAILURE;
     }
+    free(m->pmap_frac);
     m->pmap_frac = malloc(sizeof(double) * n_pmap);
     if(m->pmap_frac == NULL) {
         return FAILURE;
     }
+    return SUCCESS;
+}
+
+int set_model_zc(model * m, int rows)
+{
+    assert(rows > 0);
+    assert(m != NULL);
+    m->n_zc = rows;
+    free(m->zc);
+    m->zc = malloc(sizeof(double) * rows);
+    if(m->zc == NULL) {
+        return FAILURE;
+    }
+    free(m->zcbc);
+    m->zcbc = malloc(sizeof(int) * rows);
+    if(m->zcbc == NULL) {
+        return FAILURE;
+    }
+    return SUCCESS;
+}
+
+int calc_elec_zc_map(model * m)
+{
+    assert(m != NULL);
+    assert(m->n_elec > 0);
+    double * tmp = malloc(sizeof(double) * m->n_elec);
+    if(tmp == NULL) {
+        return FAILURE;
+    }
+    if((m->n_zc == m->n_elec) && (m->zcbc == NULL)) {
+        free(tmp);
+        return SUCCESS;
+    }
+    for(int i = 0; i < m->n_elec; i++) {
+        tmp[i] = 1e-2; /* default zc = 0.01 Ω/m² */
+    }
+    for(int i = 0; i < m->n_zc; i++) {
+        /* TODO for now we assume that boundary condition number = electrode# */
+        const int elec = m->zcbc[i];
+        assert(elec > 0);
+        assert(elec <= m->n_elec);
+        tmp[elec - 1] = m->zc[i];
+    }
+    free(m->zcbc);
+    free(m->zc);
+    m->zcbc = NULL;
+    m->zc = tmp;
+    m->n_zc = m->n_elec;
     return SUCCESS;
 }
 
@@ -601,7 +650,8 @@ double calc_meas(model const * const m, int idx, double * x)
     const int N = m->stimmeas[idx * 4 + 3]; /* voltage- */
     const int Mn = m->elec_to_sys[M - 1];
     const int Nn = m->elec_to_sys[N - 1];
-    return x[Mn] - x[Nn];
+    const double gain = m->measgain[idx];
+    return (x[Mn] - x[Nn]) * gain;
 }
 
 int calc_sys_cem_n(const int nd)
