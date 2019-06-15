@@ -101,7 +101,7 @@ void test_2d_resistor_cem (void ** state)
     assert_int_equal(fwd_solve(&m, &meas[0]), 1);
     test_free(m.elec_to_sys);
     printf("meas = %g %g\n", meas[0], meas[1]);
-    const double default_zc = zc[0]+zc[1];
+    const double default_zc = zc[0] + zc[1];
     const double expect = 1.0 + default_zc;
     for(int i = 0; i < 2; i++) {
         const double expecti = (i == 0 ? +expect * 2.5 : -expect);

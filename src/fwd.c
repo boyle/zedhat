@@ -19,12 +19,12 @@ static int malloc_system_matrix(const model * mdl, matrix ** A)
     return SUCCESS;
 }
 
-static int build_system_matrix(const model * m, int gnd, int idx, matrix * A, matrix * PMAP)
+static int build_system_matrix(const model * m, int gnd, int frame_idx, matrix * A, matrix * PMAP)
 {
     assert(m != NULL);
     assert(A != NULL);
-    assert(idx >= 0);
-    assert(idx < m->n_elec);
+    assert(frame_idx >= 0);
+    assert(frame_idx < m->n_params[0]);
     assert(gnd > 0);
     assert(gnd < m->fwd.n_nodes);
     /* build shape matrices */
@@ -46,7 +46,7 @@ static int build_system_matrix(const model * m, int gnd, int idx, matrix * A, ma
     if(PMAP == NULL) {
         assert(ne == m->n_params[0]);
         for(int e = 0; e < ne; e++) {
-            const double cond = m->params[e * m->n_params[1] + idx]; /* conductivity */
+            const double cond = m->params[e * m->n_params[1] + frame_idx]; /* conductivity */
             for(int i = 0; i < se_n; i++) {
                 A->x.sparse.a[e * se_n + i] *= cond;
             }
@@ -61,7 +61,7 @@ static int build_system_matrix(const model * m, int gnd, int idx, matrix * A, ma
             for(int j = PMAP->x.sparse.ia[e]; j < PMAP->x.sparse.ia[e + 1]; j++) {
                 const int param = PMAP->x.sparse.ja[j];
                 const double element_fraction = PMAP->x.sparse.a[j];
-                const double conductivity = m->params[idx + param * m->n_params[1]];
+                const double conductivity = m->params[frame_idx + param * m->n_params[1]];
                 cond_frac += conductivity * element_fraction;
             }
             // printf("[e=%d] σ=%g\n", e, cond_frac);
@@ -178,10 +178,10 @@ int fwd_solve(model * mdl, double * meas)
         printf("error: %s: out of memory\n", "elec_zc");
         goto return_result;
     }
-    for(int idx = 0; idx < mdl->n_params[1]; idx++) {
+    for(int frame_idx = 0; frame_idx < mdl->n_params[1]; frame_idx++) {
         /* fill in the matrices and vectors */
         const int gnd_node = 1;
-        if (!build_system_matrix(mdl, gnd_node, idx, A, PMAP)) {
+        if (!build_system_matrix(mdl, gnd_node, frame_idx, A, PMAP)) {
             printf("error: failed to build system matrix A\n");
             goto return_result;
         }
@@ -196,7 +196,7 @@ int fwd_solve(model * mdl, double * meas)
         /* END MODIFIED: now continue with the usual operations */
         assert(As != NULL);
         assert(As->stype != 0);
-        if(idx == 0) {
+        if(frame_idx == 0) {
             /* CHOLMOD analyze; Non-zeros do not change at each iteration
              * (its the same mesh), so we do this expensive step once. */
             L = cholmod_analyze (As, &c);
@@ -221,10 +221,10 @@ int fwd_solve(model * mdl, double * meas)
             cholmod_sdmult (As, 0, m1, one, x, b, &c);      /* b = b-Ax */
             double norm = cholmod_norm_dense (b, 0, &c);
             if(norm > 1e-12) {
-                printf ("error: bad forward solution at frame#%d, measurement#%d: ||b-Ax|| = %8.1e\n", idx, i, norm);
+                printf ("error: bad forward solution at frame#%d, measurement#%d: ||b-Ax|| = %8.1e\n", frame_idx, i, norm);
                 goto return_result;
             }
-            meas[idx * (mdl->n_stimmeas) + i] = calc_meas(mdl, i, x->x) * 10;
+            meas[frame_idx * (mdl->n_stimmeas) + i] = calc_meas(mdl, i, x->x) * 10;
             double * xx = x->x;
             printf("potentials\n");
             for(int i = 0; i < rows; i++) {
@@ -237,9 +237,9 @@ int fwd_solve(model * mdl, double * meas)
             int bs_p[2] = {0, n_elec};
             int bs_i[n_elec];
             for(int i = 0; i < n_elec; i++) {
-                const int idx = mdl->elec_to_sys[i];
-                bs_i[i] = idx;
-                bs_x[idx] = 0;
+                const int frame_idx = mdl->elec_to_sys[i];
+                bs_i[i] = frame_idx;
+                bs_x[frame_idx] = 0;
             }
             calc_stim(mdl, i, &(bs_x[0]));
             calc_stim_gnd(mdl, gnd_node, &(bs_x[0]));
@@ -258,7 +258,7 @@ int fwd_solve(model * mdl, double * meas)
             assert(cholmod_check_dense (&bs, &c));
             int nret = cholmod_solve2 (CHOLMOD_A, L, &bs, &bset, &x, &xset, &Y, &E, &c);       /* solve Ax=b */
             assert(nret);
-            meas[idx * (mdl->n_stimmeas) + i] = calc_meas(mdl, i, x->x);
+            meas[frame_idx * (mdl->n_stimmeas) + i] = calc_meas(mdl, i, x->x);
 #endif
         }
     }
