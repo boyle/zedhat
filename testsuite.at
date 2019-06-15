@@ -40,7 +40,7 @@ AT_BANNER([unit tests])
 ZH_UNIT_TEST(file, zedhat file format I/O, 9)
 ZH_UNIT_TEST(matrix, dense and sparse matrices, 15)
 ZH_UNIT_TEST(model, system matrix calculator, 19)
-ZH_UNIT_TEST(fwd, forward solver, 4)
+ZH_UNIT_TEST(fwd, forward solver, 5)
 
 AT_BANNER([args])
 AT_SETUP([badargs])

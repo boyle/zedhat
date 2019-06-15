@@ -80,4 +80,5 @@ void calc_stim(model const * const m, int idx, double * b);
 double calc_meas(model const * const m, int idx, double * x);
 
 int check_model(model const * const m);
+void printf_model(model const * const m);
 #endif

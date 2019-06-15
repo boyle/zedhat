@@ -791,6 +791,59 @@ int check_model(model const * const mdl)
     return check_bc(&(mdl->fwd));
 }
 
+static void printf_mesh(mesh const * const msh)
+{
+    assert(msh != NULL);
+    if(msh->n_elems == 0) {
+        printf(" (none)\n");
+        return;
+    }
+    printf(" %dD, %d nodes, %d elements\n", msh->dim, msh->n_nodes, msh->n_elems);
+    printf("    elements\n");
+    const int nd = msh->dim;
+    const int nd1 = nd + 1;
+    for(int i = 0; i < msh->n_elems; i++) {
+        printf("     ");
+        for(int j = 0; j < nd1; j++) {
+            printf(" %-5d", msh->elems[i * nd1 + j]);
+        }
+        printf("\n");
+    }
+    printf("    nodes\n");
+    for(int i = 0; i < msh->n_nodes; i++) {
+        printf("     ");
+        for(int j = 0; j < nd; j++) {
+            printf(" %5.3f", msh->nodes[i * nd + j]);
+        }
+        printf("\n");
+    }
+}
+
+#define plural(a) ((a!=1)?"s":"")
+void printf_model(model const * const mdl)
+{
+    printf("model: %d electrodes, %d measurements,", mdl->n_elec, mdl->n_stimmeas);
+    printf(" λ = %g\n", mdl->hp);
+    printf("  %d parameter frame%s", mdl->n_params[1], plural(mdl->n_params[1]));
+    if(mdl->n_params[1] > 0) {
+        printf(" (%d parameter%s/frame)\n", mdl->n_params[0], plural(mdl->n_params[0]));
+    }
+    else {
+        printf("\n");
+    }
+    printf("  %d measurement frame%s", mdl->n_data[1], plural(mdl->n_data[1]));
+    if(mdl->n_data[1] > 0) {
+        printf(" (%d measurement%s/frame)\n", mdl->n_data[0], plural(mdl->n_data[0]));
+    }
+    else {
+        printf("\n");
+    }
+    printf("  forward model:");
+    printf_mesh(&(mdl->fwd));
+    printf("  reconstruction model:");
+    printf_mesh(&(mdl->rec));
+}
+
 int calc_sys_size(model const * const m)
 {
     const int dim = m->fwd.dim;

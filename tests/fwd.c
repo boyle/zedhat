@@ -96,10 +96,12 @@ void test_2d_resistor_cem (void ** state)
     m.n_zc = 2;
     m.zc = &(zc[0]);
     double meas[2] = {0};
+    m.n_data[0] = 2;
+    m.n_data[1] = 1;
+    m.data = &(meas[0]);
     will_return_always(_mock_test_malloc, 0);
     will_return_always(_mock_test_realloc, 0);
     assert_int_equal(fwd_solve(&m, &meas[0]), 1);
-    test_free(m.elec_to_sys);
     printf("meas = %g %g\n", meas[0], meas[1]);
     const double default_zc = zc[0] + zc[1];
     const double expect = 1.0 + default_zc;
@@ -111,6 +113,21 @@ void test_2d_resistor_cem (void ** state)
     printf("relative tolerance = %g\n", reltol);
     assert_double_equal(meas[0], +expect * 2.5, reltol);
     assert_double_equal(meas[1], -expect, reltol);
+    printf_model(&m);
+    double J[2][2] = {{0}};
+    assert_int_equal(calc_jacobian(&m, (&J[0][0])), 1);
+    printf("Jacobian:\n");
+    for(int i = 0; i < m.n_stimmeas; i++) {
+        for(int j = 0; j < m.fwd.n_elems; j++) {
+            printf(" %18g", J[i][j]);
+        }
+        printf("\n");
+    }
+    assert_double_equal(J[0][0], -1.25, reltol);
+    assert_double_equal(J[0][1], -1.25, reltol);
+    assert_double_equal(J[1][0], +0.50, reltol);
+    assert_double_equal(J[1][1], +0.50, reltol);
+    test_free(m.elec_to_sys);
 }
 
 #define NUM_MALLOCS_PMAP (5 + 3 + 3 + 4 + 1)
@@ -169,8 +186,6 @@ void test_2d_resistor_pmap (void ** state)
     will_return_always(_mock_test_malloc, 0);
     will_return_always(_mock_test_realloc, 0);
     assert_int_equal(fwd_solve(&m, &meas[0]), 1);
-    test_free(m.elec_to_sys);
-    test_free(m.zc);
     printf("meas = %g %g\n", meas[0], meas[1]);
     const double default_zc = 1e-2;
     const double expect = 2.0 + 2.0 * default_zc;
@@ -182,6 +197,19 @@ void test_2d_resistor_pmap (void ** state)
     printf("relative tolerance = %g\n", reltol);
     assert_double_equal(meas[0], +expect, reltol);
     assert_double_equal(meas[1], -expect, reltol);
+    double J[2][1] = {{0}};
+    assert_int_equal(calc_jacobian(&m, (&J[0][0])), 1);
+    printf("Jacobian:\n");
+    for(int i = 0; i < m.n_stimmeas; i++) {
+        for(int j = 0; j < 1; j++) {
+            printf(" %18g", J[i][j]);
+        }
+        printf("\n");
+    }
+    assert_double_equal(J[0][0], -2.0 * 2, reltol);
+    assert_double_equal(J[1][0], +2.0 * 2, reltol);
+    test_free(m.elec_to_sys);
+    test_free(m.zc);
 }
 
 void test_3d_resistor_cem (void ** state)
@@ -246,8 +274,6 @@ void test_3d_resistor_cem (void ** state)
     will_return_always(_mock_test_malloc, 0);
     will_return_always(_mock_test_realloc, 0);
     assert_int_equal(fwd_solve(&m, &meas[0]), 1);
-    test_free(m.elec_to_sys);
-    test_free(m.zc);
     printf("meas = %g %g\n", meas[0], meas[1]);
     const double default_zc = 1e-2;
     const double expect = 1.0 + 2.0 * default_zc;
@@ -259,11 +285,28 @@ void test_3d_resistor_cem (void ** state)
     printf("relative tolerance = %g\n", reltol);
     assert_double_equal(meas[0], +expect, reltol);
     assert_double_equal(meas[1], -expect, reltol);
+    double J[2][6] = {{0}};
+    assert_int_equal(calc_jacobian(&m, (&J[0][0])), 1);
+    printf("Jacobian:\n");
+    for(int i = 0; i < m.n_stimmeas; i++) {
+        for(int j = 0; j < m.fwd.n_elems; j++) {
+            printf(" %18g", J[i][j]);
+        }
+        printf("\n");
+    }
+    for(int j = 0; j < m.fwd.n_elems; j++) {
+        assert_double_equal(J[0][j], -1.0 / 6.0, reltol);
+    }
+    for(int j = 0; j < m.fwd.n_elems; j++) {
+        assert_double_equal(J[1][1], +1.0 / 6.0, reltol);
+    }
+    test_free(m.elec_to_sys);
+    test_free(m.zc);
 }
 
 /* TODO currently no PEM test cases */
 
-void test_fail (void ** state)
+void test_fwd_solve_fail (void ** state)
 {
     /* 2D square:
      *    first four nodes at z=0
@@ -278,7 +321,7 @@ void test_fail (void ** state)
         {1, 2, 4},
         {1, 3, 4},
     };
-    double cond[2] = {1, 1};
+    double cond[1] = {1};
     int bc[4] = {0, 1, 0, 2};
     int se[4][2] = {
         {1, 2},
@@ -311,9 +354,10 @@ void test_fail (void ** state)
     m.measgain = &(measgain[0]);
     m.n_stimmeas = 2;
     m.params = &(cond[0]);
-    m.n_params[0] = 2;
+    m.n_params[0] = 1;
     m.n_params[1] = 1;
     double meas[2] = {0};
+    printf("\n"); printf_model(&m); printf("\n");
     /* check_model fail: bad boundary condition */
     se[3][0] = 0;
     assert_int_equal(fwd_solve(&m, &meas[0]), 0);
@@ -369,6 +413,118 @@ void test_fail (void ** state)
     test_free(m.zc);
 }
 
+void test_calc_jacobian_fail (void ** state)
+{
+    /* 2D square:
+     *    first four nodes at z=0
+     *    first two elems */
+    double nodes[4][2] = {
+        {0, 0},
+        {1, 0},
+        {0, 1},
+        {1, 1},
+    };
+    int elems[2][3] = { /* from netgen cube.geo */
+        {1, 2, 4},
+        {1, 3, 4},
+    };
+    double cond[1] = {1};
+    int bc[4] = {0, 1, 0, 2};
+    int se[4][2] = {
+        {1, 2},
+        {2, 4},
+        {4, 3},
+        {3, 0},
+    };
+    int stimmeas[2][4] = {
+        {1, 2, 1, 2},
+        {2, 1, 1, 2},
+    };
+    double measgain[2] = {1, 1};
+    int pmap_elem[2] = {1, 2};
+    int pmap_param[2] = {1, 1};
+    double pmap_frac[2] = {1.0, 1.0};
+    model m = {{ 0 }};
+    m.fwd.dim = 2;
+    m.fwd.elems = &(elems[0][0]);
+    m.fwd.nodes = &(nodes[0][0]);
+    m.fwd.n_elems = 2;
+    m.fwd.n_nodes = 4;
+    m.fwd.bc = &(bc[0]);
+    m.fwd.surfaceelems = &(se[0][0]);
+    m.fwd.n_se = 4;
+    m.fwd.n_pmap = 2;
+    m.fwd.pmap_elem = &(pmap_elem[0]);
+    m.fwd.pmap_param = &(pmap_param[0]);
+    m.fwd.pmap_frac = &(pmap_frac[0]);
+    m.stimmeas = &(stimmeas[0][0]);
+    m.measgain = &(measgain[0]);
+    m.n_stimmeas = 2;
+    m.params = &(cond[0]);
+    m.n_params[0] = 1;
+    m.n_params[1] = 1;
+    double J[2] = {0};
+    printf("\n"); printf_model(&m); printf("\n");
+    printf("happy\n");
+    will_return_count(_mock_test_malloc, 0, NUM_MALLOCS_PMAP + 7);
+    will_return_count(_mock_test_realloc, 0, NUM_REALLOCS_PMAP);
+    assert_int_equal(calc_jacobian(&m, &J[0]), 1);
+    /* check_model fail: bad boundary condition */
+    printf("bad bc\n");
+    se[3][0] = 0;
+    assert_int_equal(calc_jacobian(&m, &J[0]), 0);
+    se[3][0] = 3;
+    /* various malloc failures */
+    printf("malloc sad\n");
+    will_return(_mock_test_malloc, 1);
+    assert_int_equal(calc_jacobian(&m, &J[0]), 0);
+    for(int i = 0, mallocs = 0, reallocs = 0; i < NUM_MALLOCS_PMAP + 7 + NUM_REALLOCS_PMAP / 3; i++) {
+        int malloc_fail;
+        switch(i) {
+        case 24:
+        case 11:
+            reallocs++;
+            malloc_fail = 0;
+            break;
+        default:
+            mallocs++;
+            malloc_fail = 1;
+        }
+        printf("[i=%d] mallocs = %d/%d, reallocs = %d/%d\n", i,
+               mallocs, NUM_MALLOCS_PMAP,
+               reallocs * 3, NUM_REALLOCS_PMAP);
+        const int mallocs_success =  mallocs - (malloc_fail ? 1 : 0);
+        const int reallocs_success =  3 * reallocs - (malloc_fail ? 0 : 1);
+        if(mallocs_success > 0) {
+            will_return_count(_mock_test_malloc, 0, mallocs_success);
+        }
+        if(reallocs_success > 0) {
+            will_return_count(_mock_test_realloc, 0, reallocs_success);
+        }
+        if(malloc_fail) {
+            will_return(_mock_test_malloc, 1);
+        }
+        else {
+            will_return(_mock_test_realloc, 1);
+        }
+        assert_int_equal(calc_jacobian(&m, &J[0]), 0);
+    }
+    /* build system matrix failure: singular element volume */
+    printf("singular element (zero volume)\n");
+    elems[0][1] = 1;
+    will_return_count(_mock_test_malloc, 0, NUM_MALLOCS_PMAP);
+    will_return_count(_mock_test_realloc, 0, NUM_REALLOCS_PMAP - 3);
+    assert_int_equal(calc_jacobian(&m, &J[0]), 0);
+    elems[0][1] = 2;
+    /* passing example again */
+    printf("happy\n");
+    will_return_count(_mock_test_malloc, 0, NUM_MALLOCS_PMAP + 7);
+    will_return_count(_mock_test_realloc, 0, NUM_REALLOCS_PMAP);
+    assert_int_equal(calc_jacobian(&m, &J[0]), 1);
+    test_free(m.elec_to_sys);
+    test_free(m.zc);
+}
+
 
 int main(void)
 {
@@ -376,7 +532,8 @@ int main(void)
         cmocka_unit_test(test_2d_resistor_cem),
         cmocka_unit_test(test_3d_resistor_cem),
         cmocka_unit_test(test_2d_resistor_pmap),
-        cmocka_unit_test(test_fail),
+        cmocka_unit_test(test_fwd_solve_fail),
+        cmocka_unit_test(test_calc_jacobian_fail),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

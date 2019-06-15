@@ -1,7 +1,7 @@
 /* Copyright 2017-2019, Alistair Boyle, 3-clause BSD License */
 #include "config.h"
 #include <stdlib.h> /* malloc, free */
-#include <string.h> /* strncmp, strdup, bzero */
+#include <string.h> /* strncmp, strdup, bzero, memcpy */
 #include <assert.h> /* assert */
 #include <stdio.h> /* printf */
 #include <cholmod.h> /* cholmod_* */
@@ -120,16 +120,19 @@ int malloc_matrix_name(matrix * M, const char * name, const char * symbol, const
 
 static int malloc_matrix_sparse(matrix * M, const int na, const int nia, const int nja)
 {
+    M->x.sparse.na = 0;
     M->x.sparse.a = malloc(sizeof(double) * na);
     if(M->x.sparse.a == NULL) {
         return FAILURE;
     }
     M->x.sparse.na = na;
+    M->x.sparse.nia = 0;
     M->x.sparse.ia = malloc(sizeof(int) * nia);
     if(M->x.sparse.ia == NULL) {
         return FAILURE;
     }
     M->x.sparse.nia = nia;
+    M->x.sparse.nja = 0;
     M->x.sparse.ja = malloc(sizeof(int) * nja);
     if(M->x.sparse.ja == NULL) {
         return FAILURE;
@@ -173,6 +176,8 @@ int malloc_matrix_data(matrix * M, enum matrix_type type, const size_t rows, con
         assert(nnz == rows * cols);
         M->x.dense = malloc(sizeof(double) * nnz);
         if(M->x.dense == NULL) {
+            M->m = 0;
+            M->n = 0;
             ret = FAILURE;
         }
         break;
@@ -201,6 +206,55 @@ int malloc_matrix_data(matrix * M, enum matrix_type type, const size_t rows, con
     return ret;
 }
 
+int copy_matrix(matrix const * const A, matrix ** B, const char * symbol)
+{
+    assert(A != NULL);
+    assert(B != NULL);
+    assert(A != *B);
+    *B = free_matrix(*B);
+    *B = malloc_matrix();
+    if(*B == NULL) {
+        return FAILURE;
+    }
+    if(!malloc_matrix_name(*B, A->name, (symbol != NULL) ? symbol : A->symbol, A->units)) {
+        return FAILURE;
+    }
+    (*B)->scale = A->scale;
+    (*B)->symmetric = A->symmetric;
+    const size_t dense_nnz = A->m * A->n;
+    const size_t sparse_nnz = A->x.sparse.na;
+    switch(A->type) {
+    case IDENTITY:
+        break;
+//  case DIAGONAL:
+//      M->x.dense = malloc(sizeof(double) * nnz);
+//      break;
+//  case DENSE_SYMMETRIC:
+    case DENSE:
+        if(!malloc_matrix_data(*B, A->type, A->m, A->n, dense_nnz)) {
+            return FAILURE;
+        }
+        memcpy((*B)->x.dense, A->x.dense, sizeof(double) * A->m * A->n);
+        break;
+    case CSR_SYMMETRIC:
+    case CSR:
+    case CSC_SYMMETRIC:
+    case CSC:
+    case COO_SYMMETRIC:
+    case COO:
+        if(!malloc_matrix_data(*B, A->type, A->m, A->n, sparse_nnz)) {
+            return FAILURE;
+        }
+        memcpy((*B)->x.sparse.a, A->x.sparse.a, sizeof(double) * A->x.sparse.na);
+        memcpy((*B)->x.sparse.ia, A->x.sparse.ia, sizeof(int) * A->x.sparse.nia);
+        memcpy((*B)->x.sparse.ja, A->x.sparse.ja, sizeof(int) * A->x.sparse.nja);
+        break;
+    case MAX_MATRIX_TYPE: /* LCOV_EXCL_LINE */
+        break; /* LCOV_EXCL_LINE */
+    }
+    return SUCCESS;
+}
+
 /*
 void matrix_transpose(matrix * M)
 {
@@ -211,8 +265,11 @@ void matrix_transpose(matrix * M)
 
 void printf_matrix(matrix const * const A)
 {
+    if(A == NULL) {
+       printf("matrix (null)\n");
+       return;
+    }
     enum matrix_type type = A->type;
-    assert(A != NULL);
     printf("matrix %s: %zux%zu\n", A->symbol, A->m, A->n);
     printf(" ");
     if(A->name != NULL) {

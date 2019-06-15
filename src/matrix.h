@@ -41,5 +41,6 @@ matrix * free_matrix(matrix * M);
 void printf_matrix(matrix const * const A);
 int coo_to_csc(matrix * A);
 int coo_to_csr(matrix * A);
+int copy_matrix(matrix const * const src, matrix ** dest, const char * symbol);
 
 #endif

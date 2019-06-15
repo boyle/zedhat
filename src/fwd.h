@@ -6,5 +6,6 @@
 #include "matrix.h"
 
 int fwd_solve(model * mdl, double * meas);
+int calc_jacobian(model * mdl, double * J);
 
 #endif

@@ -1119,6 +1119,7 @@ void test_check_model (void ** state)
     mdl.fwd.surfaceelems = &(se2[0][0]);
     mdl.fwd.bc = &(bc[0]);
     printf_bc_se(&mdl);
+    printf_model(&mdl);
     printf("happy\n");
     assert_int_equal(check_model(&mdl), 1);
     /* skipped BC# */

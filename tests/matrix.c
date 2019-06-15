@@ -120,35 +120,57 @@ void test_malloc_matrix_data_identity(void ** state)
     assert_non_null(M);
     int ret = malloc_matrix_data(M, IDENTITY, 1, 1, 0);
     assert_int_equal(ret, 1);
+    matrix *C = NULL;
+    will_return(_mock_test_malloc, 0);
+    assert_int_equal(copy_matrix(M, &C, NULL), 1);
+    C = free_matrix(C);
     M = free_matrix(M);
 }
 
 void test_malloc_matrix_data_dense(void ** state)
 {
     int ret;
-    will_return(_mock_test_malloc, 0);
-    matrix * M = malloc_matrix();
-    will_return(_mock_test_malloc, 0);
-    ret = malloc_matrix_data(M, DENSE, 2, 2, 4);
-    printf_matrix(M);
-    assert_int_equal(ret, 1);
-    M = free_matrix(M);
+    matrix *M = NULL;
+    /* bad data malloc */
     will_return(_mock_test_malloc, 0);
     M = malloc_matrix();
     will_return(_mock_test_malloc, 1);
     ret = malloc_matrix_data(M, DENSE, 2, 2, 4);
     assert_int_equal(ret, 0);
+    /* good data malloc */
+    will_return(_mock_test_malloc, 0);
+    ret = malloc_matrix_data(M, DENSE, 2, 2, 4);
+    for(int i=0; i<M->m*M->n;i++) {
+       M->x.dense[i] = i;
+    }
+    printf_matrix(M);
+    assert_int_equal(ret, 1);
+    /* good copy */
+    printf("copy1 - good malloc\n");
+    matrix *C = NULL;
+    printf_matrix(C); /* should be okay printing from a NULL ptr */
+    will_return(_mock_test_malloc, 0);
+    will_return(_mock_test_malloc, 0);
+    assert_int_equal(copy_matrix(M, &C, NULL), 1);
+    printf_matrix(C);
+    /* bad copy */
+    printf("copy2 - bad malloc\n");
+    will_return(_mock_test_malloc, 0);
+    will_return(_mock_test_malloc, 1);
+    assert_int_equal(copy_matrix(M, &C, NULL), 0);
+    printf_matrix(C);
+    C = free_matrix(C);
     M = free_matrix(M);
 }
 
 void core_malloc_matrix_data(enum matrix_type type)
 {
-    for(int i = 0; i < 4; i++) {
+    for(int i = 0; i < 6; i++) {
         printf("i=%d\n", i);
         will_return(_mock_test_malloc, 0);
         matrix * M = malloc_matrix();
         if(i > 0) {
-            will_return_count(_mock_test_malloc, 0, i);
+            will_return_count(_mock_test_malloc, 0, (i < 4) ? i : 3);
         }
         if(i < 3) {
             will_return(_mock_test_malloc, 1);
@@ -183,7 +205,20 @@ void core_malloc_matrix_data(enum matrix_type type)
                 fail();
             }
         }
+        if(i > 0) {
+            will_return_count(_mock_test_malloc, 0, i);
+        }
+        if(i < 5) {
+            will_return(_mock_test_malloc, 1);
+        }
+        matrix * C = NULL;
+        ret = copy_matrix(M, &C, "COPY");
+        assert_int_equal(ret, i < 5 ? 0 : 1);
+        if(ret)  {
+            printf_matrix(C);
+        }
         M = free_matrix(M);
+        C = free_matrix(C);
     }
 }
 
@@ -313,7 +348,6 @@ int main(void)
         cmocka_unit_test(test_malloc_matrix_name_sad),
         cmocka_unit_test(test_malloc_matrix_data_null),
         cmocka_unit_test(test_malloc_matrix_data_identity),
-        cmocka_unit_test(test_malloc_matrix_data_dense),
         cmocka_unit_test(test_malloc_matrix_data_coo),
         cmocka_unit_test(test_malloc_matrix_data_coo_symmetric),
         cmocka_unit_test(test_malloc_matrix_data_csc),
@@ -322,6 +356,7 @@ int main(void)
         cmocka_unit_test(test_malloc_matrix_data_csr),
         cmocka_unit_test(test_malloc_matrix_data_csr_symmetric),
         cmocka_unit_test(test_malloc_matrix_data_coo_to_csr),
+        cmocka_unit_test(test_malloc_matrix_data_dense),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
