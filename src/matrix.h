@@ -28,7 +28,7 @@ typedef struct matrix_t {
     char * name;
     char * units;
     union {
-        double * dense;    /* dense array, vector or matrix */
+        double * dense;    /* dense array, vector or matrix; column-major order (x[1] is row 2, column 1) */
         matrix_sparse sparse; /* sparse matrix (CSR, CSC, COO) */
     } x;
 } matrix;
@@ -36,6 +36,7 @@ typedef struct matrix_t {
 matrix * malloc_matrix(void);
 int malloc_matrix_name(matrix * M, const char * name, const char * symbol, const char * units);
 int malloc_matrix_data(matrix * M, enum matrix_type type, const size_t rows, const size_t cols, const size_t nnz);
+void free_matrix_data(matrix * M);
 matrix * free_matrix(matrix * M);
 //void matrix_transpose(matrix * M);
 void printf_matrix(matrix const * const A);

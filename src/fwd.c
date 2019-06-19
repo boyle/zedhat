@@ -10,12 +10,53 @@
 #define SUCCESS 1
 #define FAILURE 0
 
+static void calc_stim_gnd(model const * const m, int gnd, double * b)
+{
+    assert(gnd > 0);
+    assert(gnd <= m->fwd.n_nodes);
+    b[gnd - 1] = 0.0;
+}
+
+static void calc_stim(model const * const m, int idx, double * b)
+{
+    assert(b != NULL);
+    assert(idx >= 0);
+    assert(idx < m->n_stimmeas);
+    const int A = m->stimmeas[idx * 4 + 0]; /* current+ */
+    const int B = m->stimmeas[idx * 4 + 1]; /* current- */
+    const int An = m->elec_to_sys[A - 1];
+    const int Bn = m->elec_to_sys[B - 1];
+    b[An] = +1;
+    b[Bn] = -1;
+}
+
+static int cmp_stim(model const * const mdl, int stim1, int stim2)
+{
+    const int A1 = mdl->stimmeas[stim1 * 4 + 0]; /* current+ */
+    const int B1 = mdl->stimmeas[stim1 * 4 + 1]; /* current- */
+    const int A2 = mdl->stimmeas[stim2 * 4 + 0]; /* current+ */
+    const int B2 = mdl->stimmeas[stim2 * 4 + 1]; /* current- */
+    return (A1 == A2) ? (B1 - B2) : (A1 - A2);
+}
+
+static double calc_meas(model const * const m, int idx, double * x)
+{
+    assert(x != NULL);
+    assert(idx >= 0);
+    assert(idx < m->n_stimmeas);
+    const int M = m->stimmeas[idx * 4 + 2]; /* voltage+ */
+    const int N = m->stimmeas[idx * 4 + 3]; /* voltage- */
+    const int Mn = m->elec_to_sys[M - 1];
+    const int Nn = m->elec_to_sys[N - 1];
+    const double gain = m->measgain[idx];
+    return (x[Mn] - x[Nn]) * gain;
+}
+
 static int build_system_matrix(const model * m, int gnd, int frame_idx, matrix * A, matrix ** Acopy, matrix * PMAP)
 {
     assert(m != NULL);
     assert(A != NULL);
     assert(frame_idx >= 0);
-    assert(frame_idx < m->n_params[0]);
     assert(gnd > 0);
     assert(gnd < m->fwd.n_nodes);
     /* build shape matrices */
@@ -56,30 +97,35 @@ static int build_system_matrix(const model * m, int gnd, int frame_idx, matrix *
         }
     }
     /* apply conductivity */
-    if(PMAP == NULL) {
-        assert(ne == m->n_params[0]);
-        for(int e = 0; e < ne; e++) {
-            const double cond = m->params[e * m->n_params[1] + frame_idx]; /* conductivity */
-            for(int i = 0; i < se_n; i++) {
-                A->x.sparse.a[e * se_n + i] *= cond;
+    if(m->n_params[1] > 0) { /* otherwise assume conductivity = 1 S/m */
+        assert(frame_idx < m->n_params[1]);
+        if(PMAP == NULL) {
+            assert(ne == m->n_params[0]);
+            const int rows = m->n_params[0];
+            for(int e = 0; e < ne; e++) {
+                const double cond = m->params[e + rows * frame_idx]; /* conductivity */
+                for(int i = 0; i < se_n; i++) {
+                    A->x.sparse.a[e * se_n + i] *= cond;
+                }
             }
         }
-    }
-    else { /* map parameters to elements */
-        assert(PMAP->n == m->n_params[0]);
-        assert(PMAP->m == ne);
-        assert(PMAP->type == CSR);
-        for(int e = 0; e < ne; e++) {
-            double cond_frac = 0.0;
-            for(int j = PMAP->x.sparse.ia[e]; j < PMAP->x.sparse.ia[e + 1]; j++) {
-                const int param = PMAP->x.sparse.ja[j];
-                const double element_fraction = PMAP->x.sparse.a[j];
-                const double conductivity = m->params[frame_idx + param * m->n_params[1]];
-                cond_frac += conductivity * element_fraction;
-            }
-            // printf("[e=%d] σ=%g\n", e, cond_frac);
-            for(int i = 0; i < se_n; i++) {
-                A->x.sparse.a[e * se_n + i] *= cond_frac;
+        else { /* map parameters to elements */
+            assert(PMAP->n == m->n_params[0]);
+            assert(PMAP->m == ne);
+            assert(PMAP->type == CSR);
+            const int rows = m->n_params[0];
+            for(int e = 0; e < ne; e++) {
+                double cond_frac = 0.0;
+                for(int j = PMAP->x.sparse.ia[e]; j < PMAP->x.sparse.ia[e + 1]; j++) {
+                    const int param = PMAP->x.sparse.ja[j];
+                    const double element_fraction = PMAP->x.sparse.a[j];
+                    const double conductivity = m->params[param + rows * frame_idx];
+                    cond_frac += conductivity * element_fraction;
+                }
+                // printf("[e=%d] σ=%g\n", e, cond_frac);
+                for(int i = 0; i < se_n; i++) {
+                    A->x.sparse.a[e * se_n + i] *= cond_frac;
+                }
             }
         }
     }
@@ -125,8 +171,8 @@ int build_pmap(model * mdl, matrix ** PMAP)
         return FAILURE;
     }
     const int rows = mdl->fwd.n_elems;
-    const int cols = mdl->n_params[0];
     const int nnz = mdl->fwd.n_pmap;
+    const int cols = mdl->n_params[0];
     if(!malloc_matrix_data(*PMAP, COO, rows, cols, nnz)) {
         return FAILURE;
     }
@@ -250,6 +296,10 @@ int fwd_solve(model * mdl, double * meas)
         assert(mdl->n_stimmeas != 0);
         const int rows = calc_sys_size(mdl);
         for (int i = 0; i < mdl->n_stimmeas; i++) { /* for each unique stimulus */
+            if((i > 0) && (cmp_stim(mdl, i, i - 1) == 0)) { /* same stimulus as last stimmeas row */
+                meas[frame_idx * (mdl->n_stimmeas) + i] = calc_meas(mdl, i, state.x->x);
+                continue;
+            }
 #if 0 /* default CHOLMOD solver */
             const int xtype = CHOLMOD_REAL;
             cholmod_free_dense (&b, &c);
@@ -308,6 +358,7 @@ int fwd_solve(model * mdl, double * meas)
         }
     }
     ret = SUCCESS;
+    // printf_model(mdl);
 return_result:
     free_state(&state);
     return ret;
@@ -318,7 +369,6 @@ static int fwd_solve_node_voltages(model * mdl, int frame_idx, int stim_idx, dou
     assert(mdl != NULL);
     assert(frame_idx >= 0);
     assert(stim_idx >= 0);
-    assert(frame_idx < mdl->n_params[1]);
     assert(stim_idx < mdl->n_stimmeas);
     assert(nodal != NULL);
     assert(state != NULL);
@@ -444,6 +494,7 @@ static double fwd_solve_node_stim(const model * mdl, double * b, const int meas_
     return calc_meas(mdl, meas_idx, state->x->x);
 }
 
+#define colmaj(i,j) ((i) + (j)*(rows)) /* column major indexing */
 int calc_jacobian(model * mdl, double * J)
 {
     /* Jacobian Equation:
@@ -452,7 +503,7 @@ int calc_jacobian(model * mdl, double * J)
      * for measurement selection T, system matrix A, stimulus b, and
      * partial derivative of system matrix with conductivity dA/dc.
      * Note that A^-1 b = x, for nodal voltages x.
-     * Noite that dA/dc is all zeros except
+     * Note that dA/dc is all zeros except
      * for the element that is changing so we can efficiently leverage the COO
      * system matrix, before conductivity is applied, to grab an element at a
      * time for a unit conductivity change.
@@ -460,47 +511,54 @@ int calc_jacobian(model * mdl, double * J)
     assert(mdl != NULL);
     assert(J != NULL);
     int ret = FAILURE;
+    double * x = NULL;
     fwdsolve_state state = {0};
     if(!init_state(mdl, &state)) {
         goto return_result;
     }
     const matrix * PMAP = (state.PMAP);
     const int len = state.rows;
-    const int is_pmap = (PMAP != NULL);
-    const int cols = is_pmap ? PMAP->n : mdl->fwd.n_elems;
+    const int cols = mdl->n_params[0];
     const int rows = mdl->n_stimmeas;
+    const int is_pmap = (mdl->fwd.n_pmap > 0);
     if(is_pmap) {
         assert(PMAP->type == CSR);
-        assert(PMAP->n == mdl->n_params[0]);
         assert(PMAP->m == mdl->fwd.n_elems);
-        bzero(J, sizeof(double) * rows * (PMAP->n));
+        assert(PMAP->n == mdl->n_params[0]);
     }
+    bzero(J, sizeof(double) * rows * cols);
+    x = malloc(sizeof(double) * len);
+    assert(x != NULL);
     for(int i = 0; i < rows; i++) { /* i: Jacobian row# = meas#*/
-        double x[len];
+        // if((i == 0) || (cmp_stim(mdl, i, i - 1) != 0)) { /* different stimulus from last stimmeas row */
         bzero(x, sizeof(double)*len);
-        if(!fwd_solve_node_voltages(mdl, 0, i, &(x[0]), &state)) {
+        if(!fwd_solve_node_voltages(mdl, 0, i, x, &state)) {
             goto return_result;
         }
+        // }
         for(int e = 0; e < mdl->fwd.n_elems; e++) { /* e: element# */
             double b[len];
             bzero(b, sizeof(double)*len);
-            sdmult(mdl, e, state.Asys, -1.0, &(x[0]), &(b[0]));
-            double meas = fwd_solve_node_stim(mdl, &(b[0]), i, &state);
+            sdmult(mdl, e, state.Asys, -1.0, x, b);
+            const double meas = fwd_solve_node_stim(mdl, b, i, &state);
             if(is_pmap) {
                 for(int k = PMAP->x.sparse.ia[e]; k < PMAP->x.sparse.ia[e + 1]; k++) {
                     const int j = PMAP->x.sparse.ja[k]; /* j: Jacobian col#  = param# */
                     const double element_fraction = PMAP->x.sparse.a[k];
-                    J[i * cols + j] += meas * element_fraction;
+                    const double param = 1.0; // mdl->n_params[0] > 0 ? mdl->params[j] : 1.0;
+                    J[colmaj(i, j)] += meas * param * element_fraction;
                 }
             }
             else {
                 const int j = e; /* e: Jacobian col# = elem# */
-                J[i * cols + j] = meas;
+                const double param = 1.0; // mdl->n_params[0] > 0 ? mdl->params[j] : 1.0;
+                J[colmaj(i, j)] = meas * param;
             }
         }
     }
     ret = SUCCESS;
 return_result:
+    free(x);
     free_state(&state);
     return ret;
 }

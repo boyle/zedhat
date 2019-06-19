@@ -124,11 +124,18 @@ static int sscanf_size(const char * data, const char * section, enum fileformat_
         }
     }
     else if(expect > 0) {
-        for(int j = 0, idx = 0; j < expect; j++) {
-            cnt += sscanf(&(data[idx]), " %d %n", &(n[j]), &idx);
+        for(int j = 0; j < expect; j++) {
+            int inc = 0;
+            cnt += sscanf(data, " %d%n", &(n[j]), &inc);
+            data += inc;
         }
         if(cnt == expect) {
-            printf("%s %d\n", section, n[0]);
+            if(n[1] > 1) {
+                printf("%s %dx%d\n", section, n[0], n[1]);
+            }
+            else {
+                printf("%s %d\n", section, n[0]);
+            }
         }
     }
     const int min_rows = (field == TYPE) ? 0 : 1;
@@ -359,11 +366,13 @@ static int readzh_data(const char * data, model * m, mesh * mm, const int i)
 {
     assert(m != NULL);
     assert(m->data != NULL);
+    const int rows = m->n_data[0];
     const int cols = m->n_data[1];
     int cnt = 0;
-    int idx = 0;
     for(int j = 0; j < cols; j++) {
-        cnt += sscanf(&(data[idx]), " %lf %n", &(m->data[cols * i + j]), &idx);
+        int inc = 0;
+        cnt += sscanf(data, " %lf %n", &(m->data[i + rows * j]), &inc);
+        data += inc;
     }
     return (cnt == cols) ? SUCCESS : FAILURE;
 }
@@ -379,11 +388,13 @@ static int readzh_params(const char * data, model * m, mesh * mm, const int i)
 {
     assert(m != NULL);
     assert(m->params != NULL);
+    const int rows = m->n_params[0];
     const int cols = m->n_params[1];
     int cnt = 0;
-    int idx = 0;
     for(int j = 0; j < cols; j++) {
-        cnt += sscanf(&(data[idx]), " %lf %n", &(m->params[cols * i + j]), &idx);
+        int inc = 0;
+        cnt += sscanf(data, " %lf%n", &(m->params[i + rows * j]), &inc);
+        data += inc;
     }
     return (cnt == cols) ? SUCCESS : FAILURE;
 }

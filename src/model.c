@@ -621,39 +621,6 @@ int calc_stim_neumann(mesh const * const m, double amp, int bc, double * b)
     return cnt_bc_local_nodes;
 }
 
-void calc_stim_gnd(model const * const m, int gnd, double * b)
-{
-    assert(gnd > 0);
-    assert(gnd <= m->fwd.n_nodes);
-    b[gnd - 1] = 0.0;
-}
-
-void calc_stim(model const * const m, int idx, double * b)
-{
-    assert(b != NULL);
-    assert(idx >= 0);
-    assert(idx < m->n_stimmeas);
-    const int A = m->stimmeas[idx * 4 + 0]; /* current+ */
-    const int B = m->stimmeas[idx * 4 + 1]; /* current- */
-    const int An = m->elec_to_sys[A - 1];
-    const int Bn = m->elec_to_sys[B - 1];
-    b[An] = +1;
-    b[Bn] = -1;
-}
-
-double calc_meas(model const * const m, int idx, double * x)
-{
-    assert(x != NULL);
-    assert(idx >= 0);
-    assert(idx < m->n_stimmeas);
-    const int M = m->stimmeas[idx * 4 + 2]; /* voltage+ */
-    const int N = m->stimmeas[idx * 4 + 3]; /* voltage- */
-    const int Mn = m->elec_to_sys[M - 1];
-    const int Nn = m->elec_to_sys[N - 1];
-    const double gain = m->measgain[idx];
-    return (x[Mn] - x[Nn]) * gain;
-}
-
 int calc_sys_cem_n(const int nd)
 {
     /* nn = 2D: 3x3 sym, 3D: 4x4 sym
@@ -791,15 +758,21 @@ int check_model(model const * const mdl)
     return check_bc(&(mdl->fwd));
 }
 
-static void printf_mesh(mesh const * const msh)
+static void printf_mesh(mesh const * const msh, int verbosity)
 {
     assert(msh != NULL);
     if(msh->n_elems == 0) {
         printf(" (none)\n");
         return;
     }
-    printf(" %dD, %d nodes, %d elements\n", msh->dim, msh->n_nodes, msh->n_elems);
-    printf("    elements\n");
+    printf(" %dD, %d nodes, %d elements, %d surfaces, %d entry parameter map\n",
+           msh->dim, msh->n_nodes, msh->n_elems, msh->n_se, msh->n_pmap);
+    if(verbosity <= 1) {
+        return;
+    }
+    if(msh->n_elems > 0) {
+        printf("    elements\n");
+    }
     const int nd = msh->dim;
     const int nd1 = nd + 1;
     for(int i = 0; i < msh->n_elems; i++) {
@@ -809,18 +782,41 @@ static void printf_mesh(mesh const * const msh)
         }
         printf("\n");
     }
-    printf("    nodes\n");
+    if(msh->n_nodes > 0) {
+        printf("    nodes\n");
+    }
     for(int i = 0; i < msh->n_nodes; i++) {
         printf("     ");
         for(int j = 0; j < nd; j++) {
-            printf(" %5.3f", msh->nodes[i * nd + j]);
+            printf(" %-+7.3f", msh->nodes[i * nd + j]);
         }
         printf("\n");
+    }
+    if(msh->n_se > 0) {
+        printf("    surface elements\n");
+    }
+    for(int i = 0; i < msh->n_se; i++) {
+        printf("     ");
+        for(int j = 0; j < nd; j++) {
+            printf(" %-5d", msh->surfaceelems[i * nd + j]);
+        }
+        if(msh->bc[i] != 0) {
+            printf(" (bc#%d)", msh->bc[i]);
+        }
+        printf("\n");
+    }
+    if(msh->n_pmap > 0) {
+        printf("    parameter map\n");
+    }
+    for(int i = 0; i < msh->n_pmap; i++) {
+        printf("     (%5d,%5d)  = %0.3f\n",
+               msh->pmap_elem[i], msh->pmap_param[i],
+               msh->pmap_frac[i]);
     }
 }
 
 #define plural(a) ((a!=1)?"s":"")
-void printf_model(model const * const mdl)
+void printf_model(model const * const mdl, int verbosity)
 {
     printf("model: %d electrodes, %d measurements,", mdl->n_elec, mdl->n_stimmeas);
     printf(" λ = %g\n", mdl->hp);
@@ -838,10 +834,56 @@ void printf_model(model const * const mdl)
     else {
         printf("\n");
     }
+    if((verbosity > 1) && (mdl->n_stimmeas > 0)) {
+        printf("  %d stimulus and measurement pairs: A-B M-N (gain)\n", mdl->n_stimmeas);
+        for(int i = 0; i < mdl->n_stimmeas; i++) {
+            printf("    %d-%d %d-%d (%5.2e)\n",
+                   mdl->stimmeas[i * 4 + 0],
+                   mdl->stimmeas[i * 4 + 1],
+                   mdl->stimmeas[i * 4 + 2],
+                   mdl->stimmeas[i * 4 + 3],
+                   mdl->measgain[i]);
+        }
+    }
+    if((verbosity > 1) && (mdl->n_zc > 0)) {
+        printf("  %d contact impedances\n", mdl->n_zc);
+        if(mdl->zcbc == NULL) {
+            for(int i = 0; i < mdl->n_zc; i++) {
+                printf("    %5.2e (electrode#%d)\n", mdl->zc[i], i + 1);
+            }
+        }
+        else {
+            for(int i = 0; i < mdl->n_zc; i++) {
+                printf("    %5.2e (bc#%d)\n", mdl->zc[i], mdl->zcbc[i]);
+            }
+        }
+    }
     printf("  forward model:");
-    printf_mesh(&(mdl->fwd));
+    printf_mesh(&(mdl->fwd), verbosity);
     printf("  reconstruction model:");
-    printf_mesh(&(mdl->rec));
+    printf_mesh(&(mdl->rec), verbosity);
+    if((verbosity > 1) && (mdl->n_params[0] > 0)) {
+        const int rows = mdl->n_params[0];
+        printf("  parameters\n");
+        for(int i = 0; i < mdl->n_params[0]; i++) {
+            printf("   ");
+            for(int j = 0; j < mdl->n_params[1]; j++) {
+                printf(" %18.8e", mdl->params[i + rows * j]);
+            }
+            printf("\n");
+        }
+    }
+    if((verbosity > 1) && (mdl->n_data[0] > 0)) {
+        const int rows = mdl->n_data[0];
+        printf("  data\n");
+        for(int i = 0; i < mdl->n_data[0]; i++) {
+            printf("   ");
+            for(int j = 0; j < mdl->n_data[1]; j++) {
+                printf(" %18.8e", mdl->data[i + rows * j]);
+            }
+            printf("\n");
+        }
+    }
 }
 
 int calc_sys_size(model const * const m)

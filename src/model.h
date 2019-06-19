@@ -75,10 +75,7 @@ int calc_sys_elem(mesh const * const mdl, int * ii, int * jj, double * Se);
 int calc_sys_cem(mesh const * const m, int bc, double zc, int cem_node, int Se_idx, int * ii, int * jj, double * Se);
 void calc_sys_gnd(const int gnd, size_t nnz, int * ii, int * jj, double * Se);
 int calc_stim_neumann(mesh const * const m, double amp, int bc, double * b);
-void calc_stim_gnd(model const * const m, int gnd, double * b);
-void calc_stim(model const * const m, int idx, double * b);
-double calc_meas(model const * const m, int idx, double * x);
 
 int check_model(model const * const m);
-void printf_model(model const * const m);
+void printf_model(model const * const m, int verbosity);
 #endif

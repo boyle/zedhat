@@ -28,7 +28,7 @@ void matrix_init(matrix * m)
     bzero(m, sizeof(matrix));
 }
 
-static void free_matrix_data(matrix * M)
+void free_matrix_data(matrix * M)
 {
     assert(M != NULL);
     assert(M->type < MAX_MATRIX_TYPE);
@@ -151,8 +151,8 @@ int malloc_matrix_data(matrix * M, enum matrix_type type, const size_t rows, con
     M->type = type;
     M->m = rows;
     M->n = cols;
-    assert(rows > 0);
-    assert(cols > 0);
+    assert(rows >= 0);
+    assert(cols >= 0);
     /* malloc data */
     assert(type < MAX_MATRIX_TYPE);
     int ret = SUCCESS;
@@ -263,11 +263,12 @@ void matrix_transpose(matrix * M)
 }
 */
 
+#define colmaj(i,j) ((i) + (j)*(rows)) /* column major indexing */
 void printf_matrix(matrix const * const A)
 {
     if(A == NULL) {
-       printf("matrix (null)\n");
-       return;
+        printf("matrix (null)\n");
+        return;
     }
     enum matrix_type type = A->type;
     printf("matrix %s: %zux%zu\n", A->symbol, A->m, A->n);
@@ -300,7 +301,7 @@ void printf_matrix(matrix const * const A)
         for(int i = 0; i < maxi; i++) {
             printf("  ");
             for(int j = 0; j < maxj; j++) {
-                printf(" %14.6g", A->x.dense[j * (A->m) + i]);
+                printf(" %14.6g", A->x.dense[colmaj(i, j)]);
             }
             printf("\n");
         }

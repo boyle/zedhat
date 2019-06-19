@@ -113,20 +113,20 @@ void test_2d_resistor_cem (void ** state)
     printf("relative tolerance = %g\n", reltol);
     assert_double_equal(meas[0], +expect * 2.5, reltol);
     assert_double_equal(meas[1], -expect, reltol);
-    printf_model(&m);
-    double J[2][2] = {{0}};
-    assert_int_equal(calc_jacobian(&m, (&J[0][0])), 1);
+    printf_model(&m, 2);
+    double J[4] = {0};
+    assert_int_equal(calc_jacobian(&m, (&J[0])), 1);
     printf("Jacobian:\n");
     for(int i = 0; i < m.n_stimmeas; i++) {
         for(int j = 0; j < m.fwd.n_elems; j++) {
-            printf(" %18g", J[i][j]);
+            printf(" %18g", J[i + j * m.n_stimmeas]);
         }
         printf("\n");
     }
-    assert_double_equal(J[0][0], -1.25, reltol);
-    assert_double_equal(J[0][1], -1.25, reltol);
-    assert_double_equal(J[1][0], +0.50, reltol);
-    assert_double_equal(J[1][1], +0.50, reltol);
+    assert_double_equal(J[0], -1.25, reltol);
+    assert_double_equal(J[2], -1.25, reltol);
+    assert_double_equal(J[1], +0.50, reltol);
+    assert_double_equal(J[3], +0.50, reltol);
     test_free(m.elec_to_sys);
 }
 
@@ -197,17 +197,17 @@ void test_2d_resistor_pmap (void ** state)
     printf("relative tolerance = %g\n", reltol);
     assert_double_equal(meas[0], +expect, reltol);
     assert_double_equal(meas[1], -expect, reltol);
-    double J[2][1] = {{0}};
-    assert_int_equal(calc_jacobian(&m, (&J[0][0])), 1);
+    double J[2] = {0};
+    assert_int_equal(calc_jacobian(&m, (&J[0])), 1);
     printf("Jacobian:\n");
     for(int i = 0; i < m.n_stimmeas; i++) {
         for(int j = 0; j < 1; j++) {
-            printf(" %18g", J[i][j]);
+            printf(" %18g", J[i + j * m.n_stimmeas]);
         }
         printf("\n");
     }
-    assert_double_equal(J[0][0], -2.0 * 2, reltol);
-    assert_double_equal(J[1][0], +2.0 * 2, reltol);
+    assert_double_equal(J[0], -2.0 * 2, reltol);
+    assert_double_equal(J[1], +2.0 * 2, reltol);
     test_free(m.elec_to_sys);
     test_free(m.zc);
 }
@@ -285,20 +285,20 @@ void test_3d_resistor_cem (void ** state)
     printf("relative tolerance = %g\n", reltol);
     assert_double_equal(meas[0], +expect, reltol);
     assert_double_equal(meas[1], -expect, reltol);
-    double J[2][6] = {{0}};
-    assert_int_equal(calc_jacobian(&m, (&J[0][0])), 1);
+    double J[12] = {0};
+    assert_int_equal(calc_jacobian(&m, (&J[0])), 1);
     printf("Jacobian:\n");
     for(int i = 0; i < m.n_stimmeas; i++) {
         for(int j = 0; j < m.fwd.n_elems; j++) {
-            printf(" %18g", J[i][j]);
+            printf(" %18g", J[i + j * m.n_stimmeas]);
         }
         printf("\n");
     }
     for(int j = 0; j < m.fwd.n_elems; j++) {
-        assert_double_equal(J[0][j], -1.0 / 6.0, reltol);
+        assert_double_equal(J[0 + j * m.n_stimmeas], -1.0 / 6.0, reltol);
     }
     for(int j = 0; j < m.fwd.n_elems; j++) {
-        assert_double_equal(J[1][1], +1.0 / 6.0, reltol);
+        assert_double_equal(J[1 + j * m.n_stimmeas], +1.0 / 6.0, reltol);
     }
     test_free(m.elec_to_sys);
     test_free(m.zc);
@@ -357,7 +357,7 @@ void test_fwd_solve_fail (void ** state)
     m.n_params[0] = 1;
     m.n_params[1] = 1;
     double meas[2] = {0};
-    printf("\n"); printf_model(&m); printf("\n");
+    printf("\n"); printf_model(&m, 2); printf("\n");
     /* check_model fail: bad boundary condition */
     se[3][0] = 0;
     assert_int_equal(fwd_solve(&m, &meas[0]), 0);
@@ -464,7 +464,7 @@ void test_calc_jacobian_fail (void ** state)
     m.n_params[0] = 1;
     m.n_params[1] = 1;
     double J[2] = {0};
-    printf("\n"); printf_model(&m); printf("\n");
+    printf("\n"); printf_model(&m, 2); printf("\n");
     printf("happy\n");
     will_return_count(_mock_test_malloc, 0, NUM_MALLOCS_PMAP + 7);
     will_return_count(_mock_test_realloc, 0, NUM_REALLOCS_PMAP);

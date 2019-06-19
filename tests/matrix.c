@@ -120,7 +120,7 @@ void test_malloc_matrix_data_identity(void ** state)
     assert_non_null(M);
     int ret = malloc_matrix_data(M, IDENTITY, 1, 1, 0);
     assert_int_equal(ret, 1);
-    matrix *C = NULL;
+    matrix * C = NULL;
     will_return(_mock_test_malloc, 0);
     assert_int_equal(copy_matrix(M, &C, NULL), 1);
     C = free_matrix(C);
@@ -130,7 +130,7 @@ void test_malloc_matrix_data_identity(void ** state)
 void test_malloc_matrix_data_dense(void ** state)
 {
     int ret;
-    matrix *M = NULL;
+    matrix * M = NULL;
     /* bad data malloc */
     will_return(_mock_test_malloc, 0);
     M = malloc_matrix();
@@ -140,14 +140,14 @@ void test_malloc_matrix_data_dense(void ** state)
     /* good data malloc */
     will_return(_mock_test_malloc, 0);
     ret = malloc_matrix_data(M, DENSE, 2, 2, 4);
-    for(int i=0; i<M->m*M->n;i++) {
-       M->x.dense[i] = i;
+    for(int i = 0; i < M->m * M->n; i++) {
+        M->x.dense[i] = i;
     }
     printf_matrix(M);
     assert_int_equal(ret, 1);
     /* good copy */
     printf("copy1 - good malloc\n");
-    matrix *C = NULL;
+    matrix * C = NULL;
     printf_matrix(C); /* should be okay printing from a NULL ptr */
     will_return(_mock_test_malloc, 0);
     will_return(_mock_test_malloc, 0);

@@ -27,6 +27,7 @@ tests/matrix
 tests/model
 tests/file
 tests/fwd
+tests/inv
 testsuite
 testsuite.dir/
 zedhat

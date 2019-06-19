@@ -38,6 +38,16 @@ void * _mock_test_malloc(size_t size, const char * file, const int line)
    }\
 } while(0)
 
+/* TODO calc_stim_gnd is used for testing Neumann boundary conditions which
+ * should arguably be moved to where calc_stim_gnd was moved, if its going to
+ * be used anywhere: src/fwd.c */
+static void calc_stim_gnd(model const * const m, int gnd, double * b)
+{
+    assert_true(gnd > 0);
+    assert_true(gnd <= m->fwd.n_nodes);
+    b[gnd - 1] = 0.0;
+}
+
 void test_model(void ** state)
 {
     model * m;
@@ -1119,7 +1129,7 @@ void test_check_model (void ** state)
     mdl.fwd.surfaceelems = &(se2[0][0]);
     mdl.fwd.bc = &(bc[0]);
     printf_bc_se(&mdl);
-    printf_model(&mdl);
+    printf_model(&mdl, 2);
     printf("happy\n");
     assert_int_equal(check_model(&mdl), 1);
     /* skipped BC# */

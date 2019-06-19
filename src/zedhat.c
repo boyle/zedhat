@@ -11,107 +11,174 @@
 #include "argv.h"
 #include "file.h"
 #include "fwd.h"
+#include "inv.h"
 #include "model.h"
 #include "matrix.h"
 
-int main(int argc, char ** argv)
+static int do_fwd_solve(const char * file, double tol)
 {
-    args_t args = {0};
-    int ret = parse_argv(argc, argv, &args);
-    if(ret != 0) {
+    int ret = 1;
+    model  * mdl = malloc_model();
+    printf("-- loading from file --\n");
+    int nret = readfile(file, mdl);
+    const int n_meas = mdl->n_stimmeas;
+    const int frames = mdl->n_params[1];
+    double meas[frames * n_meas];
+    if(!nret) {
+        fprintf(stderr, "error: read %s failed\n", file);
+        goto fwd_quit;
+    }
+    printf("-- forward solutions --\n");
+    printf("%d parameter frame%s\n", frames, frames == 1 ? "" : "s");
+    if(frames < 1) {
+        fprintf(stderr, "error: nothing to do\n");
+        goto fwd_quit;
+    }
+    if(mdl->n_data[0] > 0) {
+        assert(mdl->n_data[0] == mdl->n_stimmeas);
+        assert(mdl->n_data[1] == mdl->n_params[1]);
+    }
+    nret = fwd_solve(mdl, meas);
+    if(!nret) {
+        fprintf(stderr, "error: bad forward solve\n");
+        goto fwd_quit;
+    }
+    for(int idx = 0; idx < frames; idx++) {
+        /* calculated measurements to expected */
+        if(mdl->n_data[0] > 0) {
+            printf("frame#%d\n", idx + 1);
+            printf("meas#  %18s %18s\n", "calculated", "from file");
+            double rmse = 0; /* root mean squared error from expected */
+            for(int i = 0; i < mdl->n_stimmeas; i++) {
+                const double data_calc = meas[idx * n_meas + i];
+                const double data_expect = mdl->data[i + mdl->n_data[0] * idx];
+                printf("%4d  %18.8g %18.8g\n", i + 1, data_calc, data_expect);
+                const double dm = data_calc - data_expect;
+                rmse += dm * dm;
+            }
+            rmse = sqrt(rmse / (double) mdl->n_data[0]);
+            printf("                      RMSE = %g\n", rmse);
+            printf("                      tolerance = %g\n", tol);
+            if (rmse > tol) {
+                fprintf(stderr, "fail: calculated measurements do not match expected\n");
+                ret = 1;
+                goto fwd_quit;
+            }
+        }
+        else {
+            printf("frame#%d\n", idx + 1);
+            printf("meas#  %18s\n", "calculated");
+            for(int i = 0; i < mdl->n_stimmeas; i++) {
+                const double data_calc = meas[idx * n_meas + i];
+                printf("%4d  %18.04g\n", i + 1, data_calc);
+            }
+        }
+    }
+    ret = 0;
+    printf("-- completed --\n");
+fwd_quit:
+    free_model(mdl);
+    return ret;
+}
+
+#define max(a,b) (((a) > (b)) ? (a) : (b))
+static int do_inv_solve(const char * file, const double tol)
+{
+    int ret = 1;
+    model  * mdl = malloc_model();
+    printf("-- loading from file --\n");
+    int nret = readfile(file, mdl);
+    const int frames = mdl->n_data[1] > 1 ? mdl->n_data[1] - 1 : 0;
+    if(!nret) {
+        fprintf(stderr, "error: read %s failed\n", file);
+        free_model(mdl);
         return 1;
     }
-    if(args.mode == FORWARD_SOLVER) {
-        ret = 1;
-        model * mdl = malloc_model();
-        printf("-- loading from file --\n");
-        int nret = readfile(args.file[0], mdl);
-        const int n_meas = mdl->n_stimmeas;
-        const int frames = mdl->n_params[1];
-        double meas[frames * n_meas];
-        if(!nret) {
-            fprintf(stderr, "error: read %s failed\n", args.file[0]);
-            goto fwd_quit;
-        }
-        if(mdl->n_data[0] > 0) {
-            assert(mdl->n_data[0] == mdl->n_stimmeas);
-            assert(mdl->n_data[1] == mdl->n_params[1]);
-        }
-        printf("-- forward solutions --\n");
-        nret = fwd_solve(mdl, meas);
-        if(!nret) {
-            fprintf(stderr, "error: bad forward solve\n");
-            goto fwd_quit;
-        }
-        for(int idx = 0; idx < frames; idx++) {
-            /* calculated measurements to expected */
-            if(mdl->n_data[0] > 0) {
-                printf("frame#%d\n", idx + 1);
-                printf("meas#  %18s %18s\n", "calculated", "from file");
-                double rmse = 0; /* root mean squared error from expected */
-                for(int i = 0; i < mdl->n_stimmeas; i++) {
-                    const double data_calc = meas[idx * n_meas + i];
-                    const double data_expect = mdl->data[i * mdl->n_data[1] + idx];
-                    printf("%4d  %18.8g %18.8g\n", i + 1, data_calc, data_expect);
-                    const double dm = data_calc - data_expect;
-                    rmse += dm * dm;
-                }
-                rmse = sqrt(rmse / (double) mdl->n_data[0]);
-                printf("                      RMSE = %g\n", rmse);
-                if (rmse > args.tol) {
-                    fprintf(stderr, "fail: calculated measurements do not match expected\n");
-                    ret = 1;
-                    goto fwd_quit;
-                }
-            }
-            else {
-                printf("frame#%d\n", idx + 1);
-                printf("meas#  %18s\n", "calculated");
-                for(int i = 0; i < mdl->n_stimmeas; i++) {
-                    const double data_calc = meas[idx * n_meas + i];
-                    printf("%4d  %18.04g\n", i + 1, data_calc);
-                }
-            }
-        }
-        // /* Find: || A X - B ||_2 */
-        // /* Compute  C = a A B + c C */
-        // cblas_dgemm (CblasColMajor, CblasNoTrans, CblasNoTrans,
-        //              A->m, X->n, A->n, /* m, n, k, */
-        //              +1.0, A->x.dense, A->m, X->x.dense, X->m, /* a, A, m, B, n, */
-        //              -1.0, BB, B->m); /* c, C, k */
-        // /* Compute  || B ||_2 */
-        // const double err_mul = cblas_dnrm2( Bmn, BB, 1); /* n, X, incX */
-        // if (err_mul > args.tol) {
-        //     printf("fail: || A X - B ||_2 = %g\n", err_mul);
-        //     ret = 1;
-        //     goto fwd_quit;
-        // }
-        // /* Find BB = A\B; || BB - X ||_2 */
-        // memcpy(AA, A->x.dense, Amn * sizeof(double));
-        // memcpy(BB, B->x.dense, Bmn * sizeof(double));
-        // // memset(&BB[Bmn], 0, (Xmn-Bmn)*sizeof(double));
-        // lapack_int err = LAPACKE_dgels( LAPACK_COL_MAJOR, 'N', /* row/col major, trans, */
-        //                                 A->m, A->n, B->n, /* m, n, n_rhs, */
-        //                                 AA, A->m, BB, B->m ); /* A, m, B, n */
-        // if (err) {
-        //     printf("fail: DGELS (X=A\\B) info=%d\n", err);
-        //     ret = 1;
-        //     goto fwd_quit;
-        // }
-        // /* Compute  || BB - X ||_2 */
-        // for(int i = 0; i < Xmn; i++) {
-        //     BB[i] -= X->x.dense[i];
-        // }
-        // const double err_div = cblas_dnrm2( Xmn, BB, 1); /* n, X, incX */
-        // if (err_div > args.tol) {
-        //     printf("fail: || A\\B - X ||_2 = %g\n", err_div);
-        //     ret = 1;
-        //     goto fwd_quit;
-        // }
-        printf("-- completed --\n");
-        ret = 0;
-fwd_quit:
+    printf("-- inverse solutions --\n");
+    printf("%d measurement frame%s\n", frames, frames == 1 ? "" : "s");
+    if(frames < 1) {
+        fprintf(stderr, "error: nothing to do\n");
         free_model(mdl);
+        return 1;
     }
+    printf_model(mdl, 1);
+    assert(mdl->n_data[0] > 0);
+    assert(mdl->n_data[0] == mdl->n_stimmeas);
+    if(mdl->n_params[1] > 1) {
+        assert(mdl->n_data[1] == mdl->n_params[1]);
+    }
+    const int is_pmap = (mdl->fwd.n_pmap > 0);
+    int n_params = 0;
+    if( mdl->n_params[1] > 0 ) {
+        n_params = mdl->n_params[0];
+    }
+    else if( !is_pmap ) {
+        n_params = mdl->fwd.n_elems;
+    }
+    else {
+        for(int i = 0; i < mdl->fwd.n_pmap; i++) {
+            n_params = max(n_params, mdl->fwd.pmap_param[i]);
+        }
+        n_params++;
+    }
+    mdl->n_params[0] = n_params;
+    double params[frames * n_params];
+    bzero(params, sizeof(double) * frames * n_params);
+    nret = inv_solve(mdl, params);
+    if(!nret) {
+        fprintf(stderr, "error: bad inverse solve\n");
+        goto inv_quit;
+    }
+    for(int idx = 0; idx < frames; idx++) {
+        /* calculated measurements to expected */
+        if(mdl->n_params[1] > 1) {
+            printf("frame#%d\n", idx + 1);
+            printf("param#%18s %18s\n", "calculated", "from file");
+            const int cols = mdl->n_params[1];
+            const int rows = mdl->n_params[0];
+            assert(cols == 3); /* TODO currently: params = [ J_background, ignore, expected ] */
+            double rmse = 0; /* root mean squared error from expected */
+            for(int i = 0; i < rows; i++) {
+                const double params_calc = params[i + 0 * rows];
+                const double params_expect = mdl->params[i + 2 * rows];
+                printf("%4d  %18.8e %18.8e\n", i + 1, params_calc, params_expect);
+                const double dp = params_calc - params_expect;
+                rmse += dp * dp;
+            }
+            rmse = sqrt(rmse / (double) n_params);
+            printf("                      RMSE = %g\n", rmse);
+            if (rmse > tol) {
+                fprintf(stderr, "fail: calculated parameters do not match expected\n");
+                goto inv_quit;
+            }
+            break; /* TODO only handle one frame in checking mode currently */
+        }
+        else {
+            printf("frame#%d\n", idx + 1);
+            printf("param#%18s\n", "calculated");
+            const int rows = mdl->n_params[0];
+            for(int i = 0; i < n_params; i++) {
+                const double params_calc = params[i + idx * rows];
+                printf("%4d  %18.04g\n", i + 1, params_calc);
+            }
+        }
+    }
+    ret = 0;
+    printf("-- completed --\n");
+inv_quit:
+    free_model(mdl);
     return ret;
+}
+
+int main(int argc, char ** argv)
+{
+    args_t args;
+    if(parse_argv(argc, argv, &args) != 0) {
+        return 1;
+    }
+    switch(args.mode) {
+    case FORWARD_SOLVER: return do_fwd_solve(args.file[0], args.tol);
+    case INVERSE_SOLVER: return do_inv_solve(args.file[1], args.tol);
+    default: return 0;
+    }
 }
