@@ -1,4 +1,4 @@
-# zedhat ẑ  [![Build Status](https://travis-ci.org/boyle/zedhat.svg?branch=master)](https://travis-ci.org/boyle/zedhat) [![Coverity Scan Status](https://scan.coverity.com/projects/15229/badge.svg)](https://scan.coverity.com/projects/boyle-zedhat) [![Coverage Status](https://coveralls.io/repos/github/boyle/zedhat/badge.svg?branch=master)](https://coveralls.io/github/boyle/zedhat?branch=master)
+# zedhat ẑ  [![Build Status/Travis](https://travis-ci.org/boyle/zedhat.svg?branch=master)](https://travis-ci.org/boyle/zedhat) [![Build status/AppVeyor](https://ci.appveyor.com/api/projects/status/7dy3y55lnfxp4a5f/branch/master?svg=true)](https://ci.appveyor.com/project/boyle/zedhat/branch/master) [![Coverity Scan Status](https://scan.coverity.com/projects/15229/badge.svg)](https://scan.coverity.com/projects/boyle-zedhat) [![Coverage Status](https://coveralls.io/repos/github/boyle/zedhat/badge.svg?branch=master)](https://coveralls.io/github/boyle/zedhat?branch=master)
 A tool for Electrical Impedance Tomography (EIT) and Electrical Resistivity Tomography (ERT).
 Current is applied to electrodes on the boundary and voltages are measured at other electrodes.
 From the measured voltages, we reconstruct an estimate of the conductivity ẑ over the interior.
@@ -35,26 +35,13 @@ Homebrew `suite-sparse` provides UMFPACK and CHOLMOD.)
 
  For Windows 10, install [chocolatey](https://chocolatey.org/install) as admin, then from PowerShell (with administrative privileges), do
 ```
- choco install mingw git.install
+ choco install msys2
 ```
-then start "Git Bash" and navigate to the code's directory. (No code? Try `git clone https://github.com/boyle/zedhat`)
+then start MSYS2 "mingw64" shell and navigate to the code's directory. (No code? Try `git clone https://github.com/boyle/zedhat`)
 ```
-choco install -r --no-progress -y msys2 make
-PATH=$PATH:/c/tools/msys64/usr/bin/
-# Calling pacman via a powershell script
-powershell -executionpolicy bypass "pacman -Syu --noconfirm autoconf libtool automake make autoconf-archive pkg-config autom4te"
-# Fix the environment for autotools to actually work
-powershell -executionpolicy bypass "ln -s /c/tools/msys64/usr/share/autoconf* /usr/share/"
-ln -s /c/tools/msys64/usr/share/automake* /usr/share/
-ln -s /c/tools/msys64/usr/share/aclocal* /usr/share/
-ln -s /c/tools/msys64/usr/share/libtool* /usr/share/
-ln -s /c/tools/msys64/usr/share/pkgconfig /usr/share/
-ln -s /c/tools/msys64/usr/bin/autom4te /usr/bin/
-ln -s /c/tools/msys64/usr/bin/autoconf /usr/bin/
-ln -s /c/tools/msys64/usr/bin/autoheader /usr/bin/
-ln -s /c/tools/msys64/usr/bin/m4 /usr/bin/
-PATH=$PATH:/c/tools/msys64/usr/bin/
-export CONFIG_SHELL=/usr/bin/bash.exe
-autoreconf -vfi
- ./autogen && ./configure && make
+pacman -Syu --noconfirm autoconf libtool automake make autoconf-archive pkg-config
+pacman -Syu --noconfirm base-devel git mingw-w64-x86_64-toolchain
+pacman -Syu --noconfirm mingw-w64-x86_64-lapack mingw-w64-x86_64-openblas mingw-w64-x86_64-suitesparse
+./autogen && ./configure && make
 ```
+alternatively, you can execute the mingw64 shell commands from within powershell by prefixing them with `mingw64 bash -l -c "<cmds>"`.

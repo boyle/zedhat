@@ -77,6 +77,17 @@
 /* Printf formatting for source code locations. */
 #define SOURCE_LOCATION_FORMAT "%s:%u"
 
+/* AB 2019-06-24: support for printf("%zu",(size_t)1) in windows */
+#ifdef _WIN32
+#  ifdef _WIN64
+#    define PRI_SIZET PRIu64
+#  else
+#    define PRI_SIZET PRIu32
+#  endif
+#else
+#  define PRI_SIZET "zu"
+#endif
+
 #if defined(HAVE_GCC_THREAD_LOCAL_STORAGE)
 # define CMOCKA_THREAD __thread
 #elif defined(HAVE_MSVC_THREAD_LOCAL_STORAGE)
@@ -2294,7 +2305,7 @@ static void fail_if_blocks_allocated(const ListNode * const check_point,
     const size_t allocated_blocks = display_allocated_blocks(check_point);
     if (allocated_blocks > 0) {
         free_allocated_blocks(check_point);
-        cm_print_error("ERROR: %s leaked %zu block(s)\n", test_name,
+        cm_print_error("ERROR: %s leaked %" PRI_SIZET " block(s)\n", test_name,
                        allocated_blocks);
         exit_test(1);
     }

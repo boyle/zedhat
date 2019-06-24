@@ -1,6 +1,6 @@
 /* Copyright 2018,2019, Alistair Boyle, 3-clause BSD License */
 #include "config.h"
-#include <string.h> /* bzero */
+#include <string.h> /* memset */
 #include <stdlib.h> /* free */
 #include <lapacke.h> /* inv: dgetrf, dgetri */
 #include <math.h> /* fabs, sqrt */
@@ -27,12 +27,12 @@ extern void _test_free(void * const ptr, const char * file, const int line);
 
 static void init_mesh(mesh * m)
 {
-    bzero(m, sizeof(mesh));
+    memset(m, 0, sizeof(mesh));
 }
 
 static void init_model(model * m)
 {
-    bzero(m, sizeof(model));
+    memset(m, 0, sizeof(model));
 }
 
 model * malloc_model()
@@ -268,7 +268,7 @@ double * inv(int n, double A[n][n])
 {
     double * Ap = &(A[0][0]);
     int ipiv[n + 1];
-    bzero(ipiv, (n + 1)*sizeof(int));
+    memset(ipiv, 0, (n + 1)*sizeof(int));
     if(LAPACKE_dgetrf(LAPACK_ROW_MAJOR, n, n, Ap, n, ipiv) ||
        LAPACKE_dgetri(LAPACK_ROW_MAJOR, n, Ap, n, ipiv)) {
         return NULL;

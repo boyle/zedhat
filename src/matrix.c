@@ -1,10 +1,22 @@
 /* Copyright 2017-2019, Alistair Boyle, 3-clause BSD License */
 #include "config.h"
 #include <stdlib.h> /* malloc, free */
-#include <string.h> /* strncmp, strdup, bzero, memcpy */
+#include <string.h> /* strncmp, strdup, memset, memcpy */
 #include <assert.h> /* assert */
 #include <stdio.h> /* printf */
 #include <cholmod.h> /* cholmod_* */
+
+/* support for printf("%zu",(size_t)1) in windows */
+#ifdef _WIN32
+#include <inttypes.h> /* PRIu64, PRIu32 */
+#  ifdef _WIN64
+#    define PRI_SIZET PRIu64
+#  else
+#    define PRI_SIZET PRIu32
+#  endif
+#else
+#  define PRI_SIZET "zu"
+#endif
 
 #include "matrix.h"
 
@@ -25,7 +37,7 @@ extern char * _test_strdup(const char * ptr, const char * file, const int line);
 
 void matrix_init(matrix * m)
 {
-    bzero(m, sizeof(matrix));
+    memset(m, 0, sizeof(matrix));
 }
 
 void free_matrix_data(matrix * M)
@@ -271,7 +283,7 @@ void printf_matrix(matrix const * const A)
         return;
     }
     enum matrix_type type = A->type;
-    printf("matrix %s: %zux%zu\n", A->symbol, A->m, A->n);
+    printf("matrix %s: %" PRI_SIZET "x%" PRI_SIZET "\n", A->symbol, A->m, A->n);
     printf(" ");
     if(A->name != NULL) {
         printf(" %s", A->name);
@@ -286,11 +298,11 @@ void printf_matrix(matrix const * const A)
     case IDENTITY: printf(" IDENTITY\n"); break;
     case DENSE: printf(" DENSE\n"); break;
     case COO_SYMMETRIC: printf(" COO_SYMMETRIC\n"); type--; break;
-    case COO: printf(" COO (nnz=%zu)\n", A->x.sparse.na); break;
+    case COO: printf(" COO (nnz=%" PRI_SIZET ")\n", A->x.sparse.na); break;
     case CSC_SYMMETRIC: printf(" CSC_SYMMETRIC\n"); type--; break;
-    case CSC: printf(" CSC (nnz=%zu)\n", A->x.sparse.na); break;
+    case CSC: printf(" CSC (nnz=%" PRI_SIZET ")\n", A->x.sparse.na); break;
     case CSR_SYMMETRIC: printf(" CSR_SYMMETRIC\n"); type--; break;
-    case CSR: printf(" CSR (nnz=%zu)\n", A->x.sparse.na); break;
+    case CSR: printf(" CSR (nnz=%" PRI_SIZET ")\n", A->x.sparse.na); break;
     case MAX_MATRIX_TYPE: printf(" MAX\n"); break; /* LCOV_EXCL_LINE */
     }
     if(type == DENSE) {

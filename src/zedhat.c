@@ -2,7 +2,7 @@
 #include "config.h"
 #include <stdio.h>
 #include <stdlib.h> /* malloc, free */
-#include <string.h> /* memcpy */
+#include <string.h> /* memcpy, memset */
 #include <math.h> /* sqrt */
 #include <assert.h> /* assert */
 //#include <cblas.h>
@@ -123,7 +123,7 @@ static int do_inv_solve(const char * file, const double tol)
     }
     mdl->n_params[0] = n_params;
     double params[frames * n_params];
-    bzero(params, sizeof(double) * frames * n_params);
+    memset(params, 0, sizeof(double) * frames * n_params);
     nret = inv_solve(mdl, params);
     if(!nret) {
         fprintf(stderr, "error: bad inverse solve\n");

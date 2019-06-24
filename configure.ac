@@ -19,6 +19,7 @@ case $host_os in
    darwin* ) HOST_EXTRA_CFLAGS="-fgnu89-inline" ;;
 #   *BSD* ) ;;
    linux* ) ;;
+   *mingw* ) ;;
    *)   AC_MSG_ERROR([unsupported host platform $host_os]) ;;
 esac
 
@@ -76,14 +77,14 @@ AC_FUNC_REALLOC
 AC_TYPE_UINT32_T
 AC_FUNC_ERROR_AT_LINE
 AC_FUNC_STRNLEN
+AC_FUNC_STRTOD # argv.c
 AC_CHECK_HEADER_STDBOOL # matrix.h
+AC_HEADER_ASSERT
 AC_CHECK_HEADERS_ONCE([malloc.h inttypes.h signal.h strings.h])
 AC_CHECK_HEADERS([float.h stdlib.h sys/time.h stddef.h limits.h],,AC_MSG_ERROR([missing header]))
-AC_CHECK_FUNCS([malloc gettimeofday strndup memset strcasecmp strchr strdup strerror signal])
-AC_HEADER_ASSERT
+AC_CHECK_FUNCS([malloc gettimeofday strndup memset strcasecmp strchr strdup strerror signal pow])
 AC_CHECK_FUNCS([memmove strstr]) # cmocka.c
-AC_FUNC_STRTOD # argv.c
-AC_CHECK_FUNCS([bzero pow])
+AC_CHECK_FUNCS([pow])
 #AX_GNU_AUTOTEST
 
 # Checks for libraries.

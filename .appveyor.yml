@@ -1,0 +1,22 @@
+version: 1.0.{build}
+
+environment:
+  matrix:
+  - COMPILER: msys2
+    PLATFORM: x64
+    MSYS2_ARCH: x86_64
+    MSYS2_DIR: msys64
+    MSYSTEM: MINGW64
+    BIT: 64
+
+install:
+  - C:\msys64\usr\bin\bash -lc "pacman -Syu --noconfirm autoconf libtool automake make autoconf-archive pkg-config"
+# - C:\msys64\usr\bin\bash -lc "pacman -S --noconfirm base-devel git mingw-w64-x86_64-toolchain"
+  - C:\msys64\usr\bin\bash -lc "pacman -S --noconfirm mingw-w64-x86_64-lapack mingw-w64-x86_64-openblas mingw-w64-x86_64-suitesparse"
+
+build_script:
+  - C:\msys64\usr\bin\bash -lc "cd /c/projects/zedhat && ./autogen"
+  - C:\msys64\usr\bin\bash -lc "cd /c/projects/zedhat && ./configure"
+
+test_script:
+  - C:\msys64\usr\bin\bash -lc "cd /c/projects/zedhat && make test"

@@ -6,14 +6,14 @@
 #include <getopt.h>
 #include <assert.h> /* assert */
 #include <math.h> /* INFINITY */
-#include <string.h> /* bzero */
+#include <string.h> /* memset */
 #include "argv.h"
 
 int parse_argv(int argc, char ** argv, args_t * args)
 {
     int err = (argc <= 1);
     assert(args != NULL);
-    bzero(args, sizeof(args_t));
+    memset(args, 0, sizeof(args_t));
     args->tol = INFINITY;
     while (1) {
         static struct option long_options[] = {

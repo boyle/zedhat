@@ -1,7 +1,7 @@
 /* Copyright 2019, Alistair Boyle, 3-clause BSD License */
 #include "config.h"
 #include <assert.h> /* assert */
-#include <string.h> /* memcpy */
+#include <string.h> /* memcpy, memset */
 #include <cholmod.h>
 #include "matrix.h" /* coo_to_csc */
 
@@ -526,19 +526,19 @@ int calc_jacobian(model * mdl, double * J)
         assert(PMAP->m == mdl->fwd.n_elems);
         assert(PMAP->n == mdl->n_params[0]);
     }
-    bzero(J, sizeof(double) * rows * cols);
+    memset(J, 0, sizeof(double) * rows * cols);
     x = malloc(sizeof(double) * len);
     assert(x != NULL);
     for(int i = 0; i < rows; i++) { /* i: Jacobian row# = meas#*/
         // if((i == 0) || (cmp_stim(mdl, i, i - 1) != 0)) { /* different stimulus from last stimmeas row */
-        bzero(x, sizeof(double)*len);
+        memset(x, 0, sizeof(double)*len);
         if(!fwd_solve_node_voltages(mdl, 0, i, x, &state)) {
             goto return_result;
         }
         // }
         for(int e = 0; e < mdl->fwd.n_elems; e++) { /* e: element# */
             double b[len];
-            bzero(b, sizeof(double)*len);
+            memset(b, 0, sizeof(double)*len);
             sdmult(mdl, e, state.Asys, -1.0, x, b);
             const double meas = fwd_solve_node_stim(mdl, b, i, &state);
             if(is_pmap) {

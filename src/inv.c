@@ -2,7 +2,7 @@
 #include "config.h"
 #include <assert.h> /* assert */
 #include <stdio.h> /* printf */
-#include <strings.h> /* bzero */
+#include <string.h> /* memset */
 #include <float.h> /* DBL_MIN */
 #include <lapacke.h>
 
@@ -18,7 +18,7 @@
 #ifdef DEBUG_SVD_MATRICES
 static void set_matrix(matrix * X, char symbol[], char name[], char units[], int m, int n, double * x)
 {
-    bzero(X, sizeof(matrix));
+    memset(X, 0, sizeof(matrix));
     X->m = m;
     X->n = n;
     X->type = DENSE;
@@ -63,7 +63,7 @@ static int inv_solve_svd(model * const mdl, double const * b, double * x)
     const int m = mdl->n_stimmeas;
     const int n = mdl->n_params[0];
     /* init J */
-    // printf("J is %d x %d = %d --> %zd B\n", m, n, m * n, m * n * sizeof(double));
+    // printf("J is %d x %d = %d --> %d B\n", m, n, m * n, m * n * (int) sizeof(double));
     double * Ux = NULL, * sx = NULL, * Vtx = NULL, * superb = NULL;
     double * Jx = malloc(sizeof(double) * m * n);
     if(Jx == NULL) {
@@ -123,7 +123,7 @@ static int inv_solve_svd(model * const mdl, double const * b, double * x)
 #endif
     /* calculate Utb = Uᵀb */
     double Utb[ssz];
-    bzero(Utb, sizeof(double)*ssz);
+    memset(Utb, 0, sizeof(double)*ssz);
     for(int i = 0; i < m; i++) { /* i: b row = Uᵀ col = U row */
         for(int j = 0; j < ssz; j++) { /* j: Uᵀb row = Uᵀ row = U col */
             Utb[j] += Ux[colmaj(i, j, ldU)] * b[i];
@@ -145,7 +145,7 @@ static int inv_solve_svd(model * const mdl, double const * b, double * x)
     }
 #endif
     /* complete the solution as Δx=V(ϕΣ⁻¹Uᵀb) */
-    bzero(x, sizeof(double) * n);
+    memset(x, 0, sizeof(double) * n);
     for(int i = 0; i < ssz; i++) { /* i: Uᵀb row = V col = Vᵀ row */
         const double Utbi = Utb[i];
         for(int j = 0; j < n; j++) { /* j: x row = V row = Vᵀ col */

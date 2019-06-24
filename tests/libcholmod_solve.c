@@ -35,7 +35,7 @@
 #include "cmocka.h"
 
 #include <float.h> /* DBL_EPSILON */
-#include <math.h> /* fabs, pow */
+#include <math.h> /* fabs */
 
 int main (void)
 {

@@ -1,5 +1,4 @@
 Immediate Work
-2016-07-29 consume matrices from EIDORS, solve 1-step GN inv
 
 2017-04-10 use utf-8 for equations, so we can use nice symbols for pretty equations
 2017-04-10 pass an equation to the handler and a list of matrices
@@ -39,36 +38,20 @@ Immediate Work
 2018-03-02 compare to R2, R3t (http://www.es.lancs.ac.uk/people/amb/Freeware/R2/R2.htm) Binley et al.
 2018-03-02 compare to E4D https://e4d.pnnl.gov/Pages/Home.aspx USDoE
 2018-03-02 compare to BERT https://gitlab.com/resistivity-net/bert Rucker et al
-2019-02-14 model file format:
-           MESH
-           ##  <-- number of meshes
-           <TYPE:fwd,inv> <FORMAT:netgen,gmsh> <src:file.msh|inline|file.vol> <-- meshes will be cached or can use an output file
-            <-- must have a fwd model, electrodes connect to fwd (calculates A and J based on fwd)
-
-           PROJECTION <-- e.g. c2f maps (optional)
-
-           ELECTRODE
-           ##
-           <BCTYPE:neumann,dirichlet,pem,cem> <ELEM:node,surface,elem,boundary> ## a b c [name]
-
-           DEFAULT STIMULUS <-- overridden by data file
-           <pair drive/meas|predefined:skip-n,trig>
-           ##
-           s+ s- p+ p- A G <-- A=amplitude (incl units), G=gain
 
 Long-term Acceptance Criteria
- 1. compiles on all systems (windows, linux, osx)
- 2. long-term supportable (minimize dependencies)
- 3. clean library bindings (dynamic & static):
-    - matlab, octave
-    - python,
-    - C (native)
-    - C++ (native)
- 4. a "simple interface" as well as giving access
-    to the core functionality (kernels)
-      simple:  meas + model + config --> img
-      kernels: solve(meas, model, config, &img)
- 5. cmdline: shell call simple interface
- 6. gui: python(?) call simple interface, visualize
- 7. export run data package (input/state/outputs) .mat(?)
-    for exactly repeatable results (version compatibility)
+ ✓ 1. compiles on all systems (windows, linux, osx)
+   2. long-term supportable (minimize dependencies)
+   3. clean library bindings (dynamic & static):
+      - C (native)
+      - C++ (native)
+      - matlab, octave
+      - python,
+   4. a "simple interface" as well as giving access
+      to the core functionality (kernels)
+        simple:  meas + model + config --> img
+        kernels: solve(meas, model, config, &img)
+ ✓ 5. cmdline: shell call simple interface
+   6. gui: python(?) call simple interface, visualize
+   7. export run data package (input/state/outputs) .zh
+      for exactly repeatable results (version compatibility)

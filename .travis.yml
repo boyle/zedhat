@@ -16,7 +16,6 @@ before_install:
    - if [[ "$CC" == "gcc" && "x$TRAVIS_OS_NAME" == "linux" ]]; then pip install --user cpp-coveralls; fi
    - echo "" > .env
    - if [[ "x$TRAVIS_OS_NAME" == "xosx" ]]; then printf 'export LDFLAGS="-L/usr/local/lib -L/usr/local/opt/openblas/lib"\nexport CFLAGS="-I/usr/local/include -I/usr/local/opt/openblas/include"\nexport PKG_CONFIG_PATH="/usr/local/opt/openblas/lib/pkgconfig"\n' > .env; fi
-#  - if [[ "x$TRAVIS_OS_NAME" == "xosx" ]]; then brew update; fi
 
 addons:
    apt:
@@ -31,13 +30,14 @@ addons:
          - lcov
    homebrew:
       packages:
-         - gfortran
          - autoconf
          - automake
+         - gcc
          - pkg-config
          - lapack
          - openblas
          - suite-sparse
+      update: true
    coverity_scan:
       project:
          name: "boyle/zedhat"
@@ -51,6 +51,8 @@ cache:
    ccache: true
    directories:
       - $HOME/Library/Caches/Homebrew
+#     - /c/tools/msys64
+#     - /c/programdata/chocolatey/lib
 
 before_cache:
    - if [[ "x$TRAVIS_OS_NAME" == "xosx" ]]; then brew cleanup; fi
@@ -59,13 +61,12 @@ before_cache:
 script:
    - ./autogen
    - source .env && ./configure
-   - make check
+   - make test
    - if [[ "$CC" == "gcc" && "$TRAVIS_OS_NAME" == "linux" ]]; then make cov; fi
 
-after_failure:
-   - awk '/## Summary of the failures. ##/{flag=1;next}/## config.log ##/{flag=0}flag' ${TRAVIS_BUILD_DIR}/*/testsuite.log
+#after_failure:
+#   - awk '/## Summary of the failures. ##/{flag=1;next}/## config.log ##/{flag=0}flag' ${TRAVIS_BUILD_DIR}/*/testsuite.log
 #  - cat ${TRAVIS_BUILD_DIR}/*/testsuite.log
-
 
 after_success:
    - if [[ "$CC" == "gcc" && "$TRAVIS_OS_NAME" == "linux" ]]; then coveralls --exclude tests --gcov-options '\-lp'; fi

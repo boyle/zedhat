@@ -3,6 +3,12 @@ AT_COPYRIGHT([Copyright 2016-2019, Alistair Boyle, 3-clause BSD License])
 AT_COLOR_TESTS
 AT_TESTED(AT_PACKAGE_NAME)
 
+m4_define(HOST_OS,m4_tolower(m4_esyscmd_s(uname -s | sed 's/_.*//')))
+echo "[HOST_OS] = HOST_OS"
+m4_case(HOST_OS,mingw64,[
+m4_define(MINGW_CWD,m4_esyscmd_s(pwd -W | sed 's|\/|\\|g'))
+echo "[MINGW_CWD] = MINGW_CWD"
+])
 m4_define(ZH_UNIT_TEST,[
 AT_SETUP([$1 - $2])
 AT_KEYWORDS([unittest $1])
@@ -70,13 +76,16 @@ AT_CLEANUP
 
 AT_SETUP(--tolerance)
 AT_KEYWORDS([tolerance args install])
-m4_define(HOST_OS,m4_tolower(m4_esyscmd_s(uname -s)))
 m4_define([ZH_TOLERANCE_ERR],m4_n(AT_PACKAGE_NAME[: option '--tolerance' requires an argument]))
 m4_define([ZH_SHORT_TOLERANCE_ERR],m4_n(AT_PACKAGE_NAME[: option requires an argument -- 't']))
-echo "[HOST_OS] = HOST_OS"
-m4_case(HOST_OS,darwin,[
+m4_case(HOST_OS,
+darwin,[
 m4_define([ZH_TOLERANCE_ERR],m4_n(AT_PACKAGE_NAME[: option `--tolerance' requires an argument]))
 m4_define([ZH_SHORT_TOLERANCE_ERR],m4_n(AT_PACKAGE_NAME[: option requires an argument -- t]))
+],
+mingw64,[
+m4_define([ZH_TOLERANCE_ERR],m4_n(MINGW_CWD[\]AT_PACKAGE_NAME[.exe: option requires an argument -- tolerance]))
+m4_define([ZH_SHORT_TOLERANCE_ERR],m4_n(MINGW_CWD[\]AT_PACKAGE_NAME[.exe: option requires an argument -- t]))
 ])
 AT_CHECK(AT_PACKAGE_NAME --tolerance,1,ZH_HELP_LONG,ZH_TOLERANCE_ERR)
 AT_CHECK(AT_PACKAGE_NAME -t,1,ZH_HELP_LONG,ZH_SHORT_TOLERANCE_ERR)
@@ -105,6 +114,12 @@ m4_define([ZH_FORWARD_SOLVER_ERR],m4_n(AT_PACKAGE_NAME[: option `--forward-solve
 m4_define([ZH_FORWARD_ERR],m4_n(AT_PACKAGE_NAME[: option `--forward' requires an argument]))
 m4_define([ZH_MID_FORWARD_ERR],m4_n(AT_PACKAGE_NAME[: option `--fwd' requires an argument]))
 m4_define([ZH_SHORT_FORWARD_ERR],m4_n(AT_PACKAGE_NAME[: option requires an argument -- f]))
+],
+mingw64,[
+m4_define([ZH_FORWARD_SOLVER_ERR],m4_n(MINGW_CWD[\]AT_PACKAGE_NAME[.exe: option requires an argument -- forward-solver]))
+m4_define([ZH_FORWARD_ERR],m4_n(MINGW_CWD[\]AT_PACKAGE_NAME[.exe: option requires an argument -- forward]))
+m4_define([ZH_MID_FORWARD_ERR],m4_n(MINGW_CWD[\]AT_PACKAGE_NAME[.exe: option requires an argument -- fwd]))
+m4_define([ZH_SHORT_FORWARD_ERR],m4_n(MINGW_CWD[\]AT_PACKAGE_NAME[.exe: option requires an argument -- f]))
 ])
 AT_CHECK(AT_PACKAGE_NAME --forward-solver,1,ZH_HELP_LONG,ZH_FORWARD_SOLVER_ERR)
 AT_CHECK(AT_PACKAGE_NAME --forward,1,ZH_HELP_LONG,ZH_FORWARD_ERR)
@@ -131,11 +146,18 @@ m4_define([ZH_INVERSE_ERR],m4_n(AT_PACKAGE_NAME[: option '--inverse-solver' requ
 m4_define([ZH_INVERSE_SOLVER_ERR],ZH_INVERSE_ERR)
 m4_define([ZH_MID_INVERSE_ERR],m4_n(AT_PACKAGE_NAME[: option '--inv' requires an argument]))
 m4_define([ZH_SHORT_INVERSE_ERR],m4_n(AT_PACKAGE_NAME[: option requires an argument -- 'i']))
-m4_case(HOST_OS,darwin,[
+m4_case(HOST_OS,
+darwin,[
 m4_define([ZH_INVERSE_SOLVER_ERR],m4_n(AT_PACKAGE_NAME[: option `--inverse-solver' requires an argument]))
 m4_define([ZH_INVERSE_ERR],m4_n(AT_PACKAGE_NAME[: option `--inverse' requires an argument]))
 m4_define([ZH_MID_INVERSE_ERR],m4_n(AT_PACKAGE_NAME[: option `--inv' requires an argument]))
 m4_define([ZH_SHORT_INVERSE_ERR],m4_n(AT_PACKAGE_NAME[: option requires an argument -- i]))
+],
+mingw64,[
+m4_define([ZH_INVERSE_SOLVER_ERR],m4_n(MINGW_CWD[\]AT_PACKAGE_NAME[.exe: option requires an argument -- inverse-solver]))
+m4_define([ZH_INVERSE_ERR],m4_n(MINGW_CWD[\]AT_PACKAGE_NAME[.exe: option requires an argument -- inverse]))
+m4_define([ZH_MID_INVERSE_ERR],m4_n(MINGW_CWD[\]AT_PACKAGE_NAME[.exe: option requires an argument -- inv]))
+m4_define([ZH_SHORT_INVERSE_ERR],m4_n(MINGW_CWD[\]AT_PACKAGE_NAME[.exe: option requires an argument -- i]))
 ])
 AT_CHECK(AT_PACKAGE_NAME --inverse-solver,1,ZH_HELP_LONG,ZH_INVERSE_SOLVER_ERR)
 AT_CHECK(AT_PACKAGE_NAME --inverse,1,ZH_HELP_LONG,ZH_INVERSE_ERR)

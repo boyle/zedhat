@@ -8,7 +8,6 @@
 #include <stdio.h> /* cmocka.h */
 #include <string.h> /* cmocka.h, memcpy */
 #include <float.h> /* DBL_EPSILON */
-#include <math.h> /* fabs, pow */
 
 #include "cmocka.h"
 #include "inv.h"
