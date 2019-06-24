@@ -52,6 +52,17 @@ static double calc_meas(model const * const m, int idx, double * x)
     return (x[Mn] - x[Nn]) * gain;
 }
 
+static double calc_meas_elec(model const * const m, const int idx, double const * const v)
+{
+    assert(v != NULL);
+    assert(idx >= 0);
+    assert(idx < m->n_stimmeas);
+    const int Mi = m->stimmeas[idx * 4 + 2] - 1; /* voltage+ */
+    const int Ni = m->stimmeas[idx * 4 + 3] - 1; /* voltage- */
+    const double gain = m->measgain[idx];
+    return (v[Mi] - v[Ni]) * gain;
+}
+
 static int build_system_matrix(const model * m, int gnd, int frame_idx, matrix * A, matrix ** Acopy, matrix * PMAP)
 {
     assert(m != NULL);
@@ -481,7 +492,7 @@ static void sdmult(const model * mdl, const int elem_idx, const matrix * A, doub
     }
 }
 
-static double fwd_solve_node_stim(const model * mdl, double * b, const int meas_idx, fwdsolve_state * state)
+static void fwd_solve_node_stim(const model * mdl, double * b, double * v, fwdsolve_state * state)
 {
     assert(state != NULL);
     assert(state->is_initialized);
@@ -491,7 +502,37 @@ static double fwd_solve_node_stim(const model * mdl, double * b, const int meas_
     state->b = cholmod_allocate_dense(state->rows, 1, state->rows, xtype, &state->c);
     memcpy(state->b->x, b, sizeof(double) * state->rows);
     state->x = cholmod_solve (CHOLMOD_A, state->L, state->b, &state->c);       /* solve Ax=b */
-    return calc_meas(mdl, meas_idx, state->x->x);
+    /* store electrode voltages */
+    const double * xx = state->x->x;
+    for(int i = 0; i < mdl->n_elec; i++) {
+        const int nn = mdl->elec_to_sys[i];
+        v[i] = xx[nn];
+    }
+}
+
+static int unique_stim(model const * const mdl, int * lookup)
+{
+    assert(mdl != NULL);
+    int cnt = 1;
+    for(int i = 0; i < mdl->n_stimmeas; i++) {
+        if((i > 0) && (cmp_stim(mdl, i, i - 1) != 0)) {
+            cnt++;
+        }
+        if(lookup != NULL) {
+            lookup[i] = cnt - 1;
+        }
+    }
+    return cnt;
+}
+
+#define max(a,b) ((a)>(b)?(a):(b))
+int num_elec(model const * const mdl)
+{
+   int ret = 0;
+   for(int i=0; i < mdl->n_stimmeas*4; i++) {
+      ret = max(ret, mdl->stimmeas[i]);
+   }
+   return ret;
 }
 
 #define colmaj(i,j) ((i) + (j)*(rows)) /* column major indexing */
@@ -511,36 +552,51 @@ int calc_jacobian(model * mdl, double * J)
     assert(mdl != NULL);
     assert(J != NULL);
     int ret = FAILURE;
-    double * x = NULL;
+    double * x = NULL, * b = NULL, * v = NULL;
+    const int rows = mdl->n_stimmeas;
+    int stim_lookup[rows];
     fwdsolve_state state = {0};
     if(!init_state(mdl, &state)) {
         goto return_result;
     }
     const matrix * PMAP = (state.PMAP);
+    const int ne = num_elec(mdl);
     const int len = state.rows;
     const int cols = mdl->n_params[0];
-    const int rows = mdl->n_stimmeas;
     const int is_pmap = (mdl->fwd.n_pmap > 0);
+    const int stims = unique_stim(mdl, NULL);
     if(is_pmap) {
         assert(PMAP->type == CSR);
         assert(PMAP->m == mdl->fwd.n_elems);
         assert(PMAP->n == mdl->n_params[0]);
     }
-    memset(J, 0, sizeof(double) * rows * cols);
-    x = malloc(sizeof(double) * len);
+    x = malloc(sizeof(double) * len * stims);
     assert(x != NULL);
-    for(int i = 0; i < rows; i++) { /* i: Jacobian row# = meas#*/
-        // if((i == 0) || (cmp_stim(mdl, i, i - 1) != 0)) { /* different stimulus from last stimmeas row */
-        memset(x, 0, sizeof(double)*len);
-        if(!fwd_solve_node_voltages(mdl, 0, i, x, &state)) {
+    b = malloc(sizeof(double) * len);
+    assert(b != NULL);
+    v = malloc(sizeof(double) * ne * stims);
+    assert(v != NULL);
+    unique_stim(mdl, stim_lookup);
+    for(int s = 0; s < stims; s++) {
+        int stim_idx;
+        for(stim_idx = 0; (stim_idx < rows) && (stim_lookup[s] != stim_idx); stim_idx++);
+        if(!fwd_solve_node_voltages(mdl, 0, stim_idx, &x[s * len], &state)) {
             goto return_result;
         }
-        // }
-        for(int e = 0; e < mdl->fwd.n_elems; e++) { /* e: element# */
-            double b[len];
+    }
+    memset(J, 0, sizeof(double) * rows * cols);
+    for(int e = 0; e < mdl->fwd.n_elems; e++) { /* e: element# */
+        for(int s = 0; s < stims; s++) {
+            double * xx = &x[s * len];
+            double * vv = &v[s * ne];
             memset(b, 0, sizeof(double)*len);
-            sdmult(mdl, e, state.Asys, -1.0, x, b);
-            const double meas = fwd_solve_node_stim(mdl, b, i, &state);
+            sdmult(mdl, e, state.Asys, -1.0, xx, b);
+            fwd_solve_node_stim(mdl, b, vv, &state);
+        }
+        for(int i = 0; i < rows; i++) { /* i: Jacobian row# = meas#*/
+            assert(stim_lookup[i] < stims);
+            const double * vv = &v[stim_lookup[i] * ne];
+            const double meas = calc_meas_elec(mdl, i, vv);
             if(is_pmap) {
                 for(int k = PMAP->x.sparse.ia[e]; k < PMAP->x.sparse.ia[e + 1]; k++) {
                     const int j = PMAP->x.sparse.ja[k]; /* j: Jacobian col#  = param# */
@@ -558,6 +614,8 @@ int calc_jacobian(model * mdl, double * J)
     }
     ret = SUCCESS;
 return_result:
+    free(v);
+    free(b);
     free(x);
     free_state(&state);
     return ret;
