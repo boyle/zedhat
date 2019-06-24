@@ -33,9 +33,28 @@ export PKG_CONFIG_PATH="/usr/local/opt/openblas/lib/pkgconfig"
 clapack, the older C interface to LAPACK.
 Homebrew `suite-sparse` provides UMFPACK and CHOLMOD.)
 
- For Windows 10, install [chocolatey](https://chocolatey.org/install) as admin, then from regular PowerShell
- ```
- choco -y install mingw
- choco -y install git.install
- ```
- and finally start "Git Bash"
+ For Windows 10, install [chocolatey](https://chocolatey.org/install) as admin, then from PowerShell (with administrative privileges), do
+```
+ choco install mingw git.install
+```
+then start "Git Bash" and navigate to the code's directory. (No code? Try `git clone https://github.com/boyle/zedhat`)
+```
+choco install -r --no-progress -y msys2 make
+PATH=$PATH:/c/tools/msys64/usr/bin/
+# Calling pacman via a powershell script
+powershell -executionpolicy bypass "pacman -Syu --noconfirm autoconf libtool automake make autoconf-archive pkg-config autom4te"
+# Fix the environment for autotools to actually work
+powershell -executionpolicy bypass "ln -s /c/tools/msys64/usr/share/autoconf* /usr/share/"
+ln -s /c/tools/msys64/usr/share/automake* /usr/share/
+ln -s /c/tools/msys64/usr/share/aclocal* /usr/share/
+ln -s /c/tools/msys64/usr/share/libtool* /usr/share/
+ln -s /c/tools/msys64/usr/share/pkgconfig /usr/share/
+ln -s /c/tools/msys64/usr/bin/autom4te /usr/bin/
+ln -s /c/tools/msys64/usr/bin/autoconf /usr/bin/
+ln -s /c/tools/msys64/usr/bin/autoheader /usr/bin/
+ln -s /c/tools/msys64/usr/bin/m4 /usr/bin/
+PATH=$PATH:/c/tools/msys64/usr/bin/
+export CONFIG_SHELL=/usr/bin/bash.exe
+autoreconf -vfi
+ ./autogen && ./configure && make
+```
