@@ -103,8 +103,8 @@ AT_CLEANUP
 
 AT_SETUP(--forward-solver)
 AT_KEYWORDS([fwd args install])
-AT_DATA([m1.zh],m4_include(tests/m1.zh))
-AT_DATA([m2.zh],m4_include(tests/m2.zh))
+AT_DATA([m1f.zh],m4_include(tests/m1f.zh))
+AT_DATA([m2f.zh],m4_include(tests/m2f.zh))
 m4_define([ZH_FORWARD_ERR],m4_n(AT_PACKAGE_NAME[: option '--forward-solver' requires an argument]))
 m4_define([ZH_FORWARD_SOLVER_ERR],ZH_FORWARD_ERR)
 m4_define([ZH_MID_FORWARD_ERR],m4_n(AT_PACKAGE_NAME[: option '--fwd' requires an argument]))
@@ -126,22 +126,22 @@ AT_CHECK(AT_PACKAGE_NAME --forward,1,ZH_HELP_LONG,ZH_FORWARD_ERR)
 AT_CHECK(AT_PACKAGE_NAME --fwd,1,ZH_HELP_LONG,ZH_MID_FORWARD_ERR)
 AT_CHECK(AT_PACKAGE_NAME -f,1,ZH_HELP_LONG,ZH_SHORT_FORWARD_ERR)
 AT_CHECK(AT_PACKAGE_NAME -f balony,1,ignore,m4_n([error: read balony failed]))
-AT_CHECK(AT_PACKAGE_NAME -f m1.zh --tol 1e-16,1,ignore,
+AT_CHECK(AT_PACKAGE_NAME -f m1f.zh --tol 1e-16,1,ignore,
          m4_n([fail: calculated measurements do not match expected]))
-AT_CHECK(AT_PACKAGE_NAME -f m1.zh --tol 1e-10,0,ignore,)
-AT_CHECK(AT_PACKAGE_NAME -f m2.zh --tol 1e-6,0,ignore,)
-sed 's/^1 3 1 2 3/1 3 1 2 1/' m1.zh > m1-mutate.zh
-AT_CHECK(AT_PACKAGE_NAME -f m1-mutate.zh,1,ignore,m4_n([error: bad forward solve]))
-sed '/^data/,/^$/d' m1.zh  > m1-cropdata.zh
-AT_CHECK(AT_PACKAGE_NAME -f m1-cropdata.zh --tol 1e-13,0,ignore,)
-sed '/^parameters/,/^#/d' m1.zh  > m1-cropparams.zh
-AT_CHECK(AT_PACKAGE_NAME -f m1-cropparams.zh --tol 1e-13,1,ignore,m4_n([error: nothing to do]))
+AT_CHECK(AT_PACKAGE_NAME -f m1f.zh --tol 1e-10,0,ignore,)
+AT_CHECK(AT_PACKAGE_NAME -f m2f.zh --tol 1e-6,0,ignore,)
+sed 's/^1 3 1 2 3/1 3 1 2 1/' m1f.zh > m1f-mutate.zh
+AT_CHECK(AT_PACKAGE_NAME -f m1f-mutate.zh,1,ignore,m4_n([error: bad forward solve]))
+sed '/^data/,/^$/d' m1f.zh  > m1f-cropdata.zh
+AT_CHECK(AT_PACKAGE_NAME -f m1f-cropdata.zh --tol 1e-13,0,ignore,)
+sed '/^parameters/,/^#/d' m1f.zh  > m1f-cropparams.zh
+AT_CHECK(AT_PACKAGE_NAME -f m1f-cropparams.zh --tol 1e-13,1,ignore,m4_n([error: nothing to do]))
 AT_CLEANUP
 
 AT_SETUP(--inverse-solver)
 AT_KEYWORDS([inv args install])
-AT_DATA([m1.zh],m4_include(tests/m1.zh))
-AT_DATA([m2.zh],m4_include(tests/m2.zh))
+AT_DATA([m1i.zh],m4_include(tests/m1i.zh))
+AT_DATA([m2i.zh],m4_include(tests/m2i.zh))
 m4_define([ZH_INVERSE_ERR],m4_n(AT_PACKAGE_NAME[: option '--inverse-solver' requires an argument]))
 m4_define([ZH_INVERSE_SOLVER_ERR],ZH_INVERSE_ERR)
 m4_define([ZH_MID_INVERSE_ERR],m4_n(AT_PACKAGE_NAME[: option '--inv' requires an argument]))
@@ -164,16 +164,16 @@ AT_CHECK(AT_PACKAGE_NAME --inverse,1,ZH_HELP_LONG,ZH_INVERSE_ERR)
 AT_CHECK(AT_PACKAGE_NAME --inv,1,ZH_HELP_LONG,ZH_MID_INVERSE_ERR)
 AT_CHECK(AT_PACKAGE_NAME -i,1,ZH_HELP_LONG,ZH_SHORT_INVERSE_ERR)
 AT_CHECK(AT_PACKAGE_NAME -i balony,1,ignore,m4_n([error: read balony failed]))
-AT_CHECK(AT_PACKAGE_NAME -i m1.zh --tol 1e-16,1,ignore,
+AT_CHECK(AT_PACKAGE_NAME -i m1i.zh --tol 1e-16,1,ignore,
          m4_n([fail: calculated parameters do not match expected]))
-AT_CHECK(AT_PACKAGE_NAME -i m1.zh --tol 1e-8,0,ignore,)
-AT_CHECK(AT_PACKAGE_NAME -i m2.zh --tol 1e-8,0,ignore,)
-sed 's/^1 3 1 2 3/1 3 1 2 1/' m1.zh > m1-mutate.zh
-AT_CHECK(AT_PACKAGE_NAME -i m1-mutate.zh,1,ignore,m4_n([error: bad inverse solve]))
-sed '/^data/,/^$/d' m1.zh  > m1-cropdata.zh
-AT_CHECK(AT_PACKAGE_NAME -i m1-cropdata.zh --tol 1e-13,1,ignore,m4_n([error: nothing to do]))
-sed '/^parameters/,/^#/d' m1.zh  > m1-cropparams.zh
-AT_CHECK(AT_PACKAGE_NAME -i m1-cropparams.zh --tol 1e-13,0,ignore,)
+AT_CHECK(AT_PACKAGE_NAME -i m1i.zh --tol 4e-6,0,ignore,)
+AT_CHECK(AT_PACKAGE_NAME -i m2i.zh --tol 4e-6,0,ignore,)
+sed 's/^1 3 1 2 3/1 3 1 2 1/' m1i.zh > m1i-mutate.zh
+AT_CHECK(AT_PACKAGE_NAME -i m1i-mutate.zh,1,ignore,m4_n([error: bad inverse solve]))
+sed '/^data/,/^$/d' m1i.zh  > m1i-cropdata.zh
+AT_CHECK(AT_PACKAGE_NAME -i m1i-cropdata.zh --tol 1e-13,1,ignore,m4_n([error: nothing to do]))
+sed '/^parameters/,/^#/d' m1i.zh  > m1i-cropparams.zh
+AT_CHECK(AT_PACKAGE_NAME -i m1i-cropparams.zh --tol 1e-13,0,ignore,)
 AT_CLEANUP
 
 AT_BANNER([mesh loading])

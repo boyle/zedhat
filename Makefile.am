@@ -41,6 +41,8 @@ tests_model_CFLAGS = -DUNIT_TESTING $(AM_CFLAGS)
 tests_matrix_SOURCES = tests/matrix.c src/matrix.c tests/cmocka.c
 tests_matrix_CFLAGS = -DUNIT_TESTING $(AM_CFLAGS)
 
+TESTSUITE_DEPS = tests/m1f.zh tests/m2f.zh tests/m1i.zh tests/m2i.zh tests/ngcube.vol
+
 clean-local: clean-local-check
 	  -rm -f src/*.lo
 	  rm -f {src,tests}/*.gcda {src,tests}/*.gcno
@@ -152,6 +154,8 @@ atconfig: $(top_builddir)/config.status
 
 AUTOM4TE = $(SHELL) "$(abs_srcdir)/build-aux/missing" --run autom4te
 AUTOTEST = $(AUTOM4TE) --language=autotest
+
+$(TESTSUITE): $(addprefix $(top_srcdir)/, $(TESTSUITE_DEPS))
 $(TESTSUITE): $(TESTSUITE_AT) $(srcdir)/package.m4
 	$(AUTOTEST) -I '$(abs_srcdir)' -o $@.tmp $@.at
 	mv $@.tmp $@
