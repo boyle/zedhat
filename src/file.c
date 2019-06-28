@@ -259,9 +259,9 @@ int readfile_loop(const char filename[], model * m, fileformat * f_list)
         gzreadnext(F, data, MAXCHAR);
         fileformat * f = &(f_list[0]);
         while(f->field != EOL) {
-            char section_n [LEN+1];
-            strncpy(section_n, f->section, LEN+1);
-            section_n[LEN-1] = '\0';
+            char section_n [LEN + 1];
+            strncpy(section_n, f->section, LEN + 1);
+            section_n[LEN - 1] = '\0';
             const int eol = strlen(section_n);
             strcpy(&section_n[eol], "\n\0");
             if(strcmp(data, section_n) != 0) {

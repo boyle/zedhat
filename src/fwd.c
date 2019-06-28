@@ -97,35 +97,36 @@ static int build_system_matrix(const model * m, int gnd, int frame_idx, matrix *
         }
     }
     /* apply conductivity */
-    if(m->n_params[1] > 0) { /* otherwise assume conductivity = 1 S/m */
-        assert(frame_idx < m->n_params[1]);
-        if(PMAP == NULL) {
-            assert(ne == m->n_params[0]);
-            const int rows = m->n_params[0];
-            for(int e = 0; e < ne; e++) {
-                const double cond = m->params[e + rows * frame_idx]; /* conductivity */
-                for(int i = 0; i < se_n; i++) {
-                    A->x.sparse.a[e * se_n + i] *= cond;
-                }
+    if(m->n_params[1] == 0) { /* assume conductivity = 1 S/m */
+        return SUCCESS;
+    }
+    assert(frame_idx < m->n_params[1]);
+    if(PMAP == NULL) {
+        assert(ne == m->n_params[0]);
+        const int rows = m->n_params[0];
+        for(int e = 0; e < ne; e++) {
+            const double cond = m->params[e + rows * frame_idx]; /* conductivity */
+            for(int i = 0; i < se_n; i++) {
+                A->x.sparse.a[e * se_n + i] *= cond;
             }
         }
-        else { /* map parameters to elements */
-            assert(PMAP->n == m->n_params[0]);
-            assert(PMAP->m == ne);
-            assert(PMAP->type == CSR);
-            const int rows = m->n_params[0];
-            for(int e = 0; e < ne; e++) {
-                double cond_frac = 0.0;
-                for(int j = PMAP->x.sparse.ia[e]; j < PMAP->x.sparse.ia[e + 1]; j++) {
-                    const int param = PMAP->x.sparse.ja[j];
-                    const double element_fraction = PMAP->x.sparse.a[j];
-                    const double conductivity = m->params[param + rows * frame_idx];
-                    cond_frac += conductivity * element_fraction;
-                }
-                // printf("[e=%d] σ=%g\n", e, cond_frac);
-                for(int i = 0; i < se_n; i++) {
-                    A->x.sparse.a[e * se_n + i] *= cond_frac;
-                }
+    }
+    else { /* map parameters to elements */
+        assert(PMAP->n == m->n_params[0]);
+        assert(PMAP->m == ne);
+        assert(PMAP->type == CSR);
+        const int rows = m->n_params[0];
+        for(int e = 0; e < ne; e++) {
+            double cond_frac = 0.0;
+            for(int j = PMAP->x.sparse.ia[e]; j < PMAP->x.sparse.ia[e + 1]; j++) {
+                const int param = PMAP->x.sparse.ja[j];
+                const double element_fraction = PMAP->x.sparse.a[j];
+                const double conductivity = m->params[param + rows * frame_idx];
+                cond_frac += conductivity * element_fraction;
+            }
+            // printf("[e=%d] σ=%g\n", e, cond_frac);
+            for(int i = 0; i < se_n; i++) {
+                A->x.sparse.a[e * se_n + i] *= cond_frac;
             }
         }
     }
@@ -192,7 +193,6 @@ int build_pmap(model * mdl, matrix ** PMAP)
     }
     return SUCCESS;
 }
-
 
 typedef struct {
     int is_initialized;
