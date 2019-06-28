@@ -14,14 +14,31 @@
 #include "cmocka.h"
 #include "fwd.h"
 
+/* determined from "happy" runs */
+#define NUM_FWD_MALLOCS (9)
+#define NUM_FWD_REALLOCS (3)
+#define NUM_FWD_MALLOCS_PMAP (16)
+#define NUM_FWD_REALLOCS_PMAP (6)
+
+#define NUM_JAC_MALLOCS (17)
+#define NUM_JAC_REALLOCS (3)
+#define NUM_JAC_MALLOCS_PMAP (24)
+#define NUM_JAC_REALLOCS_PMAP (6)
+
+static int realloc_count = 0;
+static int malloc_count = 0;
+
 void * _mock_test_malloc(size_t size, const char * file, const int line)
 {
     if(mock()) {
         printf("  malloc x\n");
+        malloc_count = 0;
+        realloc_count = 0;
         return NULL;
     }
     else {
-        printf("  malloc ✓\n");
+        malloc_count++;
+        printf("  malloc ✓ (#%d)\n", malloc_count);
         return _test_malloc(size, file, line);
     }
 }
@@ -30,10 +47,13 @@ void * _mock_test_realloc(void * const ptr, const size_t size, const char * file
 {
     if(mock()) {
         printf("  realloc x\n");
+        malloc_count = 0;
+        realloc_count = 0;
         return NULL;
     }
     else {
-        printf("  realloc ✓\n");
+        realloc_count++;
+        printf("  realloc ✓ (#%d)\n", realloc_count);
         return _test_realloc(ptr, size, file, line);
     }
 }
@@ -100,7 +120,10 @@ void test_2d_resistor_cem (void ** state)
     m.data = &(meas[0]);
     will_return_always(_mock_test_malloc, 0);
     will_return_always(_mock_test_realloc, 0);
+    malloc_count = 0;
+    realloc_count = 0;
     assert_int_equal(fwd_solve(&m, &meas[0]), 1);
+    printf("fwd_solve()  mallocs = %d, reallocs = %d\n", malloc_count, realloc_count);
     printf("meas = %g %g\n", meas[0], meas[1]);
     const double default_zc = zc[0] + zc[1];
     const double expect = 1.0 + default_zc;
@@ -113,8 +136,11 @@ void test_2d_resistor_cem (void ** state)
     assert_double_equal(meas[0], +expect * 2.5, reltol);
     assert_double_equal(meas[1], -expect, reltol);
     printf_model(&m, 2);
+    malloc_count = 0;
+    realloc_count = 0;
     double J[4] = {0};
     assert_int_equal(calc_jacobian(&m, (&J[0])), 1);
+    printf("calc_jacobian()  mallocs = %d, reallocs = %d\n", malloc_count, realloc_count);
     printf("Jacobian:\n");
     for(int i = 0; i < m.n_stimmeas; i++) {
         for(int j = 0; j < m.fwd.n_elems; j++) {
@@ -129,8 +155,6 @@ void test_2d_resistor_cem (void ** state)
     test_free(m.elec_to_sys);
 }
 
-#define NUM_MALLOCS_PMAP (5 + 3 + 3 + 4 + 1)
-#define NUM_REALLOCS_PMAP (3 + 3)
 void test_2d_resistor_pmap (void ** state)
 {
     /* 2D square:
@@ -184,7 +208,10 @@ void test_2d_resistor_pmap (void ** state)
     double meas[2] = {0};
     will_return_always(_mock_test_malloc, 0);
     will_return_always(_mock_test_realloc, 0);
+    malloc_count = 0;
+    realloc_count = 0;
     assert_int_equal(fwd_solve(&m, &meas[0]), 1);
+    printf("fwd_solve() PMAP mallocs = %d, reallocs = %d\n", malloc_count, realloc_count);
     printf("meas = %g %g\n", meas[0], meas[1]);
     const double default_zc = 1e-2;
     const double expect = 2.0 + 2.0 * default_zc;
@@ -196,8 +223,11 @@ void test_2d_resistor_pmap (void ** state)
     printf("relative tolerance = %g\n", reltol);
     assert_double_equal(meas[0], +expect, reltol);
     assert_double_equal(meas[1], -expect, reltol);
+    malloc_count = 0;
+    realloc_count = 0;
     double J[2] = {0};
     assert_int_equal(calc_jacobian(&m, (&J[0])), 1);
+    printf("calc_jacobian() PMAP mallocs = %d, reallocs = %d\n", malloc_count, realloc_count);
     printf("Jacobian:\n");
     for(int i = 0; i < m.n_stimmeas; i++) {
         for(int j = 0; j < 1; j++) {
@@ -359,13 +389,15 @@ void test_fwd_solve_fail (void ** state)
     printf("\n"); printf_model(&m, 2); printf("\n");
     /* check_model fail: bad boundary condition */
     se[3][0] = 0;
+    malloc_count = 0;
+    realloc_count = 0;
     assert_int_equal(fwd_solve(&m, &meas[0]), 0);
     se[3][0] = 3;
     /* various malloc failures */
     printf("malloc sad\n");
     will_return(_mock_test_malloc, 1);
     assert_int_equal(fwd_solve(&m, &meas[0]), 0);
-    for(int i = 0, mallocs = 0, reallocs = 0; i < NUM_MALLOCS_PMAP + NUM_REALLOCS_PMAP / 3; i++) {
+    for(int i = 0, mallocs = 0, reallocs = 0; i < NUM_FWD_MALLOCS_PMAP + NUM_FWD_REALLOCS_PMAP / 3; i++) {
         int malloc_fail;
         switch(i) {
         case 17:
@@ -378,8 +410,8 @@ void test_fwd_solve_fail (void ** state)
             malloc_fail = 1;
         }
         printf("[i=%d] mallocs = %d/%d, reallocs = %d/%d\n", i,
-               mallocs, NUM_MALLOCS_PMAP,
-               reallocs * 3, NUM_REALLOCS_PMAP);
+               mallocs, NUM_FWD_MALLOCS_PMAP,
+               reallocs * 3, NUM_FWD_REALLOCS_PMAP);
         const int mallocs_success =  mallocs - (malloc_fail ? 1 : 0);
         const int reallocs_success =  3 * reallocs - (malloc_fail ? 0 : 1);
         if(mallocs_success > 0) {
@@ -399,14 +431,14 @@ void test_fwd_solve_fail (void ** state)
     /* build system matrix failure: singular element volume */
     printf("singular element (zero volume)\n");
     elems[0][1] = 1;
-    will_return_count(_mock_test_malloc, 0, NUM_MALLOCS_PMAP);
+    will_return_count(_mock_test_malloc, 0, NUM_FWD_MALLOCS_PMAP);
     will_return_count(_mock_test_realloc, 0, 3);
     assert_int_equal(fwd_solve(&m, &meas[0]), 0);
     elems[0][1] = 2;
     /* passing example again */
     printf("happy\n");
-    will_return_count(_mock_test_malloc, 0, NUM_MALLOCS_PMAP);
-    will_return_count(_mock_test_realloc, 0, NUM_REALLOCS_PMAP);
+    will_return_count(_mock_test_malloc, 0, NUM_FWD_MALLOCS_PMAP);
+    will_return_count(_mock_test_realloc, 0, NUM_FWD_REALLOCS_PMAP);
     assert_int_equal(fwd_solve(&m, &meas[0]), 1);
     test_free(m.elec_to_sys);
     test_free(m.zc);
@@ -465,22 +497,28 @@ void test_calc_jacobian_fail (void ** state)
     double J[2] = {0};
     printf("\n"); printf_model(&m, 2); printf("\n");
     printf("happy\n");
-    will_return_count(_mock_test_malloc, 0, NUM_MALLOCS_PMAP + 7);
-    will_return_count(_mock_test_realloc, 0, NUM_REALLOCS_PMAP);
+    will_return_count(_mock_test_malloc, 0, NUM_JAC_MALLOCS_PMAP);
+    will_return_count(_mock_test_realloc, 0, NUM_JAC_REALLOCS_PMAP);
+    malloc_count = 0;
+    realloc_count = 0;
     assert_int_equal(calc_jacobian(&m, &J[0]), 1);
     /* check_model fail: bad boundary condition */
     printf("bad bc\n");
     se[3][0] = 0;
+    malloc_count = 0;
+    realloc_count = 0;
     assert_int_equal(calc_jacobian(&m, &J[0]), 0);
     se[3][0] = 3;
     /* various malloc failures */
+    malloc_count = 0;
+    realloc_count = 0;
     printf("malloc sad\n");
     will_return(_mock_test_malloc, 1);
     assert_int_equal(calc_jacobian(&m, &J[0]), 0);
-    for(int i = 0, mallocs = 0, reallocs = 0; i < NUM_MALLOCS_PMAP + 7 + NUM_REALLOCS_PMAP / 3; i++) {
+    for(int i = 0, mallocs = 0, reallocs = 0; i < NUM_JAC_MALLOCS_PMAP + NUM_JAC_REALLOCS_PMAP / 3; i++) {
         int malloc_fail;
         switch(i) {
-        case 24:
+        case 25:
         case 11:
             reallocs++;
             malloc_fail = 0;
@@ -490,8 +528,8 @@ void test_calc_jacobian_fail (void ** state)
             malloc_fail = 1;
         }
         printf("[i=%d] mallocs = %d/%d, reallocs = %d/%d\n", i,
-               mallocs, NUM_MALLOCS_PMAP,
-               reallocs * 3, NUM_REALLOCS_PMAP);
+               mallocs, NUM_JAC_MALLOCS_PMAP,
+               reallocs * 3, NUM_JAC_REALLOCS_PMAP);
         const int mallocs_success =  mallocs - (malloc_fail ? 1 : 0);
         const int reallocs_success =  3 * reallocs - (malloc_fail ? 0 : 1);
         if(mallocs_success > 0) {
@@ -511,14 +549,16 @@ void test_calc_jacobian_fail (void ** state)
     /* build system matrix failure: singular element volume */
     printf("singular element (zero volume)\n");
     elems[0][1] = 1;
-    will_return_count(_mock_test_malloc, 0, NUM_MALLOCS_PMAP);
-    will_return_count(_mock_test_realloc, 0, NUM_REALLOCS_PMAP - 3);
+    will_return_count(_mock_test_malloc, 0, 17);
+    will_return_count(_mock_test_realloc, 0, 3);
     assert_int_equal(calc_jacobian(&m, &J[0]), 0);
     elems[0][1] = 2;
     /* passing example again */
     printf("happy\n");
-    will_return_count(_mock_test_malloc, 0, NUM_MALLOCS_PMAP + 7);
-    will_return_count(_mock_test_realloc, 0, NUM_REALLOCS_PMAP);
+    malloc_count = 0;
+    realloc_count = 0;
+    will_return_count(_mock_test_malloc, 0, NUM_JAC_MALLOCS_PMAP);
+    will_return_count(_mock_test_realloc, 0, NUM_JAC_REALLOCS_PMAP);
     assert_int_equal(calc_jacobian(&m, &J[0]), 1);
     test_free(m.elec_to_sys);
     test_free(m.zc);

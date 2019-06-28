@@ -12,10 +12,10 @@ compiler:
 
 before_install:
    - eval "${MATRIX_EVAL}"
-   - echo -n | openssl s_client -connect https://scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
-   - if [[ "$CC" == "gcc" && "x$TRAVIS_OS_NAME" == "linux" ]]; then pip install --user cpp-coveralls; fi
+   - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
    - echo "" > .env
    - if [[ "x$TRAVIS_OS_NAME" == "xosx" ]]; then printf 'export LDFLAGS="-L/usr/local/lib -L/usr/local/opt/openblas/lib"\nexport CFLAGS="-I/usr/local/include -I/usr/local/opt/openblas/include"\nexport PKG_CONFIG_PATH="/usr/local/opt/openblas/lib/pkgconfig"\n' > .env; fi
+   - if [[ "x$CC" == "xgcc" && "x$TRAVIS_OS_NAME" == "xlinux" ]]; then pip install --user cpp-coveralls; fi
 
 addons:
    apt:
@@ -51,25 +51,22 @@ cache:
    ccache: true
    directories:
       - $HOME/Library/Caches/Homebrew
-#     - /c/tools/msys64
-#     - /c/programdata/chocolatey/lib
 
 before_cache:
    - if [[ "x$TRAVIS_OS_NAME" == "xosx" ]]; then brew cleanup; fi
 
-#        - gcc-6
 script:
    - ./autogen
    - source .env && ./configure
    - make test
-   - if [[ "$CC" == "gcc" && "$TRAVIS_OS_NAME" == "linux" ]]; then make cov; fi
+   - if [[ "x$CC" == "xgcc" && "x$TRAVIS_OS_NAME" == "xlinux" ]]; then make cov; fi
 
 #after_failure:
 #   - awk '/## Summary of the failures. ##/{flag=1;next}/## config.log ##/{flag=0}flag' ${TRAVIS_BUILD_DIR}/*/testsuite.log
 #  - cat ${TRAVIS_BUILD_DIR}/*/testsuite.log
 
 after_success:
-   - if [[ "$CC" == "gcc" && "$TRAVIS_OS_NAME" == "linux" ]]; then coveralls --exclude tests --gcov-options '\-lp'; fi
+   - if [[ "x$CC" == "xgcc" && "x$TRAVIS_OS_NAME" == "xlinux" ]]; then coveralls --build-root $(pwd) --exclude tests --gcov-options '\-lp' --lcov-file zedhat_test.info; fi
 
 env:
    global:

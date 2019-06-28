@@ -347,6 +347,8 @@ void test_inv_solve_fail (void ** state)
     assert_int_equal(inv_solve(&m, &x[0]), 0);
     test_free(m.elec_to_sys);
     test_free(m.zc);
+    m.zc = NULL;
+    m.elec_to_sys = NULL;
 }
 
 int main(void)

@@ -12,6 +12,7 @@
 #include <libgen.h> /* basename */
 #include <zlib.h> /* cmocka: mocking zlib's gzopen, gzgets, gzclose, gzeof */
 
+#include "model.h" /* printf_model */
 #include "file.h"
 #include "cmocka.h"
 
@@ -200,6 +201,7 @@ static void test_happy (void ** state)
         will_return(_mock_gzgets, "1 10.0\n");
         ret = readfile("unittest", m);
         assert_int_equal(ret, 1);
+        printf_model(m, 2);
     }
     m = free_model(m);
 }

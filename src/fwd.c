@@ -7,6 +7,13 @@
 
 #include "fwd.h"
 
+#ifdef UNIT_TESTING
+extern void * _mock_test_malloc(const size_t size, const char * file, const int line);
+extern void _test_free(void * const ptr, const char * file, const int line);
+#define malloc(size) _mock_test_malloc(size, __FILE__, __LINE__)
+#define free(ptr) _test_free(ptr, __FILE__, __LINE__)
+#endif
+
 #define SUCCESS 1
 #define FAILURE 0
 
@@ -30,14 +37,14 @@ static void calc_stim(model const * const m, int idx, double * b)
     b[Bn] = -1;
 }
 
-static int cmp_stim(model const * const mdl, int stim1, int stim2)
-{
-    const int A1 = mdl->stimmeas[stim1 * 4 + 0]; /* current+ */
-    const int B1 = mdl->stimmeas[stim1 * 4 + 1]; /* current- */
-    const int A2 = mdl->stimmeas[stim2 * 4 + 0]; /* current+ */
-    const int B2 = mdl->stimmeas[stim2 * 4 + 1]; /* current- */
-    return (A1 == A2) ? (B1 - B2) : (A1 - A2);
-}
+// static int cmp_stim(model const * const mdl, int stim1, int stim2)
+// {
+//     const int A1 = mdl->stimmeas[stim1 * 4 + 0]; /* current+ */
+//     const int B1 = mdl->stimmeas[stim1 * 4 + 1]; /* current- */
+//     const int A2 = mdl->stimmeas[stim2 * 4 + 0]; /* current+ */
+//     const int B2 = mdl->stimmeas[stim2 * 4 + 1]; /* current- */
+//     return (A1 == A2) ? (B1 - B2) : (A1 - A2);
+// }
 
 static double calc_meas(model const * const m, int idx, double * x)
 {
@@ -296,10 +303,6 @@ int fwd_solve(model * mdl, double * meas)
         assert(mdl->n_stimmeas != 0);
         const int rows = calc_sys_size(mdl);
         for (int i = 0; i < mdl->n_stimmeas; i++) { /* for each unique stimulus */
-            if((i > 0) && (cmp_stim(mdl, i, i - 1) == 0)) { /* same stimulus as last stimmeas row */
-                meas[frame_idx * (mdl->n_stimmeas) + i] = calc_meas(mdl, i, state.x->x);
-                continue;
-            }
 #if 0 /* default CHOLMOD solver */
             const int xtype = CHOLMOD_REAL;
             cholmod_free_dense (&b, &c);
@@ -528,7 +531,10 @@ int calc_jacobian(model * mdl, double * J)
     }
     memset(J, 0, sizeof(double) * rows * cols);
     x = malloc(sizeof(double) * len);
-    assert(x != NULL);
+    if(x == NULL) {
+        printf("error: matrix %s: out of memory\n", "x");
+        goto return_result;
+    }
     for(int i = 0; i < rows; i++) { /* i: Jacobian row# = meas#*/
         // if((i == 0) || (cmp_stim(mdl, i, i - 1) != 0)) { /* different stimulus from last stimmeas row */
         memset(x, 0, sizeof(double)*len);

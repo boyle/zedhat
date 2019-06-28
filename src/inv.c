@@ -1,5 +1,6 @@
 /* Copyright 2019, Alistair Boyle, 3-clause BSD License */
 #include "config.h"
+#include <stdlib.h> /* malloc, free */
 #include <assert.h> /* assert */
 #include <stdio.h> /* printf */
 #include <string.h> /* memset */
@@ -9,6 +10,13 @@
 #include "matrix.h"
 #include "fwd.h"
 #include "inv.h"
+
+#ifdef UNIT_TESTING
+extern void * _mock_test_malloc(const size_t size, const char * file, const int line);
+extern void _test_free(void * const ptr, const char * file, const int line);
+#define malloc(size) _mock_test_malloc(size, __FILE__, __LINE__)
+#define free(ptr) _test_free(ptr, __FILE__, __LINE__)
+#endif
 
 #define SUCCESS 1
 #define FAILURE 0
