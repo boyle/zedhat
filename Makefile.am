@@ -24,7 +24,13 @@ dist_man_MANS = man/zedhat.1
 # some random files we want to distribute with the package tar
 EXTRA_DIST = $(bin_SCRIPTS) \
 				 ChangeLog README.md NEWS LICENSE \
-				 tests/cmocka.h tests/cmocka_private.h
+				 tests/cmocka.h tests/cmocka_private.h \
+				 tests/m1f.zh tests/m1i.zh tests/m2f.zh tests/m2i.zh tests/ngcube.vol \
+				 build-aux/git-version-gen $(top_srcdir)/.version
+
+BUILT_SOURCES = $(top_srcdir)/.version
+$(top_srcdir)/.version:
+	@echo $(VERSION) > $@-t && mv $@-t $@
 
 BUILT_TESTS = tests/libcblas_dgemm tests/liblapacke_dgels \
 			  tests/libumfpack_solve tests/libcholmod_solve \
@@ -57,6 +63,8 @@ dist-hook:
 #	$(top_srcdir)/autogen
 	[[ -x "$(top_srcdir)/autogen" ]] && "$(top_srcdir)/autogen" "$(distdir)" "$(top_srcdir)" || true
 	-rm -rf $(distdir)/autom4te.cache
+	@echo $(VERSION) > $(distdir)/.tarball-version
+
 
 .PHONY: cov
 cov.log: dist

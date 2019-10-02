@@ -1,10 +1,11 @@
-# Copyright 2016, Alistair Boyle, 3-clause BSD License
+# Copyright 2016-2019, Alistair Boyle, 3-clause BSD License
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([zedhat],[0.0.2],[alistair.js.boyle@gmail.com])
 
-AC_COPYRIGHT([Copyright 2016, Alistair Boyle, 3-clause BSD License])
+AC_INIT([zedhat],m4_esyscmd([build-aux/git-version-gen .tarball-version]),[alistair.js.boyle@gmail.com])
+
+AC_COPYRIGHT([Copyright 2016-2019, Alistair Boyle, 3-clause BSD License])
 
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_AUX_DIR([build-aux])
@@ -168,8 +169,8 @@ AC_OUTPUT
 
 
 AC_MSG_RESULT([])
-AC_MSG_RESULT([   zedhat Configuration Summary       ])
-AC_MSG_RESULT([======================================])
+AC_MSG_RESULT([m4_text_box([Zedhat Configuration Summary])])
+AC_MSG_RESULT([     Version: $PACKAGE_VERSION])
 AC_MSG_RESULT([  C Compiler: $CC ($build_os->$host_os/$ax_cv_c_compiler_vendor-$ax_cv_c_compiler_version)])
 AC_MSG_RESULT([      CFLAGS: $CFLAGS])
 #AC_MSG_RESULT([ WARN_CFLAGS: $WARN_CFLAGS])
