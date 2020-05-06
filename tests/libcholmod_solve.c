@@ -84,8 +84,9 @@ int main (void)
     double * tmp = x->x;
     int i;
     for (i = 0; i < 4; i++) {
-        printf("expect[%d] = % 10.4f, x[%d] = % 10.4f, delta = %+g\n", i, expect[i], i, tmp[i], expect[i] - tmp[i]);
-        if(fabs(expect[i] - tmp[i]) > 100 * DBL_EPSILON) {
+        double lim = 1e4 * DBL_EPSILON;
+        printf("expect[%d] = % 10.4f, x[%d] = % 10.4f, delta = %+g (max %g)\n", i, expect[i], i, tmp[i], expect[i] - tmp[i], lim);
+        if(fabs(expect[i] - tmp[i]) > lim) {
             printf("FAIL\n");
             return 1;
         }

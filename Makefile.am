@@ -34,7 +34,9 @@ $(top_srcdir)/.version:
 
 BUILT_TESTS = tests/libcblas_dgemm tests/liblapacke_dgels \
 			  tests/libumfpack_solve tests/libcholmod_solve \
-			  tests/file tests/model tests/matrix tests/fwd tests/inv
+			  tests/file tests/model tests/matrix tests/fwd tests/inv \
+			  tests/perf
+
 check_PROGRAMS = $(BUILT_TESTS)
 tests_inv_SOURCES = tests/inv.c src/inv.c src/fwd.c src/model.c src/matrix.c tests/cmocka.c
 tests_inv_CFLAGS = -DUNIT_TESTING $(AM_CFLAGS)
@@ -46,6 +48,7 @@ tests_model_SOURCES = tests/model.c src/model.c tests/cmocka.c
 tests_model_CFLAGS = -DUNIT_TESTING $(AM_CFLAGS)
 tests_matrix_SOURCES = tests/matrix.c src/matrix.c tests/cmocka.c
 tests_matrix_CFLAGS = -DUNIT_TESTING $(AM_CFLAGS)
+tests_perf_SOURCES = tests/perf.c src/argv.c src/file.c src/model.c src/matrix.c src/fwd.c src/inv.c
 
 TESTSUITE_DEPS = tests/m1f.zh tests/m2f.zh tests/m1i.zh tests/m2i.zh tests/ngcube.vol
 
