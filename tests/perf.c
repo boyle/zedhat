@@ -176,9 +176,9 @@ int main(int argc, char ** argv)
     int ret = 0;
     args_t args;
     const int N = 1;
-    long double dt [N];
-    long double mean_dt = 0;
-    long double std_dt = 0;
+    double dt [N];
+    double mean_dt = 0;
+    double std_dt = 0;
     if(parse_argv(argc, argv, &args) != 0) {
         return 1;
     }
@@ -202,12 +202,12 @@ int main(int argc, char ** argv)
         return ret;
     }
     for(int i = 0; i < N; i++) {
-        const double long tmp = dt[i] - mean_dt;
+        const double tmp = dt[i] - mean_dt;
         std_dt += tmp * tmp;
     }
     std_dt = sqrt(std_dt / N);
-    printf("%Lf\n", mean_dt);
-    printf("runtime: %0.0f:%02.0f:%02.4Lfs ± %2.4Lfs\n", 0.0, 0.0, mean_dt, std_dt);
-    printf("total:   %0.0f:%02.0f:%02.4Lfs\n", 0.0, 0.0, mean_dt*N);
+    printf("%f\n", mean_dt);
+    printf("runtime: %0.0f:%02.0f:%02.4fs ± %2.4fs\n", 0.0, 0.0, mean_dt, std_dt);
+    printf("total:   %0.0f:%02.0f:%02.4fs\n", 0.0, 0.0, mean_dt*N);
     return 0;
 }
