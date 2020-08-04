@@ -78,7 +78,7 @@ _help:
     printf(" --version -V  version info\n");
     printf(" --forward-solver --fwd -f <fwd.zh>\n");
     printf("       simulate measurements for model in fwd.zh\n");
-    printf(" --inverse-solver --inv -f <inv.zh>\n");
+    printf(" --inverse-solver --inv -i <inv.zh>\n");
     printf("       solve for model parameters using model and data from inv.zh\n");
     printf(" --tolerance --tol -t <#.##e#>\n");
     printf("       for checking --fwd and --inv solutions when available\n");

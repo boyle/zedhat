@@ -31,7 +31,7 @@ m4_define(ZH_HELP_LONG,
  --version -V  version info
  --forward-solver --fwd -f <fwd.zh>
        simulate measurements for model in fwd.zh
- --inverse-solver --inv -f <inv.zh>
+ --inverse-solver --inv -i <inv.zh>
        solve for model parameters using model and data from inv.zh
  --tolerance --tol -t <#.##e#>
        for checking --fwd and --inv solutions when available
