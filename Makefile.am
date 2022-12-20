@@ -24,7 +24,7 @@ dist_man_MANS = man/zedhat.1
 # some random files we want to distribute with the package tar
 EXTRA_DIST = $(bin_SCRIPTS) \
 				 ChangeLog README.md NEWS LICENSE \
-				 tests/cmocka.h tests/cmocka_private.h \
+				 tests/cmocka.h tests/cmocka_version.h tests/cmocka_private.h \
 				 tests/m1f.zh tests/m1i.zh tests/m2f.zh tests/m2i.zh tests/ngcube.vol \
 				 build-aux/git-version-gen $(top_srcdir)/.version
 
@@ -75,7 +75,7 @@ cov.log: dist
 cov: cov.log
 #	[ "x$(shell tail -4 $^ | grep '100.0%' | wc -l)" == "x3" ] || exit 1 # 100% test coverage please!
 
-STYLE_FILES=src/*.c src/*.h tests/*.c
+STYLE_FILES=src/*.c src/*.h tests/*.c tests/*.h
 style: style.log
 style.log: $(STYLE_FILES) astylerc
 	astyle --suffix=none --options=./astylerc $(STYLE_FILES) | tee $@

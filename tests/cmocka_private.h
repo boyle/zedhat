@@ -28,6 +28,7 @@
 
 # ifdef _MSC_VER
 # include <stdio.h> /* _snprintf */
+# include <string.h> /* strtok_s */
 
 #  undef inline
 #  define inline __inline
@@ -38,6 +39,8 @@
 
 #  define strcasecmp _stricmp
 #  define strncasecmp _strnicmp
+#  define strtok_r strtok_s
+#  define strdup _strdup
 
 #  if defined(HAVE__SNPRINTF_S)
 #   undef snprintf

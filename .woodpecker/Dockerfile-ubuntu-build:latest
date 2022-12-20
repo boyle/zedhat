@@ -1,0 +1,10 @@
+FROM ubuntu:latest
+RUN apt-get update && \
+    apt-get install -y \
+        git build-essential \
+        pkg-config autoconf gfortran \
+        libblas-dev libopenblas-dev libsuitesparse-dev liblapacke-dev \
+        zlib1g-dev \
+        && \
+    rm -rf /var/lib/apt/lists/*
+CMD /bin/bash

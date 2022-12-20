@@ -208,6 +208,6 @@ int main(int argc, char ** argv)
     std_dt = sqrt(std_dt / N);
     printf("%f\n", mean_dt);
     printf("runtime: %0.0f:%02.0f:%02.4fs ± %2.4fs\n", 0.0, 0.0, mean_dt, std_dt);
-    printf("total:   %0.0f:%02.0f:%02.4fs\n", 0.0, 0.0, mean_dt*N);
+    printf("total:   %0.0f:%02.0f:%02.4fs\n", 0.0, 0.0, mean_dt * N);
     return 0;
 }

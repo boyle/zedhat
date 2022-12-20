@@ -12,26 +12,42 @@
 #include "cmocka.h"
 #include "inv.h"
 
+static int malloc_count = 0;
+static int malloc_fail_at = 0;
+
+static int realloc_count = 0;
+static int realloc_fail_at = 0;
+
+void reset_mock_count()
+{
+    malloc_count = 0;
+    realloc_count = 0;
+    malloc_fail_at = 0;
+    realloc_fail_at = 0;
+}
+
 void * _mock_test_malloc(size_t size, const char * file, const int line)
 {
-    if(mock()) {
-        printf("  malloc x\n");
+    malloc_count++;
+    if(malloc_count == malloc_fail_at) {
+        printf("  malloc x (#%d) @ %s:%d\n", malloc_count, file, line);
         return NULL;
     }
     else {
-        printf("  malloc ✓\n");
+        printf("  malloc ✓ (#%d) @ %s:%d\n", malloc_count, file, line);
         return _test_malloc(size, file, line);
     }
 }
 
 void * _mock_test_realloc(void * const ptr, const size_t size, const char * file, const int line)
 {
-    if(mock()) {
-        printf("  realloc x\n");
+    realloc_count++;
+    if(realloc_count == realloc_fail_at) {
+        printf("  realloc x (#%d) @ %s:%d\n", realloc_count, file, line);
         return NULL;
     }
     else {
-        printf("  realloc ✓\n");
+        printf("  realloc ✓ (#%d) @ %s:%d\n", realloc_count, file, line);
         return _test_realloc(ptr, size, file, line);
     }
 }
@@ -102,8 +118,7 @@ void test_2d_resistor_cem (void ** state)
     m.data = &(meas[0]);
     double x[2] = {0};
     printf_model(&m, 2);
-    will_return_always(_mock_test_malloc, 0);
-    will_return_always(_mock_test_realloc, 0);
+    reset_mock_count();
     assert_int_equal(inv_solve(&m, &x[0]), 1);
     printf("x = %g %g\n", x[0], x[1]);
     const double expect = 0.045454545454872;
@@ -343,7 +358,8 @@ void test_inv_solve_fail (void ** state)
     m.data = &(meas[0]);
     double x[2] = {0};
     printf("\n"); printf_model(&m, 2); printf("\n");
-    will_return(_mock_test_malloc, 1);
+    reset_mock_count();
+    malloc_fail_at = 1;
     assert_int_equal(inv_solve(&m, &x[0]), 0);
     test_free(m.elec_to_sys);
     test_free(m.zc);

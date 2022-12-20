@@ -49,9 +49,9 @@ directories or adjust compilation options.
 You can run `make test` to execute the automated test suite.
 
 
-For Ubuntu 18.04, install the dependencies from a terminal:
+For Ubuntu 22.04, install the dependencies from a terminal:
 ```
-sudo apt-get install git pkg-config autoconf gfortran
+sudo apt-get install git build-essential pkg-config autoconf gfortran
 sudo apt-get install libblas-dev libopenblas-dev libsuitesparse-dev liblapacke-dev zlib1g-dev
 ```
 

@@ -28,6 +28,7 @@ tests/model
 tests/file
 tests/fwd
 tests/inv
+tests/perf
 testsuite
 testsuite.dir/
 zedhat

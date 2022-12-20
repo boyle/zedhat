@@ -1,0 +1,11 @@
+pipeline:
+  build:
+    image: zedhat/ubuntu-build
+    commands:
+      - ./autogen
+      - ./configure
+      - make
+  test:
+    image: zedhat/ubuntu-build
+    commands:
+      - make test

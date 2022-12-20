@@ -1,0 +1,8 @@
+#! /bin/sh -ex
+REPO=$(basename `git rev-parse --show-toplevel`)
+D="$(dirname $0)"
+for i in "$D"/Dockerfile-*; do
+    IMG=$(basename $i | sed -e 's/^Dockerfile-//' -e 's/:.*$//')
+    VER=$(basename $i | sed -e 's/^.*://')
+    docker build --pull --tag $REPO/$IMG:$VER - < "$i"
+done

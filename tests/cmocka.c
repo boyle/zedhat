@@ -1,6 +1,6 @@
 /*
  * Copyright 2008 Google Inc.
- * Copyright 2014-2018 Andreas Schneider <asn@cryptomilk.org>
+ * Copyright 2014-2020 Andreas Schneider <asn@cryptomilk.org>
  * Copyright 2015      Jakub Hrozek <jakub.hrozek@posteo.se>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,6 +42,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 #include <time.h>
 #include <float.h>
 
@@ -77,17 +78,6 @@
 /* Printf formatting for source code locations. */
 #define SOURCE_LOCATION_FORMAT "%s:%u"
 
-/* AB 2019-06-24: support for printf("%zu",(size_t)1) in windows */
-#ifdef _WIN32
-#  ifdef _WIN64
-#    define PRI_SIZET PRIu64
-#  else
-#    define PRI_SIZET PRIu32
-#  endif
-#else
-#  define PRI_SIZET "zu"
-#endif
-
 #if defined(HAVE_GCC_THREAD_LOCAL_STORAGE)
 # define CMOCKA_THREAD __thread
 #elif defined(HAVE_MSVC_THREAD_LOCAL_STORAGE)
@@ -119,39 +109,18 @@
 # define cm_longjmp(env, val)   longjmp(env, val)
 #endif
 
-
 /*
- * Declare and initialize the pointer member of ValuePointer variable name
- * with ptr.
+ * Declare and initialize a uintmax_t variable name
+ * with value the conversion of ptr.
  */
 #define declare_initialize_value_pointer_pointer(name, ptr) \
-    ValuePointer name ; \
-    name.value = 0; \
-    name.x.pointer = (void*)(ptr)
+    uintmax_t name ; \
+    name = (uintmax_t)((uintptr_t)(ptr))
 
-/*
- * Declare and initialize the value member of ValuePointer variable name
- * with val.
- */
-#define declare_initialize_value_pointer_value(name, val) \
-    ValuePointer name ; \
-    name.value = val
-
-/* Cast a LargestIntegralType to pointer_type via a ValuePointer. */
-#define cast_largest_integral_type_to_pointer( \
+/* Cast a uintmax_t to pointer_type. */
+#define cast_uintmax_type_to_pointer( \
     pointer_type, largest_integral_type) \
-    ((pointer_type)((ValuePointer*)&(largest_integral_type))->x.pointer)
-
-/* Used to cast LargetIntegralType to void* and vice versa. */
-typedef union ValuePointer {
-    LargestIntegralType value;
-    struct {
-#if defined(WORDS_BIGENDIAN) && (WORDS_SIZEOF_VOID_P == 4)
-        unsigned int padding;
-#endif
-        void * pointer;
-    } x;
-} ValuePointer;
+    ((pointer_type)(uintptr_t)(largest_integral_type))
 
 /* Doubly linked list node. */
 typedef struct ListNode {
@@ -188,7 +157,7 @@ typedef int (*EqualityFunction)(const void * left, const void * right);
 /* Value of a symbol and the place it was declared. */
 typedef struct SymbolValue {
     SourceLocation location;
-    LargestIntegralType value;
+    uintmax_t value;
 } SymbolValue;
 
 /*
@@ -213,16 +182,28 @@ typedef void (*CleanupListValue)(const void * value, void * cleanup_value_data);
 /* Structure used to check the range of integer types.a */
 typedef struct CheckIntegerRange {
     CheckParameterEvent event;
-    LargestIntegralType minimum;
-    LargestIntegralType maximum;
+    uintmax_t minimum;
+    uintmax_t maximum;
 } CheckIntegerRange;
 
 /* Structure used to check whether an integer value is in a set. */
 typedef struct CheckIntegerSet {
     CheckParameterEvent event;
-    const LargestIntegralType * set;
+    const uintmax_t * set;
     size_t size_of_set;
 } CheckIntegerSet;
+
+struct check_integer_set {
+    CheckParameterEvent event;
+    const intmax_t * set;
+    size_t size_of_set;
+};
+
+struct check_unsigned_integer_set {
+    CheckParameterEvent event;
+    const uintmax_t * set;
+    size_t size_of_set;
+};
 
 /* Used to check whether a parameter matches the area of memory referenced by
  * this structure.  */
@@ -231,12 +212,6 @@ typedef struct CheckMemoryData {
     const void * memory;
     size_t size;
 } CheckMemoryData;
-
-/* AB 2019-05-30 safe malloc/free/etc */
-static void * libc_malloc(size_t size);
-static void * libc_calloc(size_t nmemb, size_t size);
-static void libc_free(void * ptr);
-static void * libc_realloc(void * ptr, size_t size);
 
 static ListNode * list_initialize(ListNode * const node);
 static ListNode * list_add(ListNode * const head, ListNode * new_node);
@@ -287,12 +262,10 @@ static void initialize_testing(const char * test_name);
 /* This must be called at the end of a test to free() allocated structures. */
 static void teardown_testing(const char * test_name);
 
-static enum cm_message_output cm_get_output(void);
+static uint32_t cm_get_output(void);
 
 static int cm_error_message_enabled = 1;
 static CMOCKA_THREAD char * cm_error_message;
-
-void cm_print_error(const char * const format, ...) CMOCKA_PRINTF_ATTRIBUTE(1, 2);
 
 /*
  * Keeps track of the calling context returned by setenv() so that the fail()
@@ -307,6 +280,7 @@ jmp_buf global_expect_assert_env;
 int global_expecting_assert = 0;
 const char * global_last_failed_assert = NULL;
 static int global_skip_test;
+static int global_stop_test;
 
 /* Keeps a map of the values that functions will have to return to provide */
 /* mocked interfaces. */
@@ -328,13 +302,13 @@ static CMOCKA_THREAD SourceLocation global_last_call_ordering_location;
 /* List of all currently allocated blocks. */
 static CMOCKA_THREAD ListNode global_allocated_blocks;
 
-static enum cm_message_output global_msg_output = CM_OUTPUT_STDOUT;
+static uint32_t global_msg_output = CM_OUTPUT_STANDARD;
 
 static const char * global_test_filter_pattern;
 
 static const char * global_skip_filter_pattern;
 
-#ifndef _WIN32
+#ifdef HAVE_SIGNAL_H
 /* Signals caught by exception_handler(). */
 static const int exception_signals[] = {
     SIGFPE,
@@ -353,8 +327,9 @@ typedef void (*SignalFunction)(int signal);
 static SignalFunction default_signal_functions[
      ARRAY_SIZE(exception_signals)];
 
-#else /* _WIN32 */
+#else /* HAVE_SIGNAL_H */
 
+# ifdef _WIN32
 /* The default exception filter. */
 static LPTOP_LEVEL_EXCEPTION_FILTER previous_exception_filter;
 
@@ -388,7 +363,12 @@ static const ExceptionCodeInfo exception_codes[] = {
     EXCEPTION_CODE_INFO(EXCEPTION_PRIV_INSTRUCTION),
     EXCEPTION_CODE_INFO(EXCEPTION_STACK_OVERFLOW),
 };
-#endif /* !_WIN32 */
+# else
+#  if defined(__GNUC__) || defined(__clang__)
+#    warning "Support for exception handling available on this platform!"
+#  endif
+# endif /* _WIN32 */
+#endif /* HAVE_SIGNAL_H */
 
 enum CMUnitTestStatus {
     CM_TEST_NOT_STARTED,
@@ -408,31 +388,42 @@ struct CMUnitTestState {
 };
 
 /* Exit the currently executing test. */
-static void exit_test(const int quit_application)
+static void exit_test(const bool quit_application)
 {
     const char * env = getenv("CMOCKA_TEST_ABORT");
     int abort_test = 0;
     if (env != NULL && strlen(env) == 1) {
         abort_test = (env[0] == '1');
     }
-    if (global_skip_test == 0 &&
-        abort_test == 1) {
-        print_error("%s", cm_error_message);
+    if (global_skip_test == 0 && abort_test == 1) {
+        if (cm_error_message != NULL) {
+            print_error("%s", cm_error_message);
+        }
         abort();
     }
     else if (global_running_test) {
         cm_longjmp(global_run_test_env, 1);
     }
     else if (quit_application) {
-        exit(-1);
+        exit(EXIT_FAILURE);
     }
 }
 
 void _skip(const char * const file, const int line)
 {
-    cm_print_error(SOURCE_LOCATION_FORMAT ": Skipped!\n", file, line);
+    cmocka_print_error(SOURCE_LOCATION_FORMAT ": Skipped!\n", file, line);
     global_skip_test = 1;
-    exit_test(1);
+    exit_test(true);
+    /* Unreachable */
+    exit(EXIT_FAILURE);
+}
+
+void _stop(void)
+{
+    global_stop_test = 1;
+    exit_test(true);
+    /* Unreachable */
+    exit(EXIT_FAILURE);
 }
 
 /* Initialize a SourceLocation structure. */
@@ -554,31 +545,35 @@ void initialize_testing(const char * test_name)
     initialize_source_location(&global_last_parameter_location);
 }
 
-
-static void fail_if_leftover_values(const char * test_name)
+static int has_leftover_values(const char * test_name)
 {
-    int error_occurred = 0;
+    int leftover_values = 0;
     (void)test_name;
     remove_always_return_values(&global_function_result_map_head, 1);
     if (check_for_leftover_values(
             &global_function_result_map_head,
-            "%s() has remaining non-returned values.\n", 1)) {
-        error_occurred = 1;
+            "Has remaining non-returned values", 1)) {
+        leftover_values = 1;
     }
     remove_always_return_values(&global_function_parameter_map_head, 2);
     if (check_for_leftover_values(
             &global_function_parameter_map_head,
-            "'%s' parameter still has values that haven't been checked.\n",
+            "Parameter still has values that haven't been checked",
             2)) {
-        error_occurred = 1;
+        leftover_values = 1;
     }
     remove_always_return_values_from_list(&global_call_ordering_head);
     if (check_for_leftover_values_list(&global_call_ordering_head,
-                                       "%s function was expected to be called but was not.\n")) {
-        error_occurred = 1;
+                                       "Function was expected to be called but was not")) {
+        leftover_values = 1;
     }
-    if (error_occurred) {
-        exit_test(1);
+    return (leftover_values);
+}
+
+static void fail_if_leftover_values(const char * test_name)
+{
+    if (has_leftover_values(test_name) != 0) {
+        exit_test(true);
     }
 }
 
@@ -615,7 +610,7 @@ static ListNode * list_initialize(ListNode * const node)
 static ListNode * list_add_value(ListNode * const head, const void * value,
                                  const int refcount)
 {
-    ListNode * const new_node = (ListNode *)libc_malloc(sizeof(ListNode));
+    ListNode * const new_node = (ListNode *)malloc(sizeof(ListNode));
     assert_non_null(head);
     assert_non_null(value);
     new_node->value = value;
@@ -643,8 +638,6 @@ static ListNode * list_remove(
     void * const cleanup_value_data)
 {
     assert_non_null(node);
-    assert_non_null(node->prev);
-    assert_non_null(node->next);
     node->prev->next = node->next;
     node->next->prev = node->prev;
     if (cleanup_value) {
@@ -660,7 +653,7 @@ static void list_remove_free(
     void * const cleanup_value_data)
 {
     assert_non_null(node);
-    libc_free(list_remove(node, cleanup_value, cleanup_value_data));
+    free(list_remove(node, cleanup_value, cleanup_value_data));
 }
 
 
@@ -727,7 +720,7 @@ static void free_value(const void * value, void * cleanup_value_data)
 {
     (void)cleanup_value_data;
     assert_non_null(value);
-    libc_free((void *)value);
+    free((void *)value);
 }
 
 
@@ -736,12 +729,19 @@ static void free_symbol_map_value(const void * value,
                                   void * cleanup_value_data)
 {
     SymbolMapValue * const map_value = (SymbolMapValue *)value;
-    const LargestIntegralType children = cast_ptr_to_largest_integral_type(cleanup_value_data);
+    const uintmax_t children = cast_ptr_to_uintmax_type(cleanup_value_data);
     assert_non_null(value);
-    list_free(&map_value->symbol_values_list_head,
-              children ? free_symbol_map_value : free_value,
-              (void *) ((uintptr_t)children - 1));
-    libc_free(map_value);
+    if (children == 0) {
+        list_free(&map_value->symbol_values_list_head,
+                  free_value,
+                  NULL);
+    }
+    else {
+        list_free(&map_value->symbol_values_list_head,
+                  free_symbol_map_value,
+                  (void *)((uintptr_t)children - 1));
+    }
+    free(map_value);
 }
 
 
@@ -774,7 +774,7 @@ static void add_symbol_value(ListNode * const symbol_map_head,
     if (!list_find(symbol_map_head, symbol_name, symbol_names_match,
                    &target_node)) {
         SymbolMapValue * const new_symbol_map_value =
-            (SymbolMapValue *)libc_malloc(sizeof(*new_symbol_map_value));
+            (SymbolMapValue *)malloc(sizeof(*new_symbol_map_value));
         new_symbol_map_value->symbol_name = symbol_name;
         list_initialize(&new_symbol_map_value->symbol_values_list_head);
         target_node = list_add_value(symbol_map_head, new_symbol_map_value,
@@ -846,7 +846,7 @@ static int get_symbol_value(
         return return_value;
     }
 out:
-    cm_print_error("No entries for symbol %s.\n", symbol_name);
+    cmocka_print_error("No entries for symbol %s.\n", symbol_name);
     return 0;
 }
 
@@ -918,10 +918,10 @@ static size_t check_for_leftover_values_list(const ListNode * head,
              child_node = child_node->next, ++leftover_count) {
             const FuncOrderingValue * const o =
                 (const FuncOrderingValue *) child_node->value;
-            cm_print_error(error_message, o->function);
-            cm_print_error(SOURCE_LOCATION_FORMAT
-                           ": note: remaining item was declared here\n",
-                           o->location.file, o->location.line);
+            cmocka_print_error("%s: %s\n", error_message, o->function);
+            cmocka_print_error(SOURCE_LOCATION_FORMAT
+                               ": note: remaining item was declared here\n",
+                               o->location.file, o->location.line);
         }
     }
     return leftover_count;
@@ -949,18 +949,18 @@ static size_t check_for_leftover_values(
         if (!list_empty(child_list)) {
             if (number_of_symbol_names == 1) {
                 const ListNode * child_node;
-                cm_print_error(error_message, value->symbol_name);
+                cmocka_print_error("%s: %s\n", error_message, value->symbol_name);
                 for (child_node = child_list->next; child_node != child_list;
                      child_node = child_node->next) {
                     const SourceLocation * const location =
                         (const SourceLocation *)child_node->value;
-                    cm_print_error(SOURCE_LOCATION_FORMAT
-                                   ": note: remaining item was declared here\n",
-                                   location->file, location->line);
+                    cmocka_print_error(SOURCE_LOCATION_FORMAT
+                                       ": note: remaining item was declared here\n",
+                                       location->file, location->line);
                 }
             }
             else {
-                cm_print_error("%s: ", value->symbol_name);
+                cmocka_print_error("%s: ", value->symbol_name);
                 check_for_leftover_values(child_list, error_message,
                                           number_of_symbol_names - 1);
             }
@@ -972,35 +972,35 @@ static size_t check_for_leftover_values(
 
 
 /* Get the next return value for the specified mock function. */
-LargestIntegralType _mock(const char * const function, const char * const file,
-                          const int line)
+uintmax_t _mock(const char * const function, const char * const file,
+                const int line)
 {
     void * result;
     const int rc = get_symbol_value(&global_function_result_map_head,
                                     &function, 1, &result);
     if (rc) {
         SymbolValue * const symbol = (SymbolValue *)result;
-        const LargestIntegralType value = symbol->value;
+        const uintmax_t value = symbol->value;
         global_last_mock_value_location = symbol->location;
         if (rc == 1) {
-            libc_free(symbol);
+            free(symbol);
         }
         return value;
     }
     else {
-        cm_print_error(SOURCE_LOCATION_FORMAT ": error: Could not get value "
-                       "to mock function %s\n", file, line, function);
+        cmocka_print_error(SOURCE_LOCATION_FORMAT ": error: Could not get value "
+                           "to mock function %s\n", file, line, function);
         if (source_location_is_set(&global_last_mock_value_location)) {
-            cm_print_error(SOURCE_LOCATION_FORMAT
-                           ": note: Previously returned mock value was declared here\n",
-                           global_last_mock_value_location.file,
-                           global_last_mock_value_location.line);
+            cmocka_print_error(SOURCE_LOCATION_FORMAT
+                               ": note: Previously returned mock value was declared here\n",
+                               global_last_mock_value_location.file,
+                               global_last_mock_value_location.line);
         }
         else {
-            cm_print_error("There were no previously returned mock values for "
-                           "this test.\n");
+            cmocka_print_error("There were no previously returned mock values for "
+                               "this test.\n");
         }
-        exit_test(1);
+        exit_test(true);
     }
     return 0;
 }
@@ -1010,80 +1010,72 @@ void _function_called(const char * const function,
                       const char * const file,
                       const int line)
 {
-    ListNode * first_value_node = NULL;
-    ListNode * value_node = NULL;
-    int rc;
-    rc = list_first(&global_call_ordering_head, &value_node);
-    first_value_node = value_node;
-    if (rc) {
+    if (list_empty(&global_call_ordering_head)) {
+        cmocka_print_error(SOURCE_LOCATION_FORMAT
+                           ": error: No mock calls expected but called() was "
+                           "invoked in %s\n",
+                           file, line,
+                           function);
+        exit_test(true);
+    }
+    else {
+        const ListNode * const head = &global_call_ordering_head;
+        ListNode * current = head->next;
         FuncOrderingValue * expected_call;
-        int cmp;
-        expected_call = (FuncOrderingValue *)value_node->value;
-        cmp = strcmp(expected_call->function, function);
-        if (value_node->refcount < -1) {
-            /*
-             * Search through value nodes until either function is found or
-             * encounter a non-zero refcount greater than -2
-             */
-            if (cmp != 0) {
-                value_node = value_node->next;
-                expected_call = (FuncOrderingValue *)value_node->value;
-                cmp = strcmp(expected_call->function, function);
-                while (value_node->refcount < -1 &&
-                       cmp != 0 &&
-                       value_node != first_value_node->prev) {
-                    value_node = value_node->next;
-                    if (value_node == NULL) {
-                        break;
-                    }
-                    expected_call = (FuncOrderingValue *)value_node->value;
-                    if (expected_call == NULL) {
-                        continue;
-                    }
-                    cmp = strcmp(expected_call->function, function);
-                }
-                if (expected_call == NULL || value_node == first_value_node->prev) {
-                    cm_print_error(SOURCE_LOCATION_FORMAT
-                                   ": error: No expected mock calls matching "
-                                   "called() invocation in %s",
-                                   file, line,
-                                   function);
-                    exit_test(1);
-                }
+        bool found = false;
+        /*
+         * Search through value nodes until either function is found or
+         * encounter a non-zero refcount greater than -2
+         */
+        do {
+            expected_call = (FuncOrderingValue *)current->value;
+            if (expected_call != NULL) {
+                found = strcmp(expected_call->function, function) == 0;
             }
+            else {
+                found = false;
+            }
+            if (found || current->refcount > -2) {
+                break;
+            }
+            current = current->next;
+        } while (current != NULL && current != head);
+        if (expected_call == NULL || current == head) {
+            cmocka_print_error(SOURCE_LOCATION_FORMAT
+                               ": error: No expected mock calls matching "
+                               "called() invocation in %s\n",
+                               file, line,
+                               function);
+            exit_test(true);
         }
-        if (cmp == 0) {
-            if (value_node->refcount > -2 && --value_node->refcount == 0) {
-                list_remove_free(value_node, free_value, NULL);
+        if (found) {
+            if (current->refcount > -2) {
+                current->refcount--;
+                if (current->refcount == 0) {
+                    list_remove_free(current, free_value, NULL);
+                }
             }
         }
         else {
-            cm_print_error(SOURCE_LOCATION_FORMAT
-                           ": error: Expected call to %s but received called() "
-                           "in %s\n",
-                           file, line,
-                           expected_call->function,
-                           function);
-            exit_test(1);
+            cmocka_print_error(SOURCE_LOCATION_FORMAT
+                               ": error: Expected call to %s but received called() "
+                               "in %s\n",
+                               file, line,
+                               expected_call != NULL ?
+                               expected_call->function : "(null)",
+                               function);
+            exit_test(true);
         }
-    }
-    else {
-        cm_print_error(SOURCE_LOCATION_FORMAT
-                       ": error: No mock calls expected but called() was "
-                       "invoked in %s\n",
-                       file, line,
-                       function);
-        exit_test(1);
     }
 }
 
 /* Add a return value for the specified mock function name. */
 void _will_return(const char * const function_name, const char * const file,
-                  const int line, const LargestIntegralType value,
+                  const int line, const uintmax_t value,
                   const int count)
 {
     SymbolValue * const return_value =
-        (SymbolValue *)libc_malloc(sizeof(*return_value));
+        (SymbolValue *)malloc(sizeof(*return_value));
     assert_true(count != 0);
     return_value->value = value;
     set_source_location(&return_value->location, file, line);
@@ -1102,11 +1094,11 @@ void _expect_check(
     const char * const function, const char * const parameter,
     const char * const file, const int line,
     const CheckParameterValue check_function,
-    const LargestIntegralType check_data,
+    const uintmax_t check_data,
     CheckParameterEvent * const event, const int count)
 {
     CheckParameterEvent * const check =
-        event ? event : (CheckParameterEvent *)libc_malloc(sizeof(*check));
+        event ? event : (CheckParameterEvent *)malloc(sizeof(*check));
     const char * symbols[] = {function, parameter};
     check->parameter_name = parameter;
     check->check_value = check_function;
@@ -1132,7 +1124,7 @@ void _expect_function_call(
     assert_non_null(function_name);
     assert_non_null(file);
     assert_true(count != 0);
-    ordering = (FuncOrderingValue *)libc_malloc(sizeof(*ordering));
+    ordering = (FuncOrderingValue *)malloc(sizeof(*ordering));
     set_source_location(&ordering->location, file, line);
     ordering->function = function_name;
     list_add_value(&global_call_ordering_head, ordering, count);
@@ -1172,8 +1164,7 @@ static int float_values_equal_display_error(const float left,
 {
     const int equal = float_compare(left, right, epsilon);
     if (!equal) {
-        cm_print_error(FloatPrintfFormat " != "
-                       FloatPrintfFormat "\n", left, right);
+        cmocka_print_error("%f != %f\n", left, right);
     }
     return equal;
 }
@@ -1186,13 +1177,12 @@ static int float_values_not_equal_display_error(const float left,
 {
     const int not_equal = (float_compare(left, right, epsilon) == 0);
     if (!not_equal) {
-        cm_print_error(FloatPrintfFormat " == "
-                       FloatPrintfFormat "\n", left, right);
+        cmocka_print_error("%f == %f\n", left, right);
     }
     return not_equal;
 }
 
-/* Returns 1 if the specified float values are equal, else returns 0. */
+/* Returns 1 if the specified double values are equal, else returns 0. */
 static int double_compare(const double left,
                           const double right,
                           const double epsilon)
@@ -1202,73 +1192,111 @@ static int double_compare(const double left,
     double largest;
     double relDiff;
     double diff = left - right;
-    diff = (diff >= 0.0) ? diff : -diff;
-    // Check if the numbers are really close -- needed
-    // when comparing numbers near zero.
+    diff = (diff >= 0.f) ? diff : -diff;
+    /*
+     * Check if the numbers are really close -- needed
+     * when comparing numbers near zero.
+     */
     if (diff <= epsilon) {
         return 1;
     }
-    absLeft = (left >= 0.0) ? left : -left;
-    absRight = (right >= 0.0) ? right : -right;
+    absLeft = (left >= 0.f) ? left : -left;
+    absRight = (right >= 0.f) ? right : -right;
     largest = (absRight > absLeft) ? absRight : absLeft;
-    relDiff = largest * DBL_EPSILON;
+    relDiff = largest * FLT_EPSILON;
     if (diff > relDiff) {
         return 0;
     }
     return 1;
 }
 
-/* Returns 1 if the specified double values are equal. If the values are not equal
- * an error is displayed and 0 is returned. */
+/*
+ * Returns 1 if the specified double values are equal. If the values are not
+ * equal an error is displayed and 0 is returned.
+ */
 static int double_values_equal_display_error(const double left,
         const double right,
         const double epsilon)
 {
     const int equal = double_compare(left, right, epsilon);
     if (!equal) {
-        cm_print_error(DoublePrintfFormat " != "
-                       DoublePrintfFormat "\n", left, right);
+        cmocka_print_error("%f != %f\n", left, right);
     }
     return equal;
 }
 
-/* Returns 1 if the specified double values are different. If the values are equal
- * an error is displayed and 0 is returned. */
+/*
+ * Returns 1 if the specified double values are different. If the values are
+ * equal an error is displayed and 0 is returned.
+ */
 static int double_values_not_equal_display_error(const double left,
         const double right,
         const double epsilon)
 {
     const int not_equal = (double_compare(left, right, epsilon) == 0);
     if (!not_equal) {
-        cm_print_error(DoublePrintfFormat " == "
-                       DoublePrintfFormat "\n", left, right);
+        cmocka_print_error("%f == %f\n", left, right);
     }
     return not_equal;
 }
 
 /* Returns 1 if the specified values are equal.  If the values are not equal
  * an error is displayed and 0 is returned. */
-static int values_equal_display_error(const LargestIntegralType left,
-                                      const LargestIntegralType right)
+static bool uint_values_equal_display_error(const uintmax_t left,
+        const uintmax_t right)
 {
-    const int equal = left == right;
+    const bool equal = left == right;
     if (!equal) {
-        cm_print_error(LargestIntegralTypePrintfFormat " != "
-                       LargestIntegralTypePrintfFormat "\n", left, right);
+        cmocka_print_error("%ju (%#jx) != %ju (%#jx)\n",
+                           left,
+                           left,
+                           right,
+                           right);
     }
     return equal;
 }
 
+
+/* Returns 1 if the specified values are equal.  If the values are not equal
+ * an error is displayed and 0 is returned. */
+static bool int_values_equal_display_error(const intmax_t left,
+        const intmax_t right)
+{
+    const bool equal = left == right;
+    if (!equal) {
+        cmocka_print_error("%jd != %jd\n", left, right);
+    }
+    return equal;
+}
+
+
 /*
  * Returns 1 if the specified values are not equal.  If the values are equal
  * an error is displayed and 0 is returned. */
-static int values_not_equal_display_error(const LargestIntegralType left,
-        const LargestIntegralType right)
+static bool uint_values_not_equal_display_error(const uintmax_t left,
+        const uintmax_t right)
 {
-    const int not_equal = left != right;
+    const bool not_equal = left != right;
     if (!not_equal) {
-        cm_print_error(LargestIntegralTypePrintfFormat " == "
-                       LargestIntegralTypePrintfFormat "\n", left, right);
+        cmocka_print_error("%ju (%#jx) == %ju (%#jx)\n",
+                           left,
+                           left,
+                           right,
+                           right);
+    }
+    return not_equal;
+}
+
+
+/*
+ * Returns 1 if the specified values are not equal.  If the values are equal
+ * an error is displayed and 0 is returned. */
+static bool int_values_not_equal_display_error(const intmax_t left,
+        const intmax_t right)
+{
+    const bool not_equal = left != right;
+    if (!not_equal) {
+        cmocka_print_error("%jd == %jd\n", left, right);
     }
     return not_equal;
 }
@@ -1282,13 +1310,13 @@ static int values_not_equal_display_error(const LargestIntegralType left,
  * displayed.
  */
 static int value_in_set_display_error(
-    const LargestIntegralType value,
+    const uintmax_t value,
     const CheckIntegerSet * const check_integer_set, const int invert)
 {
     int succeeded = invert;
     assert_non_null(check_integer_set);
     {
-        const LargestIntegralType * const set = check_integer_set->set;
+        const uintmax_t * const set = check_integer_set->set;
         const size_t size_of_set = check_integer_set->size_of_set;
         size_t i;
         for (i = 0; i < size_of_set; i++) {
@@ -1302,36 +1330,150 @@ static int value_in_set_display_error(
         if (succeeded) {
             return 1;
         }
-        cm_print_error(LargestIntegralTypePrintfFormatDecimal
-                       " is %sin the set (",
-                       value, invert ? "" : "not ");
+        cmocka_print_error("%ju is %sin the set (",
+                           value, invert ? "" : "not ");
         for (i = 0; i < size_of_set; i++) {
-            cm_print_error(LargestIntegralTypePrintfFormat ", ", set[i]);
+            cmocka_print_error("%#jx, ", set[i]);
         }
-        cm_print_error(")\n");
+        cmocka_print_error(")\n");
     }
     return 0;
 }
 
+static bool int_value_in_set_display_error(
+    const intmax_t value,
+    const struct check_integer_set * const check_integer_set,
+    const bool invert)
+{
+    bool succeeded = invert;
+    assert_non_null(check_integer_set);
+    {
+        const intmax_t * const set = check_integer_set->set;
+        const size_t size_of_set = check_integer_set->size_of_set;
+        size_t i;
+        for (i = 0; i < size_of_set; i++) {
+            if (set[i] == value) {
+                /* If invert = 0 and item is found, succeeded = 1. */
+                /* If invert = 1 and item is found, succeeded = 0. */
+                succeeded = !succeeded;
+                break;
+            }
+        }
+        if (succeeded) {
+            return true;
+        }
+        cmocka_print_error("%jd is %sin the set (",
+                           value,
+                           invert ? "" : "not ");
+        for (i = 0; i < size_of_set; i++) {
+            if (i == size_of_set - 1) {
+                cmocka_print_error("%jd", set[i]);
+            }
+            else {
+                cmocka_print_error("%jd, ", set[i]);
+            }
+        }
+        cmocka_print_error(")\n");
+    }
+    return false;
+}
+
+static bool uint_value_in_set_display_error(
+    const uintmax_t value,
+    const struct check_unsigned_integer_set * const check_uint_set,
+    const bool invert)
+{
+    bool succeeded = invert;
+    assert_non_null(check_uint_set);
+    {
+        const uintmax_t * const set = check_uint_set->set;
+        const size_t size_of_set = check_uint_set->size_of_set;
+        size_t i;
+        for (i = 0; i < size_of_set; i++) {
+            if (set[i] == value) {
+                /* If invert = 0 and item is found, succeeded = 1. */
+                /* If invert = 1 and item is found, succeeded = 0. */
+                succeeded = !succeeded;
+                break;
+            }
+        }
+        if (succeeded) {
+            return true;
+        }
+        cmocka_print_error("%ju is %sin the set (",
+                           value,
+                           invert ? "" : "not ");
+        for (i = 0; i < size_of_set; i++) {
+            cmocka_print_error("%ju%s",
+                               set[i],
+                               i != size_of_set - 1 ? ", " : "");
+        }
+        cmocka_print_error(")\n");
+    }
+    return false;
+}
 
 /*
- * Determine whether a value is within the specified range.  If the value is
- * within the specified range 1 is returned.  If the value isn't within the
- * specified range an error is displayed and 0 is returned.
+ * Determine whether a value is within the specified range.
  */
-static int integer_in_range_display_error(
-    const LargestIntegralType value, const LargestIntegralType range_min,
-    const LargestIntegralType range_max)
+static bool uint_in_range_display_error(const uintmax_t value,
+                                        const uintmax_t range_min,
+                                        const uintmax_t range_max)
 {
     if (value >= range_min && value <= range_max) {
-        return 1;
+        return true;
     }
-    cm_print_error(LargestIntegralTypePrintfFormatDecimal
-                   " is not within the range "
-                   LargestIntegralTypePrintfFormatDecimal "-"
-                   LargestIntegralTypePrintfFormatDecimal "\n",
-                   value, range_min, range_max);
-    return 0;
+    cmocka_print_error("%ju is not within the range [%ju, %ju]\n",
+                       value,
+                       range_min,
+                       range_max);
+    return false;
+}
+
+
+/*
+ * Determine whether a value is within the specified range.
+ */
+static bool int_in_range_display_error(const intmax_t value,
+                                       const intmax_t range_min,
+                                       const intmax_t range_max)
+{
+    if (value >= range_min && value <= range_max) {
+        return true;
+    }
+    cmocka_print_error("%jd is not within the range [%jd, %jd]\n",
+                       value,
+                       range_min,
+                       range_max);
+    return false;
+}
+
+static bool int_not_in_range_display_error(const intmax_t value,
+        const intmax_t range_min,
+        const intmax_t range_max)
+{
+    if (value < range_min || value > range_max) {
+        return true;
+    }
+    cmocka_print_error("%jd is within the range [%jd, %jd]\n",
+                       value,
+                       range_min,
+                       range_max);
+    return false;
+}
+
+static bool uint_not_in_range_display_error(const uintmax_t value,
+        const uintmax_t range_min,
+        const uintmax_t range_max)
+{
+    if (value < range_min || value > range_max) {
+        return true;
+    }
+    cmocka_print_error("%ju is within the range [%ju, %ju]\n",
+                       value,
+                       range_min,
+                       range_max);
+    return false;
 }
 
 
@@ -1341,17 +1483,16 @@ static int integer_in_range_display_error(
  * specified range an error is displayed and zero is returned.
  */
 static int integer_not_in_range_display_error(
-    const LargestIntegralType value, const LargestIntegralType range_min,
-    const LargestIntegralType range_max)
+    const uintmax_t value, const uintmax_t range_min,
+    const uintmax_t range_max)
 {
     if (value < range_min || value > range_max) {
         return 1;
     }
-    cm_print_error(LargestIntegralTypePrintfFormatDecimal
-                   " is within the range "
-                   LargestIntegralTypePrintfFormatDecimal "-"
-                   LargestIntegralTypePrintfFormatDecimal "\n",
-                   value, range_min, range_max);
+    cmocka_print_error("%ju is within the range %ju-%ju\n",
+                       value,
+                       range_min,
+                       range_max);
     return 0;
 }
 
@@ -1367,7 +1508,7 @@ static int string_equal_display_error(
     if (strcmp(left, right) == 0) {
         return 1;
     }
-    cm_print_error("\"%s\" != \"%s\"\n", left, right);
+    cmocka_print_error("\"%s\" != \"%s\"\n", left, right);
     return 0;
 }
 
@@ -1383,7 +1524,7 @@ static int string_not_equal_display_error(
     if (strcmp(left, right) != 0) {
         return 1;
     }
-    cm_print_error("\"%s\" == \"%s\"\n", left, right);
+    cmocka_print_error("\"%s\" == \"%s\"\n", left, right);
     return 0;
 }
 
@@ -1402,18 +1543,18 @@ static int memory_equal_display_error(const char * const a, const char * const b
         const char r = b[i];
         if (l != r) {
             if (differences < 16) {
-                cm_print_error("difference at offset %" PRIdS " 0x%02x 0x%02x\n",
-                               i, l, r);
+                cmocka_print_error("difference at offset %" PRIdS " 0x%02x 0x%02x\n",
+                                   i, l, r);
             }
             differences ++;
         }
     }
     if (differences > 0) {
         if (differences >= 16) {
-            cm_print_error("...\n");
+            cmocka_print_error("...\n");
         }
-        cm_print_error("%"PRIdS " bytes of %p and %p differ\n",
-                       differences, (void *)a, (void *)b);
+        cmocka_print_error("%"PRIdS " bytes of %p and %p differ\n",
+                           differences, (void *)a, (void *)b);
         return 0;
     }
     return 1;
@@ -1438,8 +1579,8 @@ static int memory_not_equal_display_error(
         }
     }
     if (same == size) {
-        cm_print_error("%"PRIdS "bytes of %p and %p the same\n",
-                       same, (void *)a, (void *)b);
+        cmocka_print_error("%"PRIdS "bytes of %p and %p the same\n",
+                           same, (void *)a, (void *)b);
         return 0;
     }
     return 1;
@@ -1447,21 +1588,21 @@ static int memory_not_equal_display_error(
 
 
 /* CheckParameterValue callback to check whether a value is within a set. */
-static int check_in_set(const LargestIntegralType value,
-                        const LargestIntegralType check_value_data)
+static int check_in_set(const uintmax_t value,
+                        const uintmax_t check_value_data)
 {
     return value_in_set_display_error(value,
-                                      cast_largest_integral_type_to_pointer(CheckIntegerSet *,
+                                      cast_uintmax_type_to_pointer(CheckIntegerSet *,
                                               check_value_data), 0);
 }
 
 
 /* CheckParameterValue callback to check whether a value isn't within a set. */
-static int check_not_in_set(const LargestIntegralType value,
-                            const LargestIntegralType check_value_data)
+static int check_not_in_set(const uintmax_t value,
+                            const uintmax_t check_value_data)
 {
     return value_in_set_display_error(value,
-                                      cast_largest_integral_type_to_pointer(CheckIntegerSet *,
+                                      cast_uintmax_type_to_pointer(CheckIntegerSet *,
                                               check_value_data), 1);
 }
 
@@ -1471,14 +1612,14 @@ static int check_not_in_set(const LargestIntegralType value,
 static void expect_set(
     const char * const function, const char * const parameter,
     const char * const file, const int line,
-    const LargestIntegralType values[], const size_t number_of_values,
+    const uintmax_t values[], const size_t number_of_values,
     const CheckParameterValue check_function, const int count)
 {
     CheckIntegerSet * const check_integer_set =
-        (CheckIntegerSet *)libc_malloc(sizeof(*check_integer_set) +
-                                       (sizeof(values[0]) * number_of_values));
-    LargestIntegralType * const set = (LargestIntegralType *)(
-                                          check_integer_set + 1);
+        (CheckIntegerSet *)malloc(sizeof(*check_integer_set) +
+                                  (sizeof(values[0]) * number_of_values));
+    uintmax_t * const set = (uintmax_t *)(
+                                check_integer_set + 1);
     declare_initialize_value_pointer_pointer(check_data, check_integer_set);
     assert_non_null(values);
     assert_true(number_of_values);
@@ -1487,7 +1628,7 @@ static void expect_set(
     check_integer_set->size_of_set = number_of_values;
     _expect_check(
         function, parameter, file, line, check_function,
-        check_data.value, &check_integer_set->event, count);
+        check_data, &check_integer_set->event, count);
 }
 
 
@@ -1495,7 +1636,7 @@ static void expect_set(
 void _expect_in_set(
     const char * const function, const char * const parameter,
     const char * const file, const int line,
-    const LargestIntegralType values[], const size_t number_of_values,
+    const uintmax_t values[], const size_t number_of_values,
     const int count)
 {
     expect_set(function, parameter, file, line, values, number_of_values,
@@ -1507,7 +1648,7 @@ void _expect_in_set(
 void _expect_not_in_set(
     const char * const function, const char * const parameter,
     const char * const file, const int line,
-    const LargestIntegralType values[], const size_t number_of_values,
+    const uintmax_t values[], const size_t number_of_values,
     const int count)
 {
     expect_set(function, parameter, file, line, values, number_of_values,
@@ -1516,25 +1657,26 @@ void _expect_not_in_set(
 
 
 /* CheckParameterValue callback to check whether a value is within a range. */
-static int check_in_range(const LargestIntegralType value,
-                          const LargestIntegralType check_value_data)
+static int check_in_range(const uintmax_t value,
+                          const uintmax_t check_value_data)
 {
     CheckIntegerRange * const check_integer_range =
-        cast_largest_integral_type_to_pointer(CheckIntegerRange *,
-                check_value_data);
+        cast_uintmax_type_to_pointer(CheckIntegerRange *,
+                                     check_value_data);
     assert_non_null(check_integer_range);
-    return integer_in_range_display_error(value, check_integer_range->minimum,
-                                          check_integer_range->maximum);
+    return uint_in_range_display_error(value,
+                                       check_integer_range->minimum,
+                                       check_integer_range->maximum);
 }
 
 
 /* CheckParameterValue callback to check whether a value is not within a range. */
-static int check_not_in_range(const LargestIntegralType value,
-                              const LargestIntegralType check_value_data)
+static int check_not_in_range(const uintmax_t value,
+                              const uintmax_t check_value_data)
 {
     CheckIntegerRange * const check_integer_range =
-        cast_largest_integral_type_to_pointer(CheckIntegerRange *,
-                check_value_data);
+        cast_uintmax_type_to_pointer(CheckIntegerRange *,
+                                     check_value_data);
     assert_non_null(check_integer_range);
     return integer_not_in_range_display_error(
                value, check_integer_range->minimum, check_integer_range->maximum);
@@ -1546,16 +1688,16 @@ static int check_not_in_range(const LargestIntegralType value,
 static void expect_range(
     const char * const function, const char * const parameter,
     const char * const file, const int line,
-    const LargestIntegralType minimum, const LargestIntegralType maximum,
+    const uintmax_t minimum, const uintmax_t maximum,
     const CheckParameterValue check_function, const int count)
 {
     CheckIntegerRange * const check_integer_range =
-        (CheckIntegerRange *)libc_malloc(sizeof(*check_integer_range));
+        (CheckIntegerRange *)malloc(sizeof(*check_integer_range));
     declare_initialize_value_pointer_pointer(check_data, check_integer_range);
     check_integer_range->minimum = minimum;
     check_integer_range->maximum = maximum;
     _expect_check(function, parameter, file, line, check_function,
-                  check_data.value, &check_integer_range->event, count);
+                  check_data, &check_integer_range->event, count);
 }
 
 
@@ -1563,7 +1705,7 @@ static void expect_range(
 void _expect_in_range(
     const char * const function, const char * const parameter,
     const char * const file, const int line,
-    const LargestIntegralType minimum, const LargestIntegralType maximum,
+    const uintmax_t minimum, const uintmax_t maximum,
     const int count)
 {
     expect_range(function, parameter, file, line, minimum, maximum,
@@ -1575,7 +1717,7 @@ void _expect_in_range(
 void _expect_not_in_range(
     const char * const function, const char * const parameter,
     const char * const file, const int line,
-    const LargestIntegralType minimum, const LargestIntegralType maximum,
+    const uintmax_t minimum, const uintmax_t maximum,
     const int count)
 {
     expect_range(function, parameter, file, line, minimum, maximum,
@@ -1585,10 +1727,10 @@ void _expect_not_in_range(
 
 /* CheckParameterValue callback to check whether a value is equal to an
  * expected value. */
-static int check_value(const LargestIntegralType value,
-                       const LargestIntegralType check_value_data)
+static int check_value(const uintmax_t value,
+                       const uintmax_t check_value_data)
 {
-    return values_equal_display_error(value, check_value_data);
+    return uint_values_equal_display_error(value, check_value_data);
 }
 
 
@@ -1596,7 +1738,7 @@ static int check_value(const LargestIntegralType value,
 void _expect_value(
     const char * const function, const char * const parameter,
     const char * const file, const int line,
-    const LargestIntegralType value, const int count)
+    const uintmax_t value, const int count)
 {
     _expect_check(function, parameter, file, line, check_value, value, NULL,
                   count);
@@ -1605,10 +1747,10 @@ void _expect_value(
 
 /* CheckParameterValue callback to check whether a value is not equal to an
  * expected value. */
-static int check_not_value(const LargestIntegralType value,
-                           const LargestIntegralType check_value_data)
+static int check_not_value(const uintmax_t value,
+                           const uintmax_t check_value_data)
 {
-    return values_not_equal_display_error(value, check_value_data);
+    return uint_values_not_equal_display_error(value, check_value_data);
 }
 
 
@@ -1616,7 +1758,7 @@ static int check_not_value(const LargestIntegralType value,
 void _expect_not_value(
     const char * const function, const char * const parameter,
     const char * const file, const int line,
-    const LargestIntegralType value, const int count)
+    const uintmax_t value, const int count)
 {
     _expect_check(function, parameter, file, line, check_not_value, value,
                   NULL, count);
@@ -1624,12 +1766,12 @@ void _expect_not_value(
 
 
 /* CheckParameterValue callback to check whether a parameter equals a string. */
-static int check_string(const LargestIntegralType value,
-                        const LargestIntegralType check_value_data)
+static int check_string(const uintmax_t value,
+                        const uintmax_t check_value_data)
 {
     return string_equal_display_error(
-               cast_largest_integral_type_to_pointer(char *, value),
-               cast_largest_integral_type_to_pointer(char *, check_value_data));
+               cast_uintmax_type_to_pointer(char *, value),
+               cast_uintmax_type_to_pointer(char *, check_value_data));
 }
 
 
@@ -1642,18 +1784,18 @@ void _expect_string(
     declare_initialize_value_pointer_pointer(string_pointer,
             discard_const(string));
     _expect_check(function, parameter, file, line, check_string,
-                  string_pointer.value, NULL, count);
+                  string_pointer, NULL, count);
 }
 
 
 /* CheckParameterValue callback to check whether a parameter is not equals to
  * a string. */
-static int check_not_string(const LargestIntegralType value,
-                            const LargestIntegralType check_value_data)
+static int check_not_string(const uintmax_t value,
+                            const uintmax_t check_value_data)
 {
     return string_not_equal_display_error(
-               cast_largest_integral_type_to_pointer(char *, value),
-               cast_largest_integral_type_to_pointer(char *, check_value_data));
+               cast_uintmax_type_to_pointer(char *, value),
+               cast_uintmax_type_to_pointer(char *, check_value_data));
 }
 
 
@@ -1666,19 +1808,19 @@ void _expect_not_string(
     declare_initialize_value_pointer_pointer(string_pointer,
             discard_const(string));
     _expect_check(function, parameter, file, line, check_not_string,
-                  string_pointer.value, NULL, count);
+                  string_pointer, NULL, count);
 }
 
 /* CheckParameterValue callback to check whether a parameter equals an area of
  * memory. */
-static int check_memory(const LargestIntegralType value,
-                        const LargestIntegralType check_value_data)
+static int check_memory(const uintmax_t value,
+                        const uintmax_t check_value_data)
 {
-    CheckMemoryData * const check = cast_largest_integral_type_to_pointer(
+    CheckMemoryData * const check = cast_uintmax_type_to_pointer(
                                         CheckMemoryData *, check_value_data);
     assert_non_null(check);
     return memory_equal_display_error(
-               cast_largest_integral_type_to_pointer(const char *, value),
+               cast_uintmax_type_to_pointer(const char *, value),
                (const char *)check->memory, check->size);
 }
 
@@ -1692,7 +1834,7 @@ static void expect_memory_setup(
     const CheckParameterValue check_function, const int count)
 {
     CheckMemoryData * const check_data =
-        (CheckMemoryData *)libc_malloc(sizeof(*check_data) + size);
+        (CheckMemoryData *)malloc(sizeof(*check_data) + size);
     void * const mem = (void *)(check_data + 1);
     declare_initialize_value_pointer_pointer(check_data_pointer, check_data);
     assert_non_null(memory);
@@ -1701,7 +1843,7 @@ static void expect_memory_setup(
     check_data->memory = mem;
     check_data->size = size;
     _expect_check(function, parameter, file, line, check_function,
-                  check_data_pointer.value, &check_data->event, count);
+                  check_data_pointer, &check_data->event, count);
 }
 
 
@@ -1718,14 +1860,14 @@ void _expect_memory(
 
 /* CheckParameterValue callback to check whether a parameter is not equal to
  * an area of memory. */
-static int check_not_memory(const LargestIntegralType value,
-                            const LargestIntegralType check_value_data)
+static int check_not_memory(const uintmax_t value,
+                            const uintmax_t check_value_data)
 {
-    CheckMemoryData * const check = cast_largest_integral_type_to_pointer(
+    CheckMemoryData * const check = cast_uintmax_type_to_pointer(
                                         CheckMemoryData *, check_value_data);
     assert_non_null(check);
     return memory_not_equal_display_error(
-               cast_largest_integral_type_to_pointer(const char *, value),
+               cast_uintmax_type_to_pointer(const char *, value),
                (const char *)check->memory,
                check->size);
 }
@@ -1743,8 +1885,8 @@ void _expect_not_memory(
 
 
 /* CheckParameterValue callback that always returns 1. */
-static int check_any(const LargestIntegralType value,
-                     const LargestIntegralType check_value_data)
+static int check_any(const uintmax_t value,
+                     const uintmax_t check_value_data)
 {
     (void)value;
     (void)check_value_data;
@@ -1764,7 +1906,7 @@ void _expect_any(
 
 void _check_expected(
     const char * const function_name, const char * const parameter_name,
-    const char * file, const int line, const LargestIntegralType value)
+    const char * file, const int line, const uintmax_t value)
 {
     void * result = NULL;
     const char * symbols[] = {function_name, parameter_name};
@@ -1776,35 +1918,35 @@ void _check_expected(
         global_last_parameter_location = check->location;
         check_succeeded = check->check_value(value, check->check_value_data);
         if (rc == 1) {
-            libc_free(check);
+            free(check);
         }
         if (!check_succeeded) {
-            cm_print_error(SOURCE_LOCATION_FORMAT
-                           ": error: Check of parameter %s, function %s failed\n"
-                           SOURCE_LOCATION_FORMAT
-                           ": note: Expected parameter declared here\n",
-                           file, line,
-                           parameter_name, function_name,
-                           global_last_parameter_location.file,
-                           global_last_parameter_location.line);
+            cmocka_print_error(SOURCE_LOCATION_FORMAT
+                               ": error: Check of parameter %s, function %s failed\n"
+                               SOURCE_LOCATION_FORMAT
+                               ": note: Expected parameter declared here\n",
+                               file, line,
+                               parameter_name, function_name,
+                               global_last_parameter_location.file,
+                               global_last_parameter_location.line);
             _fail(file, line);
         }
     }
     else {
-        cm_print_error(SOURCE_LOCATION_FORMAT ": error: Could not get value "
-                       "to check parameter %s of function %s\n", file, line,
-                       parameter_name, function_name);
+        cmocka_print_error(SOURCE_LOCATION_FORMAT ": error: Could not get value "
+                           "to check parameter %s of function %s\n", file, line,
+                           parameter_name, function_name);
         if (source_location_is_set(&global_last_parameter_location)) {
-            cm_print_error(SOURCE_LOCATION_FORMAT
-                           ": note: Previously declared parameter value was declared here\n",
-                           global_last_parameter_location.file,
-                           global_last_parameter_location.line);
+            cmocka_print_error(SOURCE_LOCATION_FORMAT
+                               ": note: Previously declared parameter value was declared here\n",
+                               global_last_parameter_location.file,
+                               global_last_parameter_location.line);
         }
         else {
-            cm_print_error("There were no previously declared parameter values "
-                           "for this test.\n");
+            cmocka_print_error("There were no previously declared parameter values "
+                               "for this test.\n");
         }
-        exit_test(1);
+        exit_test(true);
     }
 }
 
@@ -1819,59 +1961,38 @@ void mock_assert(const int result, const char * const expression,
             longjmp(global_expect_assert_env, result);
         }
         else {
-            cm_print_error("ASSERT: %s\n", expression);
+            cmocka_print_error("ASSERT: %s\n", expression);
             _fail(file, line);
         }
     }
 }
 
 
-void _assert_true(const LargestIntegralType result,
+void _assert_true(const uintmax_t result,
                   const char * const expression,
                   const char * const file, const int line)
 {
     if (!result) {
-        cm_print_error("%s\n", expression);
+        cmocka_print_error("%s\n", expression);
         _fail(file, line);
     }
 }
 
-void _assert_return_code(const LargestIntegralType result,
-                         size_t rlen,
-                         const LargestIntegralType error,
+void _assert_return_code(const intmax_t result,
+                         const int32_t error,
                          const char * const expression,
                          const char * const file,
                          const int line)
 {
-    LargestIntegralType valmax;
-    switch (rlen) {
-    case 1:
-        valmax = 255;
-        break;
-    case 2:
-        valmax = 32767;
-        break;
-    case 4:
-        valmax = 2147483647;
-        break;
-    case 8:
-    default:
-        if (rlen > sizeof(valmax)) {
-            valmax = 2147483647;
-        }
-        else {
-            valmax = 9223372036854775807L;
-        }
-        break;
-    }
-    if (result > valmax - 1) {
+    if (result < 0) {
         if (error > 0) {
-            cm_print_error("%s < 0, errno("
-                           LargestIntegralTypePrintfFormatDecimal "): %s\n",
-                           expression, error, strerror((int)error));
+            cmocka_print_error("%s < 0, errno(%d): %s\n",
+                               expression,
+                               error,
+                               strerror(error));
         }
         else {
-            cm_print_error("%s < 0\n", expression);
+            cmocka_print_error("%s < 0\n", expression);
         }
         _fail(file, line);
     }
@@ -1921,21 +2042,45 @@ void _assert_double_not_equal(const double a,
     }
 }
 
-void _assert_int_equal(
-    const LargestIntegralType a, const LargestIntegralType b,
-    const char * const file, const int line)
+void _assert_int_equal(const intmax_t a,
+                       const intmax_t b,
+                       const char * const file,
+                       const int line)
 {
-    if (!values_equal_display_error(a, b)) {
+    if (!int_values_equal_display_error(a, b)) {
         _fail(file, line);
     }
 }
 
 
-void _assert_int_not_equal(
-    const LargestIntegralType a, const LargestIntegralType b,
-    const char * const file, const int line)
+void _assert_int_not_equal(const intmax_t a,
+                           const intmax_t b,
+                           const char * const file,
+                           const int line)
 {
-    if (!values_not_equal_display_error(a, b)) {
+    if (!int_values_not_equal_display_error(a, b)) {
+        _fail(file, line);
+    }
+}
+
+
+void _assert_uint_equal(const uintmax_t a,
+                        const uintmax_t b,
+                        const char * const file,
+                        const int line)
+{
+    if (!uint_values_equal_display_error(a, b)) {
+        _fail(file, line);
+    }
+}
+
+
+void _assert_uint_not_equal(const uintmax_t a,
+                            const uintmax_t b,
+                            const char * const file,
+                            const int line)
+{
+    if (!uint_values_not_equal_display_error(a, b)) {
         _fail(file, line);
     }
 }
@@ -1980,41 +2125,54 @@ void _assert_memory_not_equal(const void * const a, const void * const b,
 }
 
 
-void _assert_in_range(
-    const LargestIntegralType value, const LargestIntegralType minimum,
-    const LargestIntegralType maximum, const char * const file,
-    const int line)
+void _assert_int_in_range(const intmax_t value,
+                          const intmax_t minimum,
+                          const intmax_t maximum,
+                          const char * const file,
+                          const int line)
 {
-    if (!integer_in_range_display_error(value, minimum, maximum)) {
+    if (!int_in_range_display_error(value, minimum, maximum)) {
         _fail(file, line);
     }
 }
 
-void _assert_not_in_range(
-    const LargestIntegralType value, const LargestIntegralType minimum,
-    const LargestIntegralType maximum, const char * const file,
-    const int line)
+void _assert_int_not_in_range(const intmax_t value,
+                              const intmax_t minimum,
+                              const intmax_t maximum,
+                              const char * const file,
+                              const int line)
 {
-    if (!integer_not_in_range_display_error(value, minimum, maximum)) {
+    if (!int_not_in_range_display_error(value, minimum, maximum)) {
         _fail(file, line);
     }
 }
 
-void _assert_in_set(const LargestIntegralType value,
-                    const LargestIntegralType values[],
-                    const size_t number_of_values, const char * const file,
-                    const int line)
+void _assert_uint_in_range(const uintmax_t value,
+                           const uintmax_t minimum,
+                           const uintmax_t maximum,
+                           const char * const file,
+                           const int line)
 {
-    CheckIntegerSet check_integer_set;
-    check_integer_set.set = values;
-    check_integer_set.size_of_set = number_of_values;
-    if (!value_in_set_display_error(value, &check_integer_set, 0)) {
+    if (!uint_in_range_display_error(value, minimum, maximum)) {
         _fail(file, line);
     }
 }
 
-void _assert_not_in_set(const LargestIntegralType value,
-                        const LargestIntegralType values[],
+
+void _assert_uint_not_in_range(const uintmax_t value,
+                               const uintmax_t minimum,
+                               const uintmax_t maximum,
+                               const char * const file,
+                               const int line)
+{
+    if (!uint_not_in_range_display_error(value, minimum, maximum)) {
+        _fail(file, line);
+    }
+}
+
+
+void _assert_not_in_set(const uintmax_t value,
+                        const uintmax_t values[],
                         const size_t number_of_values, const char * const file,
                         const int line)
 {
@@ -2026,6 +2184,73 @@ void _assert_not_in_set(const LargestIntegralType value,
     }
 }
 
+void _assert_int_in_set(const intmax_t value,
+                        const intmax_t values[],
+                        const size_t number_of_values,
+                        const char * const file,
+                        const int line)
+{
+    struct check_integer_set check_integer_set = {
+        .set = values,
+        .size_of_set = number_of_values,
+    };
+    bool ok;
+    ok = int_value_in_set_display_error(value, &check_integer_set, false);
+    if (!ok) {
+        _fail(file, line);
+    }
+}
+
+void _assert_int_not_in_set(const intmax_t value,
+                            const intmax_t values[],
+                            const size_t number_of_values,
+                            const char * const file,
+                            const int line)
+{
+    struct check_integer_set check_integer_set = {
+        .set = values,
+        .size_of_set = number_of_values,
+    };
+    bool ok;
+    ok = int_value_in_set_display_error(value, &check_integer_set, true);
+    if (!ok) {
+        _fail(file, line);
+    }
+}
+
+void _assert_uint_in_set(const uintmax_t value,
+                         const uintmax_t values[],
+                         const size_t number_of_values,
+                         const char * const file,
+                         const int line)
+{
+    struct check_unsigned_integer_set check_uint_set = {
+        .set = values,
+        .size_of_set = number_of_values,
+    };
+    bool ok;
+    ok = uint_value_in_set_display_error(value, &check_uint_set, false);
+    if (!ok) {
+        _fail(file, line);
+    }
+}
+
+void _assert_uint_not_in_set(const uintmax_t value,
+                             const uintmax_t values[],
+                             const size_t number_of_values,
+                             const char * const file,
+                             const int line)
+{
+    struct check_unsigned_integer_set check_uint_set = {
+        .set = values,
+        .size_of_set = number_of_values,
+    };
+    bool ok;
+    ok = uint_value_in_set_display_error(value, &check_uint_set, true);
+    if (!ok) {
+        _fail(file, line);
+    }
+}
 
 /* Get the list of allocated blocks. */
 static ListNode * get_allocated_blocks_list(void)
@@ -2036,13 +2261,6 @@ static ListNode * get_allocated_blocks_list(void)
         global_allocated_blocks.value = (void *)1;
     }
     return &global_allocated_blocks;
-}
-
-static void * libc_malloc(size_t size)
-{
-#undef malloc
-    return malloc(size);
-#define malloc test_malloc
 }
 
 static void * libc_calloc(size_t nmemb, size_t size)
@@ -2066,13 +2284,13 @@ static void * libc_realloc(void * ptr, size_t size)
 #define realloc test_realloc
 }
 
-static void vcm_print_error(const char * const format,
-                            va_list args) CMOCKA_PRINTF_ATTRIBUTE(1, 0);
+static void vcmocka_print_error(const char * const format,
+                                va_list args) CMOCKA_PRINTF_ATTRIBUTE(1, 0);
 
 /* It's important to use the libc malloc and free here otherwise
  * the automatic free of leaked blocks can reap the error messages
  */
-static void vcm_print_error(const char * const format, va_list args)
+static void vcmocka_print_error(const char * const format, va_list args)
 {
     char buffer[1024];
     size_t msg_len = 0;
@@ -2175,7 +2393,7 @@ void _test_free(void * const ptr, const char * file, const int line)
     if (ptr == NULL) {
         return;
     }
-    _assert_true(cast_ptr_to_largest_integral_type(ptr), "ptr", file, line);
+    _assert_true(cast_ptr_to_uintmax_type(ptr), "ptr", file, line);
     block_info.ptr = block - (MALLOC_GUARD_SIZE +
                               sizeof(struct MallocBlockInfoData));
     /* Check the guard blocks. */
@@ -2189,16 +2407,16 @@ void _test_free(void * const ptr, const char * file, const int line)
             for (j = 0; j < MALLOC_GUARD_SIZE; j++) {
                 const char diff = guard[j] - MALLOC_GUARD_PATTERN;
                 if (diff) {
-                    cm_print_error(SOURCE_LOCATION_FORMAT
-                                   ": error: Guard block of %p size=%lu is corrupt\n"
-                                   SOURCE_LOCATION_FORMAT ": note: allocated here at %p\n",
-                                   file,
-                                   line,
-                                   ptr,
-                                   (unsigned long)block_info.data->size,
-                                   block_info.data->location.file,
-                                   block_info.data->location.line,
-                                   (void *)&guard[j]);
+                    cmocka_print_error(SOURCE_LOCATION_FORMAT
+                                       ": error: Guard block of %p size=%lu is corrupt\n"
+                                       SOURCE_LOCATION_FORMAT ": note: allocated here at %p\n",
+                                       file,
+                                       line,
+                                       ptr,
+                                       (unsigned long)block_info.data->size,
+                                       block_info.data->location.file,
+                                       block_info.data->location.line,
+                                       (void *)&guard[j]);
                     _fail(file, line);
                 }
             }
@@ -2266,12 +2484,12 @@ static size_t display_allocated_blocks(const ListNode * const check_point)
         };
         assert_non_null(block_info.ptr);
         if (allocated_blocks == 0) {
-            cm_print_error("Blocks allocated...\n");
+            cmocka_print_error("Blocks allocated...\n");
         }
-        cm_print_error(SOURCE_LOCATION_FORMAT ": note: block %p allocated here\n",
-                       block_info.data->location.file,
-                       block_info.data->location.line,
-                       block_info.data->block);
+        cmocka_print_error(SOURCE_LOCATION_FORMAT ": note: block %p allocated here\n",
+                           block_info.data->location.file,
+                           block_info.data->location.line,
+                           block_info.data->block);
         allocated_blocks++;
     }
     return allocated_blocks;
@@ -2291,9 +2509,9 @@ static void free_allocated_blocks(const ListNode * const check_point)
             .ptr = discard_const(node->value),
         };
         node = node->next;
-        libc_free(discard_const_p(char, block_info.data) +
-                  sizeof(struct MallocBlockInfoData) +
-                  MALLOC_GUARD_SIZE);
+        free(discard_const_p(char, block_info.data) +
+             sizeof(struct MallocBlockInfoData) +
+             MALLOC_GUARD_SIZE);
     }
 }
 
@@ -2305,42 +2523,47 @@ static void fail_if_blocks_allocated(const ListNode * const check_point,
     const size_t allocated_blocks = display_allocated_blocks(check_point);
     if (allocated_blocks > 0) {
         free_allocated_blocks(check_point);
-        cm_print_error("ERROR: %s leaked %" PRI_SIZET " block(s)\n", test_name,
-                       allocated_blocks);
-        exit_test(1);
+        cmocka_print_error("ERROR: %s leaked %zu block(s)\n", test_name,
+                           allocated_blocks);
+        exit_test(true);
     }
 }
 
 
 void _fail(const char * const file, const int line)
 {
-    enum cm_message_output output = cm_get_output();
-    switch(output) {
-    case CM_OUTPUT_STDOUT:
-        cm_print_error("[   LINE   ] --- " SOURCE_LOCATION_FORMAT ": error: Failure!", file, line);
-        break;
-    default:
-        cm_print_error(SOURCE_LOCATION_FORMAT ": error: Failure!", file, line);
-        break;
+    uint32_t output = cm_get_output();
+    if (output & CM_OUTPUT_STANDARD) {
+        cmocka_print_error("[   LINE   ] --- " SOURCE_LOCATION_FORMAT
+                           ": error: Failure!",
+                           file, line);
     }
-    exit_test(1);
+    if ((output & CM_OUTPUT_SUBUNIT) || (output & CM_OUTPUT_TAP) ||
+        (output & CM_OUTPUT_XML)) {
+        cmocka_print_error(SOURCE_LOCATION_FORMAT ": error: Failure!", file, line);
+    }
+    exit_test(true);
+    /* Unreachable */
+    exit(EXIT_FAILURE);
 }
 
-
-#ifndef _WIN32
-static void exception_handler(int sig)
+#ifdef HAVE_SIGNAL_H
+CMOCKA_NORETURN static void exception_handler(int sig)
 {
     const char * sig_strerror = "";
 #ifdef HAVE_STRSIGNAL
     sig_strerror = strsignal(sig);
 #endif
-    cm_print_error("Test failed with exception: %s(%d)",
-                   sig_strerror, sig);
-    exit_test(1);
+    cmocka_print_error("Test failed with exception: %s(%d)",
+                       sig_strerror, sig);
+    exit_test(true);
+    /* Unreachable */
+    exit(EXIT_FAILURE);
 }
 
-#else /* _WIN32 */
+#else
 
+# ifdef _WIN32
 static LONG WINAPI exception_filter(EXCEPTION_POINTERS * exception_pointers)
 {
     EXCEPTION_RECORD * const exception_record =
@@ -2352,10 +2575,10 @@ static LONG WINAPI exception_filter(EXCEPTION_POINTERS * exception_pointers)
         if (code == code_info->code) {
             static int shown_debug_message = 0;
             fflush(stdout);
-            cm_print_error("%s occurred at %p.\n", code_info->description,
-                           exception_record->ExceptionAddress);
+            cmocka_print_error("%s occurred at %p.\n", code_info->description,
+                               exception_record->ExceptionAddress);
             if (!shown_debug_message) {
-                cm_print_error(
+                cmocka_print_error(
                     "\n"
                     "To debug in Visual Studio...\n"
                     "1. Select menu item File->Open Project\n"
@@ -2369,20 +2592,21 @@ static LONG WINAPI exception_filter(EXCEPTION_POINTERS * exception_pointers)
                     "\n");
                 shown_debug_message = 1;
             }
-            exit_test(0);
+            exit_test(false);
             return EXCEPTION_EXECUTE_HANDLER;
         }
     }
     return EXCEPTION_CONTINUE_SEARCH;
 }
-#endif /* !_WIN32 */
+# endif /* _WIN32 */
+#endif /* HAVE_SIGNAL_H */
 
-void cm_print_error(const char * const format, ...)
+void cmocka_print_error(const char * const format, ...)
 {
     va_list args;
     va_start(args, format);
     if (cm_error_message_enabled) {
-        vcm_print_error(format, args);
+        vcmocka_print_error(format, args);
     }
     else {
         vprint_error(format, args);
@@ -2393,7 +2617,7 @@ void cm_print_error(const char * const format, ...)
 /* Standard output and error print methods. */
 void vprint_message(const char * const format, va_list args)
 {
-    char buffer[1024];
+    char buffer[4096];
     vsnprintf(buffer, sizeof(buffer), format, args);
     printf("%s", buffer);
     fflush(stdout);
@@ -2405,7 +2629,7 @@ void vprint_message(const char * const format, va_list args)
 
 void vprint_error(const char * const format, va_list args)
 {
-    char buffer[1024];
+    char buffer[4096];
     vsnprintf(buffer, sizeof(buffer), format, args);
     fprintf(stderr, "%s", buffer);
     fflush(stderr);
@@ -2433,26 +2657,55 @@ void print_error(const char * const format, ...)
 }
 
 /* New formatter */
-static enum cm_message_output cm_get_output(void)
+static uint32_t cm_get_output(void)
 {
-    enum cm_message_output output = global_msg_output;
-    char * env;
+    static bool env_checked = false;
+    char * env = NULL;
+    size_t len = 0;
+    uint32_t new_output = 0;
+    char * str_output_list = NULL;
+    char * str_output = NULL;
+    char * saveptr = NULL;
+    if (env_checked) {
+        return global_msg_output;
+    }
     env = getenv("CMOCKA_MESSAGE_OUTPUT");
-    if (env != NULL) {
-        if (strcasecmp(env, "STDOUT") == 0) {
-            output = CM_OUTPUT_STDOUT;
+    if (env == NULL) {
+        return global_msg_output;
+    }
+    len = strlen(env);
+    if (len == 0 || len > 32) {
+        return global_msg_output;
+    }
+    str_output_list = strdup(env);
+    if (str_output_list == NULL) {
+        return global_msg_output;
+    }
+    for (str_output = strtok_r(str_output_list, ",", &saveptr);
+         str_output != NULL;
+         str_output = strtok_r(NULL, ",", &saveptr)) {
+        if (strcasecmp(str_output, "STANDARD") == 0) {
+            new_output |= CM_OUTPUT_STANDARD;
         }
-        else if (strcasecmp(env, "SUBUNIT") == 0) {
-            output = CM_OUTPUT_SUBUNIT;
+        else if (strcasecmp(str_output, "STDOUT") == 0) {
+            new_output |= CM_OUTPUT_STANDARD;
         }
-        else if (strcasecmp(env, "TAP") == 0) {
-            output = CM_OUTPUT_TAP;
+        else if (strcasecmp(str_output, "SUBUNIT") == 0) {
+            new_output |= CM_OUTPUT_SUBUNIT;
         }
-        else if (strcasecmp(env, "XML") == 0) {
-            output = CM_OUTPUT_XML;
+        else if (strcasecmp(str_output, "TAP") == 0) {
+            new_output |= CM_OUTPUT_TAP;
+        }
+        else if (strcasecmp(str_output, "XML") == 0) {
+            new_output |= CM_OUTPUT_XML;
         }
     }
-    return output;
+    libc_free(str_output_list);
+    if (new_output != 0) {
+        global_msg_output = new_output;
+    }
+    env_checked = true;
+    return global_msg_output;
 }
 
 enum cm_printf_type {
@@ -2562,13 +2815,16 @@ static void cmprintf_group_finish_xml(const char * group_name,
     }
 }
 
-static void cmprintf_group_start_standard(const size_t num_tests)
+static void cmprintf_group_start_standard(const char * group_name,
+        const size_t num_tests)
 {
-    print_message("[==========] Running %u test(s).\n",
-                  (unsigned)num_tests);
+    print_message("[==========] %s: Running %zu test(s).\n",
+                  group_name,
+                  num_tests);
 }
 
-static void cmprintf_group_finish_standard(size_t total_executed,
+static void cmprintf_group_finish_standard(const char * group_name,
+        size_t total_executed,
         size_t total_passed,
         size_t total_failed,
         size_t total_errors,
@@ -2576,29 +2832,35 @@ static void cmprintf_group_finish_standard(size_t total_executed,
         struct CMUnitTestState * cm_tests)
 {
     size_t i;
-    print_message("[==========] %u test(s) run.\n", (unsigned)total_executed);
+    print_message("[==========] %s: %zu test(s) run.\n",
+                  group_name,
+                  total_executed);
     print_error("[  PASSED  ] %u test(s).\n",
                 (unsigned)(total_passed));
     if (total_skipped) {
-        print_error("[  SKIPPED ] %"PRIdS " test(s), listed below:\n", total_skipped);
+        print_error("[  SKIPPED ] %s: %zu test(s), listed below:\n",
+                    group_name,
+                    total_skipped);
         for (i = 0; i < total_executed; i++) {
             struct CMUnitTestState * cmtest = &cm_tests[i];
             if (cmtest->status == CM_TEST_SKIPPED) {
                 print_error("[  SKIPPED ] %s\n", cmtest->test->name);
             }
         }
-        print_error("\n %u SKIPPED TEST(S)\n", (unsigned)(total_skipped));
+        print_error("\n %zu SKIPPED TEST(S)\n", total_skipped);
     }
     if (total_failed) {
-        print_error("[  FAILED  ] %"PRIdS " test(s), listed below:\n", total_failed);
+        print_error("[  FAILED  ] %s: %zu test(s), listed below:\n",
+                    group_name,
+                    total_failed);
         for (i = 0; i < total_executed; i++) {
             struct CMUnitTestState * cmtest = &cm_tests[i];
             if (cmtest->status == CM_TEST_FAILED) {
                 print_error("[  FAILED  ] %s\n", cmtest->test->name);
             }
         }
-        print_error("\n %u FAILED TEST(S)\n",
-                    (unsigned)(total_failed + total_errors));
+        print_error("\n %zu FAILED TEST(S)\n",
+                    (total_failed + total_errors));
     }
 }
 
@@ -2633,6 +2895,11 @@ static void cmprintf_standard(enum cm_printf_type type,
 
 static void cmprintf_group_start_tap(const size_t num_tests)
 {
+    static bool version_printed = false;
+    if (!version_printed) {
+        print_message("TAP version 13\n");
+        version_printed = true;
+    }
     print_message("1..%u\n", (unsigned)num_tests);
 }
 
@@ -2649,7 +2916,7 @@ static void cmprintf_group_finish_tap(const char * group_name,
 }
 
 static void cmprintf_tap(enum cm_printf_type type,
-                         uint32_t test_number,
+                         size_t test_number,
                          const char * test_name,
                          const char * error_message)
 {
@@ -2685,7 +2952,7 @@ static void cmprintf_tap(enum cm_printf_type type,
         }
         break;
     case PRINTF_TEST_SKIPPED:
-        print_message("not ok %u # SKIP %s\n", (unsigned)test_number, test_name);
+        print_message("ok %u # SKIP %s\n", (unsigned)test_number, test_name);
         break;
     case PRINTF_TEST_ERROR:
         print_message("not ok %u - %s %s\n",
@@ -2720,21 +2987,16 @@ static void cmprintf_subunit(enum cm_printf_type type,
     }
 }
 
-static void cmprintf_group_start(const size_t num_tests)
+static void cmprintf_group_start(const char * group_name,
+                                 const size_t num_tests)
 {
-    enum cm_message_output output;
+    uint32_t output;
     output = cm_get_output();
-    switch (output) {
-    case CM_OUTPUT_STDOUT:
-        cmprintf_group_start_standard(num_tests);
-        break;
-    case CM_OUTPUT_SUBUNIT:
-        break;
-    case CM_OUTPUT_TAP:
+    if (output & CM_OUTPUT_STANDARD) {
+        cmprintf_group_start_standard(group_name, num_tests);
+    }
+    if (output & CM_OUTPUT_TAP) {
         cmprintf_group_start_tap(num_tests);
-        break;
-    case CM_OUTPUT_XML:
-        break;
     }
 }
 
@@ -2747,23 +3009,24 @@ static void cmprintf_group_finish(const char * group_name,
                                   double total_runtime,
                                   struct CMUnitTestState * cm_tests)
 {
-    enum cm_message_output output;
+    uint32_t output;
     output = cm_get_output();
-    switch (output) {
-    case CM_OUTPUT_STDOUT:
-        cmprintf_group_finish_standard(total_executed,
+    if (output & CM_OUTPUT_STANDARD) {
+        cmprintf_group_finish_standard(group_name,
+                                       total_executed,
                                        total_passed,
                                        total_failed,
                                        total_errors,
                                        total_skipped,
                                        cm_tests);
-        break;
-    case CM_OUTPUT_SUBUNIT:
-        break;
-    case CM_OUTPUT_TAP:
-        cmprintf_group_finish_tap(group_name, total_executed, total_passed, total_skipped);
-        break;
-    case CM_OUTPUT_XML:
+    }
+    if (output & CM_OUTPUT_TAP) {
+        cmprintf_group_finish_tap(group_name,
+                                  total_executed,
+                                  total_passed,
+                                  total_skipped);
+    }
+    if (output & CM_OUTPUT_XML) {
         cmprintf_group_finish_xml(group_name,
                                   total_executed,
                                   total_failed,
@@ -2771,7 +3034,6 @@ static void cmprintf_group_finish(const char * group_name,
                                   total_skipped,
                                   total_runtime,
                                   cm_tests);
-        break;
     }
 }
 
@@ -2780,24 +3042,20 @@ static void cmprintf(enum cm_printf_type type,
                      const char * test_name,
                      const char * error_message)
 {
-    enum cm_message_output output;
+    uint32_t output;
     output = cm_get_output();
-    switch (output) {
-    case CM_OUTPUT_STDOUT:
+    if (output & CM_OUTPUT_STANDARD) {
         cmprintf_standard(type, test_name, error_message);
-        break;
-    case CM_OUTPUT_SUBUNIT:
+    }
+    if (output & CM_OUTPUT_SUBUNIT) {
         cmprintf_subunit(type, test_name, error_message);
-        break;
-    case CM_OUTPUT_TAP:
+    }
+    if (output & CM_OUTPUT_TAP) {
         cmprintf_tap(type, test_number, test_name, error_message);
-        break;
-    case CM_OUTPUT_XML:
-        break;
     }
 }
 
-void cmocka_set_message_output(enum cm_message_output output)
+void cmocka_set_message_output(uint32_t output)
 {
     global_msg_output = output;
 }
@@ -2847,7 +3105,7 @@ static double cm_secdiff(struct timespec clock1, struct timespec clock0)
     double ret;
     struct timespec diff;
     diff = cm_tspecdiff(clock1, clock0);
-    ret = diff.tv_sec;
+    ret = (double) diff.tv_sec;
     ret += (double) diff.tv_nsec / (double) 1E9;
     return ret;
 }
@@ -2866,7 +3124,7 @@ static int cmocka_run_one_test_or_fixture(const char * function_name,
     const ListNode * const volatile check_point = (const ListNode *)
             (heap_check_point != NULL ?
              heap_check_point : check_point_allocated_blocks());
-    int handle_exceptions = 1;
+    bool handle_exceptions = true;
     void * current_state = NULL;
     int rc = 0;
     /* FIXME check only one test or fixture is set */
@@ -2875,19 +3133,21 @@ static int cmocka_run_one_test_or_fixture(const char * function_name,
     handle_exceptions = !IsDebuggerPresent();
 #endif /* _WIN32 */
 #ifdef UNIT_TESTING_DEBUG
-    handle_exceptions = 0;
+    handle_exceptions = false;
 #endif /* UNIT_TESTING_DEBUG */
     if (handle_exceptions) {
-#ifndef _WIN32
+#ifdef HAVE_SIGNAL_H
         unsigned int i;
         for (i = 0; i < ARRAY_SIZE(exception_signals); i++) {
             default_signal_functions[i] = signal(
                                               exception_signals[i], exception_handler);
         }
-#else /* _WIN32 */
+#else /* HAVE_SIGNAL_H */
+# ifdef _WIN32
         previous_exception_filter = SetUnhandledExceptionFilter(
                                         exception_filter);
-#endif /* !_WIN32 */
+# endif /* _WIN32 */
+#endif /* HAVE_SIGNAL_H */
     }
     /* Init the test structure */
     initialize_testing(function_name);
@@ -2919,20 +3179,28 @@ static int cmocka_run_one_test_or_fixture(const char * function_name,
         /* TEST FAILED */
         global_running_test = 0;
         rc = -1;
+        if (global_stop_test) {
+            if (has_leftover_values(function_name) == 0) {
+                rc = 0;
+            }
+            global_stop_test = 0;
+        }
     }
     teardown_testing(function_name);
     if (handle_exceptions) {
-#ifndef _WIN32
+#ifdef HAVE_SIGNAL_H
         unsigned int i;
         for (i = 0; i < ARRAY_SIZE(exception_signals); i++) {
             signal(exception_signals[i], default_signal_functions[i]);
         }
-#else /* _WIN32 */
+#else /* HAVE_SIGNAL_H */
+# ifdef _WIN32
         if (previous_exception_filter) {
             SetUnhandledExceptionFilter(previous_exception_filter);
             previous_exception_filter = NULL;
         }
-#endif /* !_WIN32 */
+# endif /* _WIN32 */
+#endif /* HAVE_SIGNAL_H */
     }
     return rc;
 }
@@ -2988,7 +3256,7 @@ static int cmocka_run_one_tests(struct CMUnitTestState * test_state)
                                             test_state->check_point);
         if (rc != 0) {
             test_state->status = CM_TEST_ERROR;
-            cm_print_error("Test setup failed");
+            cmocka_print_error("Test setup failed");
         }
     }
     /* Run test */
@@ -3031,7 +3299,7 @@ static int cmocka_run_one_tests(struct CMUnitTestState * test_state)
                                             test_state->check_point);
         if (rc != 0) {
             test_state->status = CM_TEST_ERROR;
-            cm_print_error("Test teardown failed");
+            cmocka_print_error("Test teardown failed");
         }
     }
     test_state->error_message = cm_error_message;
@@ -3057,8 +3325,8 @@ int _cmocka_run_group_tests(const char * group_name,
     double total_runtime = 0;
     size_t i;
     int rc;
-    /* Make sure LargestIntegralType is at least the size of a pointer. */
-    assert_true(sizeof(LargestIntegralType) >= sizeof(void *));
+    /* Make sure uintmax_t is at least the size of a pointer. */
+    assert_true(sizeof(uintmax_t) >= sizeof(void *));
     cm_tests = libc_calloc(1, sizeof(struct CMUnitTestState) * num_tests);
     if (cm_tests == NULL) {
         return -1;
@@ -3091,7 +3359,7 @@ int _cmocka_run_group_tests(const char * group_name,
             total_tests++;
         }
     }
-    cmprintf_group_start(total_tests);
+    cmprintf_group_start(group_name, total_tests);
     rc = 0;
     /* Run group setup */
     if (group_setup != NULL) {
@@ -3201,357 +3469,5 @@ int _cmocka_run_group_tests(const char * group_name,
     }
     libc_free(cm_tests);
     fail_if_blocks_allocated(group_check_point, "cmocka_group_tests");
-    return total_failed + total_errors;
-}
-
-/****************************************************************************
- * DEPRECATED TEST RUNNER
- ****************************************************************************/
-
-int _run_test(
-    const char * const function_name,  const UnitTestFunction Function,
-    void ** const volatile state, const UnitTestFunctionType function_type,
-    const void * const heap_check_point)
-{
-    const ListNode * const volatile check_point = (const ListNode *)
-            (heap_check_point ?
-             heap_check_point : check_point_allocated_blocks());
-    void * current_state = NULL;
-    volatile int rc = 1;
-    int handle_exceptions = 1;
-#ifdef _WIN32
-    handle_exceptions = !IsDebuggerPresent();
-#endif /* _WIN32 */
-#ifdef UNIT_TESTING_DEBUG
-    handle_exceptions = 0;
-#endif /* UNIT_TESTING_DEBUG */
-    cm_error_message_enabled = 0;
-    if (handle_exceptions) {
-#ifndef _WIN32
-        unsigned int i;
-        for (i = 0; i < ARRAY_SIZE(exception_signals); i++) {
-            default_signal_functions[i] = signal(
-                                              exception_signals[i], exception_handler);
-        }
-#else /* _WIN32 */
-        previous_exception_filter = SetUnhandledExceptionFilter(
-                                        exception_filter);
-#endif /* !_WIN32 */
-    }
-    if (function_type == UNIT_TEST_FUNCTION_TYPE_TEST) {
-        print_message("[ RUN      ] %s\n", function_name);
-    }
-    initialize_testing(function_name);
-    global_running_test = 1;
-    if (cm_setjmp(global_run_test_env) == 0) {
-        Function(state ? state : &current_state);
-        fail_if_leftover_values(function_name);
-        /* If this is a setup function then ignore any allocated blocks
-         * only ensure they're deallocated on tear down. */
-        if (function_type != UNIT_TEST_FUNCTION_TYPE_SETUP) {
-            fail_if_blocks_allocated(check_point, function_name);
-        }
-        global_running_test = 0;
-        if (function_type == UNIT_TEST_FUNCTION_TYPE_TEST) {
-            print_message("[       OK ] %s\n", function_name);
-        }
-        rc = 0;
-    }
-    else {
-        global_running_test = 0;
-        print_message("[  FAILED  ] %s\n", function_name);
-    }
-    teardown_testing(function_name);
-    if (handle_exceptions) {
-#ifndef _WIN32
-        unsigned int i;
-        for (i = 0; i < ARRAY_SIZE(exception_signals); i++) {
-            signal(exception_signals[i], default_signal_functions[i]);
-        }
-#else /* _WIN32 */
-        if (previous_exception_filter) {
-            SetUnhandledExceptionFilter(previous_exception_filter);
-            previous_exception_filter = NULL;
-        }
-#endif /* !_WIN32 */
-    }
-    return rc;
-}
-
-
-int _run_tests(const UnitTest * const tests, const size_t number_of_tests)
-{
-    /* Whether to execute the next test. */
-    int run_next_test = 1;
-    /* Whether the previous test failed. */
-    int previous_test_failed = 0;
-    /* Whether the previous setup failed. */
-    int previous_setup_failed = 0;
-    /* Check point of the heap state. */
-    const ListNode * const check_point = check_point_allocated_blocks();
-    /* Current test being executed. */
-    size_t current_test = 0;
-    /* Number of tests executed. */
-    size_t tests_executed = 0;
-    /* Number of failed tests. */
-    size_t total_failed = 0;
-    /* Number of setup functions. */
-    size_t setups = 0;
-    /* Number of teardown functions. */
-    size_t teardowns = 0;
-    size_t i;
-    /*
-     * A stack of test states.  A state is pushed on the stack
-     * when a test setup occurs and popped on tear down.
-     */
-    TestState * test_states =
-        (TestState *)libc_malloc(number_of_tests * sizeof(*test_states));
-    /* The number of test states which should be 0 at the end */
-    long number_of_test_states = 0;
-    /* Names of the tests that failed. */
-    const char ** failed_names = (const char **)libc_malloc(number_of_tests *
-                                 sizeof(*failed_names));
-    void ** current_state = NULL;
-    /* Count setup and teardown functions */
-    for (i = 0; i < number_of_tests; i++) {
-        const UnitTest * const test = &tests[i];
-        if (test->function_type == UNIT_TEST_FUNCTION_TYPE_SETUP) {
-            setups++;
-        }
-        if (test->function_type == UNIT_TEST_FUNCTION_TYPE_TEARDOWN) {
-            teardowns++;
-        }
-    }
-    print_message("[==========] Running %"PRIdS " test(s).\n",
-                  number_of_tests - setups - teardowns);
-    /* Make sure LargestIntegralType is at least the size of a pointer. */
-    assert_true(sizeof(LargestIntegralType) >= sizeof(void *));
-    while (current_test < number_of_tests) {
-        const ListNode * test_check_point = NULL;
-        TestState * current_TestState;
-        const UnitTest * const test = &tests[current_test++];
-        if (!test->function) {
-            continue;
-        }
-        switch (test->function_type) {
-        case UNIT_TEST_FUNCTION_TYPE_TEST:
-            if (! previous_setup_failed) {
-                run_next_test = 1;
-            }
-            break;
-        case UNIT_TEST_FUNCTION_TYPE_SETUP: {
-            /* Checkpoint the heap before the setup. */
-            current_TestState = &test_states[number_of_test_states++];
-            current_TestState->check_point = check_point_allocated_blocks();
-            test_check_point = current_TestState->check_point;
-            current_state = &current_TestState->state;
-            *current_state = NULL;
-            run_next_test = 1;
-            break;
-        }
-        case UNIT_TEST_FUNCTION_TYPE_TEARDOWN:
-            /* Check the heap based on the last setup checkpoint. */
-            assert_true(number_of_test_states);
-            current_TestState = &test_states[--number_of_test_states];
-            test_check_point = current_TestState->check_point;
-            current_state = &current_TestState->state;
-            break;
-        default:
-            print_error("Invalid unit test function type %d\n",
-                        test->function_type);
-            exit_test(1);
-            break;
-        }
-        if (run_next_test) {
-            int failed = _run_test(test->name, test->function, current_state,
-                                   test->function_type, test_check_point);
-            if (failed) {
-                failed_names[total_failed] = test->name;
-            }
-            switch (test->function_type) {
-            case UNIT_TEST_FUNCTION_TYPE_TEST:
-                previous_test_failed = failed;
-                total_failed += failed;
-                tests_executed ++;
-                break;
-            case UNIT_TEST_FUNCTION_TYPE_SETUP:
-                if (failed) {
-                    total_failed ++;
-                    tests_executed ++;
-                    /* Skip forward until the next test or setup function. */
-                    run_next_test = 0;
-                    previous_setup_failed = 1;
-                }
-                previous_test_failed = 0;
-                break;
-            case UNIT_TEST_FUNCTION_TYPE_TEARDOWN:
-                /* If this test failed. */
-                if (failed && !previous_test_failed) {
-                    total_failed ++;
-                }
-                break;
-            default:
-#ifndef _HPUX
-                assert_null("BUG: shouldn't be here!");
-#endif
-                break;
-            }
-        }
-    }
-    print_message("[==========] %"PRIdS " test(s) run.\n", tests_executed);
-    print_error("[  PASSED  ] %"PRIdS " test(s).\n", tests_executed - total_failed);
-    if (total_failed > 0) {
-        print_error("[  FAILED  ] %"PRIdS " test(s), listed below:\n", total_failed);
-        for (i = 0; i < total_failed; i++) {
-            print_error("[  FAILED  ] %s\n", failed_names[i]);
-        }
-    }
-    else {
-        print_error("\n %"PRIdS " FAILED TEST(S)\n", total_failed);
-    }
-    if (number_of_test_states != 0) {
-        print_error("[  ERROR   ] Mismatched number of setup %"PRIdS " and "
-                    "teardown %"PRIdS " functions\n", setups, teardowns);
-        total_failed = (size_t) -1;
-    }
-    libc_free(test_states);
-    libc_free((void *)failed_names);
-    fail_if_blocks_allocated(check_point, "run_tests");
-    return (int)total_failed;
-}
-
-int _run_group_tests(const UnitTest * const tests, const size_t number_of_tests)
-{
-    UnitTestFunction setup = NULL;
-    const char * setup_name;
-    size_t num_setups = 0;
-    UnitTestFunction teardown = NULL;
-    const char * teardown_name = NULL;
-    size_t num_teardowns = 0;
-    size_t current_test = 0;
-    size_t i;
-    /* Number of tests executed. */
-    size_t tests_executed = 0;
-    /* Number of failed tests. */
-    size_t total_failed = 0;
-    /* Check point of the heap state. */
-    const ListNode * const check_point = check_point_allocated_blocks();
-    const char ** failed_names = NULL;
-    void ** current_state = NULL;
-    TestState group_state = {
-        .check_point = NULL,
-    };
-    if (number_of_tests == 0) {
-        return -1;
-    }
-    failed_names = (const char **)libc_malloc(number_of_tests *
-                   sizeof(*failed_names));
-    if (failed_names == NULL) {
-        return -2;
-    }
-    /* Find setup and teardown function */
-    for (i = 0; i < number_of_tests; i++) {
-        const UnitTest * const test = &tests[i];
-        if (test->function_type == UNIT_TEST_FUNCTION_TYPE_GROUP_SETUP) {
-            if (setup == NULL) {
-                setup = test->function;
-                setup_name = test->name;
-                num_setups = 1;
-            }
-            else {
-                print_error("[  ERROR   ] More than one group setup function detected\n");
-                exit_test(1);
-            }
-        }
-        if (test->function_type == UNIT_TEST_FUNCTION_TYPE_GROUP_TEARDOWN) {
-            if (teardown == NULL) {
-                teardown = test->function;
-                teardown_name = test->name;
-                num_teardowns = 1;
-            }
-            else {
-                print_error("[  ERROR   ] More than one group teardown function detected\n");
-                exit_test(1);
-            }
-        }
-    }
-    print_message("[==========] Running %"PRIdS " test(s).\n",
-                  number_of_tests - num_setups - num_teardowns);
-    if (setup != NULL) {
-        int failed;
-        group_state.check_point = check_point_allocated_blocks();
-        current_state = &group_state.state;
-        *current_state = NULL;
-        failed = _run_test(setup_name,
-                           setup,
-                           current_state,
-                           UNIT_TEST_FUNCTION_TYPE_SETUP,
-                           group_state.check_point);
-        if (failed) {
-            failed_names[total_failed] = setup_name;
-        }
-        total_failed += failed;
-        tests_executed++;
-    }
-    while (current_test < number_of_tests) {
-        int run_test = 0;
-        const UnitTest * const test = &tests[current_test++];
-        if (test->function == NULL) {
-            continue;
-        }
-        switch (test->function_type) {
-        case UNIT_TEST_FUNCTION_TYPE_TEST:
-            run_test = 1;
-            break;
-        case UNIT_TEST_FUNCTION_TYPE_SETUP:
-        case UNIT_TEST_FUNCTION_TYPE_TEARDOWN:
-        case UNIT_TEST_FUNCTION_TYPE_GROUP_SETUP:
-        case UNIT_TEST_FUNCTION_TYPE_GROUP_TEARDOWN:
-            break;
-        default:
-            print_error("Invalid unit test function type %d\n",
-                        test->function_type);
-            break;
-        }
-        if (run_test) {
-            int failed;
-            failed = _run_test(test->name,
-                               test->function,
-                               current_state,
-                               test->function_type,
-                               NULL);
-            if (failed) {
-                failed_names[total_failed] = test->name;
-            }
-            total_failed += failed;
-            tests_executed++;
-        }
-    }
-    if (teardown != NULL) {
-        int failed;
-        failed = _run_test(teardown_name,
-                           teardown,
-                           current_state,
-                           UNIT_TEST_FUNCTION_TYPE_GROUP_TEARDOWN,
-                           group_state.check_point);
-        if (failed) {
-            failed_names[total_failed] = teardown_name;
-        }
-        total_failed += failed;
-        tests_executed++;
-    }
-    print_message("[==========] %"PRIdS " test(s) run.\n", tests_executed);
-    print_error("[  PASSED  ] %"PRIdS " test(s).\n", tests_executed - total_failed);
-    if (total_failed) {
-        print_error("[  FAILED  ] %"PRIdS " test(s), listed below:\n", total_failed);
-        for (i = 0; i < total_failed; i++) {
-            print_error("[  FAILED  ] %s\n", failed_names[i]);
-        }
-    }
-    else {
-        print_error("\n %"PRIdS " FAILED TEST(S)\n", total_failed);
-    }
-    libc_free((void *)failed_names);
-    fail_if_blocks_allocated(check_point, "run_group_tests");
-    return (int)total_failed;
+    return (int)(total_failed + total_errors);
 }
